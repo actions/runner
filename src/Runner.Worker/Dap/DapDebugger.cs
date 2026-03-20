@@ -30,23 +30,23 @@ namespace GitHub.Runner.Worker.Dap
     /// </summary>
     public sealed class DapDebugger : RunnerService, IDapDebugger
     {
-        private const int DefaultPort = 4711;
-        private const int DefaultTimeoutMinutes = 15;
-        private const string PortEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
-        private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
-        private const string ContentLengthHeader = "Content-Length: ";
-        private const int MaxMessageSize = 10 * 1024 * 1024; // 10 MB
-        private const int MaxHeaderLineLength = 8192; // 8 KB
-        private const int ConnectionRetryDelayMilliseconds = 500;
+        private const int _defaultPort = 4711;
+        private const int _defaultTimeoutMinutes = 15;
+        private const string _portEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
+        private const string _timeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
+        private const string _contentLengthHeader = "Content-Length: ";
+        private const int _maxMessageSize = 10 * 1024 * 1024; // 10 MB
+        private const int _maxHeaderLineLength = 8192; // 8 KB
+        private const int _connectionRetryDelayMilliseconds = 500;
 
         // Thread ID for the single job execution thread
-        private const int JobThreadId = 1;
+        private const int _jobThreadId = 1;
 
         // Frame ID for the current step (always 1)
-        private const int CurrentFrameId = 1;
+        private const int _currentFrameId = 1;
 
         // Frame IDs for completed steps start at 1000
-        private const int CompletedFrameIdBase = 1000;
+        private const int _completedFrameIdBase = 1000;
 
         private TcpListener _listener;
         private TcpClient _client;
@@ -78,7 +78,7 @@ namespace GitHub.Runner.Worker.Dap
 
         // Track completed steps for stack trace
         private readonly List<CompletedStepInfo> _completedSteps = new List<CompletedStepInfo>();
-        private int _nextCompletedFrameId = CompletedFrameIdBase;
+        private int _nextCompletedFrameId = _completedFrameIdBase;
 
         // Client connection tracking for reconnection support
         private volatile bool _isClientConnected;
@@ -462,6 +462,7 @@ namespace GitHub.Runner.Worker.Dap
                     _connectionTcs.TrySetResult(true);
                     HandleClientConnected();
 
+                    // Enter message processing loop until client disconnects or cancellation is requested
                     await ProcessMessagesAsync(cancellationToken);
 
                     Trace.Info("Client disconnected, waiting for reconnection...");
@@ -482,7 +483,7 @@ namespace GitHub.Runner.Worker.Dap
 
                     try
                     {
-                        await Task.Delay(ConnectionRetryDelayMilliseconds, cancellationToken);
+                        await Task.Delay(_connectionRetryDelayMilliseconds, cancellationToken);
                     }
                     catch (OperationCanceledException)
                     {
@@ -574,9 +575,9 @@ namespace GitHub.Runner.Worker.Dap
                     break;
                 }
 
-                if (line.StartsWith(ContentLengthHeader, StringComparison.OrdinalIgnoreCase))
+                if (line.StartsWith(_contentLengthHeader, StringComparison.OrdinalIgnoreCase))
                 {
-                    var lengthStr = line.Substring(ContentLengthHeader.Length).Trim();
+                    var lengthStr = line.Substring(_contentLengthHeader.Length).Trim();
                     if (!int.TryParse(lengthStr, out contentLength))
                     {
                         throw new InvalidDataException($"Invalid Content-Length: {lengthStr}");
@@ -589,9 +590,9 @@ namespace GitHub.Runner.Worker.Dap
                 throw new InvalidDataException("Missing Content-Length header");
             }
 
-            if (contentLength > MaxMessageSize)
+            if (contentLength > _maxMessageSize)
             {
-                throw new InvalidDataException($"Message size {contentLength} exceeds maximum allowed size of {MaxMessageSize}");
+                throw new InvalidDataException($"Message size {contentLength} exceeds maximum allowed size of {_maxMessageSize}");
             }
 
             var buffer = new byte[contentLength];
@@ -639,9 +640,9 @@ namespace GitHub.Runner.Worker.Dap
                 previousWasCr = c == '\r';
                 lineBuilder.Append(c);
 
-                if (lineBuilder.Length > MaxHeaderLineLength)
+                if (lineBuilder.Length > _maxHeaderLineLength)
                 {
-                    throw new InvalidDataException($"Header line exceeds maximum length of {MaxHeaderLineLength}");
+                    throw new InvalidDataException($"Header line exceeds maximum length of {_maxHeaderLineLength}");
                 }
             }
         }
@@ -940,7 +941,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     new Thread
                     {
-                        Id = JobThreadId,
+                        Id = _jobThreadId,
                         Name = threadName
                     }
                 }
@@ -972,7 +973,7 @@ namespace GitHub.Runner.Worker.Dap
 
                 frames.Add(new StackFrame
                 {
-                    Id = CurrentFrameId,
+                    Id = _currentFrameId,
                     Name = MaskUserVisibleText($"{currentStep.DisplayName ?? "Current Step"}{resultIndicator}"),
                     Line = currentStepIndex + 1,
                     Column = 1,
@@ -983,7 +984,7 @@ namespace GitHub.Runner.Worker.Dap
             {
                 frames.Add(new StackFrame
                 {
-                    Id = CurrentFrameId,
+                    Id = _currentFrameId,
                     Name = "(no step executing)",
                     Line = 0,
                     Column = 1,
@@ -1018,7 +1019,7 @@ namespace GitHub.Runner.Worker.Dap
         private Response HandleScopes(Request request)
         {
             var args = request.Arguments?.ToObject<ScopesArguments>();
-            var frameId = args?.FrameId ?? CurrentFrameId;
+            var frameId = args?.FrameId ?? _currentFrameId;
 
             var context = GetExecutionContextForFrame(frameId);
             if (context == null)
@@ -1061,7 +1062,7 @@ namespace GitHub.Runner.Worker.Dap
         {
             var args = request.Arguments?.ToObject<EvaluateArguments>();
             var expression = args?.Expression ?? string.Empty;
-            var frameId = args?.FrameId ?? CurrentFrameId;
+            var frameId = args?.FrameId ?? _currentFrameId;
             var evalContext = args?.Context ?? "hover";
 
             Trace.Info("Evaluate request received");
@@ -1288,7 +1289,7 @@ namespace GitHub.Runner.Worker.Dap
                         EventType = "continued",
                         Body = new ContinuedEventBody
                         {
-                            ThreadId = JobThreadId,
+                            ThreadId = _jobThreadId,
                             AllThreadsContinued = true
                         }
                     });
@@ -1304,7 +1305,7 @@ namespace GitHub.Runner.Worker.Dap
         /// </summary>
         private IExecutionContext GetExecutionContextForFrame(int frameId)
         {
-            if (frameId == CurrentFrameId)
+            if (frameId == _currentFrameId)
             {
                 return GetCurrentExecutionContext();
             }
@@ -1340,7 +1341,7 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     Reason = reason,
                     Description = MaskUserVisibleText(description),
-                    ThreadId = JobThreadId,
+                    ThreadId = _jobThreadId,
                     AllThreadsStopped = true
                 }
             });
@@ -1374,26 +1375,26 @@ namespace GitHub.Runner.Worker.Dap
 
         internal int ResolvePort()
         {
-            var portEnv = Environment.GetEnvironmentVariable(PortEnvironmentVariable);
+            var portEnv = Environment.GetEnvironmentVariable(_portEnvironmentVariable);
             if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 1024 && customPort <= 65535)
             {
-                Trace.Info($"Using custom DAP port {customPort} from {PortEnvironmentVariable}");
+                Trace.Info($"Using custom DAP port {customPort} from {_portEnvironmentVariable}");
                 return customPort;
             }
 
-            return DefaultPort;
+            return _defaultPort;
         }
 
         internal int ResolveTimeout()
         {
-            var timeoutEnv = Environment.GetEnvironmentVariable(TimeoutEnvironmentVariable);
+            var timeoutEnv = Environment.GetEnvironmentVariable(_timeoutEnvironmentVariable);
             if (!string.IsNullOrEmpty(timeoutEnv) && int.TryParse(timeoutEnv, out var customTimeout) && customTimeout > 0)
             {
-                Trace.Info($"Using custom DAP timeout {customTimeout} minutes from {TimeoutEnvironmentVariable}");
+                Trace.Info($"Using custom DAP timeout {customTimeout} minutes from {_timeoutEnvironmentVariable}");
                 return customTimeout;
             }
 
-            return DefaultTimeoutMinutes;
+            return _defaultTimeoutMinutes;
         }
     }
 }

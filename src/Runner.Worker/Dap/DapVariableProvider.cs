@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
 {
@@ -25,27 +25,27 @@ namespace GitHub.Runner.Worker.Dap
     {
         // Well-known scope names that map to top-level expression contexts.
         // Order matters: the index determines the stable variablesReference ID.
-        internal static readonly string[] ScopeNames =
+        private static readonly string[] _scopeNames =
         {
             "github", "env", "runner", "job", "steps",
             "secrets", "inputs", "vars", "matrix", "needs"
         };
 
         // Scope references occupy the range [1, ScopeReferenceMax].
-        private const int ScopeReferenceBase = 1;
-        private const int ScopeReferenceMax = 100;
+        private const int _scopeReferenceBase = 1;
+        private const int _scopeReferenceMax = 100;
 
         // Dynamic (nested) variable references start above the scope range.
-        private const int DynamicReferenceBase = 101;
+        private const int _dynamicReferenceBase = 101;
 
-        internal const string RedactedValue = "***";
+        private const string _redactedValue = "***";
 
         private readonly ISecretMasker _secretMasker;
 
         // Maps dynamic variable reference IDs to the backing data and its
         // dot-separated path (e.g. "github.event.pull_request").
         private readonly Dictionary<int, (PipelineContextData Data, string Path)> _variableReferences = new();
-        private int _nextVariableReference = DynamicReferenceBase;
+        private int _nextVariableReference = _dynamicReferenceBase;
 
         public DapVariableProvider(ISecretMasker secretMasker)
         {
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker.Dap
         public void Reset()
         {
             _variableReferences.Clear();
-            _nextVariableReference = DynamicReferenceBase;
+            _nextVariableReference = _dynamicReferenceBase;
         }
 
         /// <summary>
@@ -78,9 +78,9 @@ namespace GitHub.Runner.Worker.Dap
                 return scopes;
             }
 
-            for (int i = 0; i < ScopeNames.Length; i++)
+            for (int i = 0; i < _scopeNames.Length; i++)
             {
-                var scopeName = ScopeNames[i];
+                var scopeName = _scopeNames[i];
                 if (!context.ExpressionValues.TryGetValue(scopeName, out var value) || value == null)
                 {
                     continue;
@@ -89,7 +89,7 @@ namespace GitHub.Runner.Worker.Dap
                 var scope = new Scope
                 {
                     Name = scopeName,
-                    VariablesReference = ScopeReferenceBase + i,
+                    VariablesReference = _scopeReferenceBase + i,
                     Expensive = false,
                     PresentationHint = scopeName == "secrets" ? "registers" : null
                 };
@@ -127,12 +127,12 @@ namespace GitHub.Runner.Worker.Dap
             string basePath = null;
             bool isSecretsScope = false;
 
-            if (variablesReference >= ScopeReferenceBase && variablesReference <= ScopeReferenceMax)
+            if (variablesReference >= _scopeReferenceBase && variablesReference <= _scopeReferenceMax)
             {
-                var scopeIndex = variablesReference - ScopeReferenceBase;
-                if (scopeIndex < ScopeNames.Length)
+                var scopeIndex = variablesReference - _scopeReferenceBase;
+                if (scopeIndex < _scopeNames.Length)
                 {
-                    var scopeName = ScopeNames[scopeIndex];
+                    var scopeName = _scopeNames[scopeIndex];
                     isSecretsScope = scopeName == "secrets";
                     if (context.ExpressionValues.TryGetValue(scopeName, out data))
                     {
@@ -228,14 +228,15 @@ namespace GitHub.Runner.Worker.Dap
         /// <summary>
         /// Infers a simple DAP type hint from the string representation of a result.
         /// </summary>
-        internal static string InferResultType(string value)
+        private static string InferResultType(string value)
         {
+            value = value?.ToLower();
             if (value == null || value == "null")
                 return "null";
             if (value == "true" || value == "false")
                 return "boolean";
-            if (double.TryParse(value, System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture, out _))
+            if (double.TryParse(value, NumberStyles.Any,
+                    CultureInfo.InvariantCulture, out _))
                 return "number";
             if (value.StartsWith("{") || value.StartsWith("["))
                 return "object";
@@ -291,7 +292,7 @@ namespace GitHub.Runner.Worker.Dap
 
             if (value == null)
             {
-                variable.Value = isSecretsScope ? RedactedValue : "null";
+                variable.Value = "null";
                 variable.Type = "null";
                 variable.VariablesReference = 0;
                 return variable;
@@ -302,7 +303,7 @@ namespace GitHub.Runner.Worker.Dap
             // redaction marker, and nested containers are not drillable.
             if (isSecretsScope)
             {
-                variable.Value = RedactedValue;
+                variable.Value = _redactedValue;
                 variable.Type = "string";
                 variable.VariablesReference = 0;
                 return variable;
@@ -317,13 +318,13 @@ namespace GitHub.Runner.Worker.Dap
                     break;
 
                 case NumberContextData num:
-                    variable.Value = _secretMasker.MaskSecrets(num.Value.ToString("G15", System.Globalization.CultureInfo.InvariantCulture));
+                    variable.Value = _secretMasker.MaskSecrets(num.Value.ToString("G15", CultureInfo.InvariantCulture));
                     variable.Type = "number";
                     variable.VariablesReference = 0;
                     break;
 
                 case BooleanContextData boolVal:
-                    variable.Value = _secretMasker.MaskSecrets(boolVal.Value ? "true" : "false");
+                    variable.Value = boolVal.Value ? "true" : "false";
                     variable.Type = "boolean";
                     variable.VariablesReference = 0;
                     break;
