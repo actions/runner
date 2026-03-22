@@ -485,7 +485,7 @@ namespace GitHub.Runner.Listener.Configuration
                 serviceControlManager.ConfigureService(runnerSettings, command);
             }
 
-#elif OS_LINUX || OS_OSX
+#elif OS_LINUX || OS_OSX || OS_FREEBSD
             // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
             var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
             serviceControlManager.GenerateScripts(runnerSettings);
