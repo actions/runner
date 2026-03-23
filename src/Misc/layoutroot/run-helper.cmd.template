@@ -10,6 +10,13 @@ if %ERRORLEVEL% EQU 0 (
   exit /b 0
 )
 
+if "%ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE%"=="1" (
+  if %ERRORLEVEL% EQU 7 (
+    echo "Runner listener exit with deprecated version error code: %ERRORLEVEL%."
+    exit /b %ERRORLEVEL%
+  )
+)
+
 if %ERRORLEVEL% EQU 1 (
   echo "Runner listener exit with terminated error, stop the service, no retry needed."
   exit /b 0

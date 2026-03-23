@@ -159,6 +159,7 @@ namespace GitHub.Runner.Common
                 // and the runner should be restarted. This is a temporary code and will be removed in the future after
                 // the runner is migrated to runner admin.
                 public const int RunnerConfigurationRefreshed = 6;
+                public const int RunnerVersionDeprecated = 7;
             }
 
             public static class Features
@@ -194,8 +195,22 @@ namespace GitHub.Runner.Common
                 public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
                 public static readonly string WarnOnNode20Flag = "actions.runner.warnonnode20";
 
+                // Feature flags for Linux ARM32 deprecation
+                public static readonly string DeprecateLinuxArm32Flag = "actions_runner_deprecate_linux_arm32";
+                public static readonly string KillLinuxArm32Flag = "actions_runner_kill_linux_arm32";
+
                 // Blog post URL for Node 20 deprecation
                 public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
+
+                // Node 20 migration dates (hardcoded fallbacks, can be overridden via job variables)
+                public static readonly string Node24DefaultDate = "June 2nd, 2026";
+                public static readonly string Node20RemovalDate = "September 16th, 2026";
+
+                // Variable keys for server-overridable dates
+                public static readonly string Node24DefaultDateVariable = "actions_runner_node24_default_date";
+                public static readonly string Node20RemovalDateVariable = "actions_runner_node20_removal_date";
+
+                public static readonly string LinuxArm32DeprecationMessage = "Linux ARM32 runners are deprecated and will no longer be supported after {0}. Please migrate to a supported platform.";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -277,6 +292,7 @@ namespace GitHub.Runner.Common
                 public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
                 public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
                 public static readonly string RequireJobContainer = "ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER";
+                public static readonly string ReturnVersionDeprecatedExitCode = "ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
