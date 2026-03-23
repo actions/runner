@@ -969,6 +969,9 @@ namespace GitHub.Runner.Worker
             // Verbosity (from GitHub.Step_Debug).
             Global.WriteDebug = Global.Variables.Step_Debug ?? false;
 
+            // Debugger enabled flag (from acquire response).
+            Global.EnableDebugger = message.EnableDebugger;
+
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
         }
