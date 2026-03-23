@@ -228,7 +228,7 @@ namespace GitHub.Runner.Worker.Dap
         /// <summary>
         /// Infers a simple DAP type hint from the string representation of a result.
         /// </summary>
-        private static string InferResultType(string value)
+        internal static string InferResultType(string value)
         {
             value = value?.ToLower();
             if (value == null || value == "null")
@@ -290,14 +290,6 @@ namespace GitHub.Runner.Worker.Dap
                 EvaluateName = $"${{{{ {childPath} }}}}"
             };
 
-            if (value == null)
-            {
-                variable.Value = "null";
-                variable.Type = "null";
-                variable.VariablesReference = 0;
-                return variable;
-            }
-
             // Secrets scope: redact ALL values regardless of underlying type.
             // Keys are visible but values are always replaced with the
             // redaction marker, and nested containers are not drillable.
@@ -305,6 +297,14 @@ namespace GitHub.Runner.Worker.Dap
             {
                 variable.Value = _redactedValue;
                 variable.Type = "string";
+                variable.VariablesReference = 0;
+                return variable;
+            }
+
+            if (value == null)
+            {
+                variable.Value = "null";
+                variable.Type = "null";
                 variable.VariablesReference = 0;
                 return variable;
             }

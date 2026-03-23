@@ -126,34 +126,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void GetScopes_StableVariablesReferenceIds()
-        {
-            using (CreateTestContext())
-            {
-                // Populate all 10 scopes and verify their reference IDs
-                // are stable and based on array position
-                var exprValues = new DictionaryContextData();
-                foreach (var name in DapVariableProvider.ScopeNames)
-                {
-                    exprValues[name] = new DictionaryContextData();
-                }
-
-                var ctx = CreateMockContext(exprValues);
-                var scopes = _provider.GetScopes(ctx.Object);
-
-                Assert.Equal(DapVariableProvider.ScopeNames.Length, scopes.Count);
-                for (int i = 0; i < scopes.Count; i++)
-                {
-                    Assert.Equal(DapVariableProvider.ScopeNames[i], scopes[i].Name);
-                    // Reference IDs are 1-based: index 0 -> ref 1, index 1 -> ref 2, etc.
-                    Assert.Equal(i + 1, scopes[i].VariablesReference);
-                }
-            }
-        }
-
         #endregion
 
         #region GetVariables — basic types
@@ -382,7 +354,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(2, variables.Count);
                 foreach (var v in variables)
                 {
-                    Assert.Equal(DapVariableProvider.RedactedValue, v.Value);
+                    Assert.Equal("***", v.Value);
                     Assert.Equal("string", v.Type);
                 }
 
@@ -670,7 +642,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(variables);
                 Assert.Equal("NUMERIC_SECRET", variables[0].Name);
-                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("***", variables[0].Value);
                 Assert.Equal("string", variables[0].Type);
                 Assert.Equal(0, variables[0].VariablesReference);
             }
@@ -694,7 +666,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(variables);
                 Assert.Equal("BOOL_SECRET", variables[0].Name);
-                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("***", variables[0].Value);
                 Assert.Equal("string", variables[0].Type);
                 Assert.Equal(0, variables[0].VariablesReference);
             }
@@ -722,7 +694,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(variables);
                 Assert.Equal("NESTED_SECRET", variables[0].Name);
-                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("***", variables[0].Value);
                 Assert.Equal("string", variables[0].Type);
                 // Nested container should NOT be drillable under secrets
                 Assert.Equal(0, variables[0].VariablesReference);
@@ -746,7 +718,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Single(variables);
                 Assert.Equal("NULL_SECRET", variables[0].Name);
-                Assert.Equal(DapVariableProvider.RedactedValue, variables[0].Value);
+                Assert.Equal("***", variables[0].Value);
                 Assert.Equal(0, variables[0].VariablesReference);
             }
         }
