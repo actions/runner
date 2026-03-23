@@ -5,6 +5,7 @@ namespace GitHub.Runner.Worker.Dap
 {
     public enum DapSessionState
     {
+        NotStarted,
         WaitingForConnection,
         Initializing,
         Ready,

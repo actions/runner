@@ -51,22 +51,19 @@ namespace GitHub.Runner.Worker.Dap
         private TcpListener _listener;
         private TcpClient _client;
         private NetworkStream _stream;
-        private CancellationTokenSource _cts;
-        private TaskCompletionSource<bool> _connectionTcs;
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
         private int _nextSeq = 1;
         private Task _connectionLoopTask;
-        private volatile DapSessionState _state = DapSessionState.WaitingForConnection;
+        private volatile DapSessionState _state = DapSessionState.NotStarted;
         private CancellationTokenRegistration? _cancellationRegistration;
-        private volatile bool _started;
         private bool _isFirstStep = true;
 
         // Synchronization for step execution
         private TaskCompletionSource<DapCommand> _commandTcs;
         private readonly object _stateLock = new object();
 
-        // Handshake completion — signaled when configurationDone is received
-        private TaskCompletionSource<bool> _handshakeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Session readiness — signaled when configurationDone is received
+        private TaskCompletionSource<bool> _readyTcs;
 
         // Whether to pause before the next step (set by 'next' command)
         private bool _pauseOnNextStep = true;
@@ -112,15 +109,21 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info($"Starting DAP debugger on port {port}");
 
             _jobContext = jobContext;
-            _cts = CancellationTokenSource.CreateLinkedTokenSource(jobContext.CancellationToken);
-            _connectionTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _readyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             _listener = new TcpListener(IPAddress.Loopback, port);
             _listener.Start();
             Trace.Info($"DAP debugger listening on {_listener.LocalEndpoint}");
 
-            _connectionLoopTask = ConnectionLoopAsync(_cts.Token);
-            _started = true;
+            _state = DapSessionState.WaitingForConnection;
+            _connectionLoopTask = ConnectionLoopAsync(jobContext.CancellationToken);
+
+            _cancellationRegistration = jobContext.CancellationToken.Register(() =>
+            {
+                Trace.Info("Job cancellation requested, unblocking pending waits.");
+                _readyTcs?.TrySetCanceled();
+                _commandTcs?.TrySetResult(DapCommand.Disconnect);
+            });
 
             Trace.Info($"DAP debugger started on port {port}");
             return Task.CompletedTask;
@@ -128,40 +131,33 @@ namespace GitHub.Runner.Worker.Dap
 
         public async Task WaitUntilReadyAsync()
         {
-            if (!_started || _listener == null || _jobContext == null)
+            if (_state == DapSessionState.NotStarted || _listener == null || _jobContext == null)
             {
                 return;
             }
 
-            var cancellationToken = _jobContext.CancellationToken;
             var timeoutMinutes = ResolveTimeout();
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(timeoutMinutes));
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             try
             {
                 Trace.Info($"Waiting for debugger client connection (timeout: {timeoutMinutes} minutes)...");
-                await WaitForConnectionAsync(linkedCts.Token);
-                Trace.Info("Debugger client connected.");
+                using (timeoutCts.Token.Register(() => _readyTcs?.TrySetCanceled()))
+                {
+                    await _readyTcs.Task;
+                }
 
-                await WaitForHandshakeAsync(linkedCts.Token);
-                Trace.Info("DAP handshake complete.");
+                Trace.Info("DAP debugger ready.");
             }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !_jobContext.CancellationToken.IsCancellationRequested)
             {
                 throw new TimeoutException($"No debugger client connected within {timeoutMinutes} minutes.");
             }
-
-            _cancellationRegistration = cancellationToken.Register(() =>
-            {
-                Trace.Info("Job cancellation requested, cancelling debug session.");
-                CancelSession();
-            });
         }
 
         public async Task OnJobCompletedAsync()
         {
-            if (_started)
+            if (_state != DapSessionState.NotStarted)
             {
                 try
                 {
@@ -184,12 +180,11 @@ namespace GitHub.Runner.Worker.Dap
                 _cancellationRegistration = null;
             }
 
-            if (_started)
+            if (_state != DapSessionState.NotStarted)
             {
                 try
                 {
                     Trace.Info("Stopping DAP debugger");
-                    _cts?.Cancel();
 
                     CleanupConnection();
 
@@ -214,7 +209,7 @@ namespace GitHub.Runner.Worker.Dap
 
             lock (_stateLock)
             {
-                if (_started && _state != DapSessionState.Terminated)
+                if (_state != DapSessionState.NotStarted && _state != DapSessionState.Terminated)
                 {
                     _state = DapSessionState.Terminated;
                 }
@@ -224,47 +219,8 @@ namespace GitHub.Runner.Worker.Dap
             _listener = null;
             _client = null;
             _stream = null;
-            _cts = null;
-            _connectionTcs = null;
+            _readyTcs = null;
             _connectionLoopTask = null;
-            _started = false;
-        }
-
-        public void CancelSession()
-        {
-            Trace.Info("CancelSession called - terminating debug session");
-
-            lock (_stateLock)
-            {
-                if (_state == DapSessionState.Terminated)
-                {
-                    Trace.Info("Session already terminated, ignoring CancelSession");
-                    return;
-                }
-                _state = DapSessionState.Terminated;
-            }
-
-            // Send terminated event to debugger so it updates its UI
-            SendEvent(new Event
-            {
-                EventType = "terminated",
-                Body = new TerminatedEventBody()
-            });
-
-            // Send exited event with cancellation exit code (130 = SIGINT convention)
-            SendEvent(new Event
-            {
-                EventType = "exited",
-                Body = new ExitedEventBody { ExitCode = 130 }
-            });
-
-            // Release any pending command waits
-            _commandTcs?.TrySetResult(DapCommand.Disconnect);
-
-            // Release handshake wait if still pending
-            _handshakeTcs.TrySetCanceled();
-
-            Trace.Info("Debug session cancelled");
         }
 
         public async Task OnStepStartingAsync(IStep step)
@@ -437,12 +393,6 @@ namespace GitHub.Runner.Worker.Dap
 
         private async Task ConnectionLoopAsync(CancellationToken cancellationToken)
         {
-            using var listenerCancellationRegistration = cancellationToken.Register(() =>
-            {
-                try { _listener?.Stop(); }
-                catch { /* listener already stopped */ }
-            });
-
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
@@ -459,7 +409,6 @@ namespace GitHub.Runner.Worker.Dap
                     var remoteEndPoint = _client.Client.RemoteEndPoint;
                     Trace.Info($"Debug client connected from {remoteEndPoint}");
 
-                    _connectionTcs.TrySetResult(true);
                     HandleClientConnected();
 
                     // Enter message processing loop until client disconnects or cancellation is requested
@@ -492,7 +441,6 @@ namespace GitHub.Runner.Worker.Dap
                 }
             }
 
-            _connectionTcs?.TrySetCanceled();
             Trace.Info("Connection loop ended");
         }
 
@@ -510,18 +458,6 @@ namespace GitHub.Runner.Worker.Dap
             {
                 _sendLock.Release();
             }
-        }
-
-        private async Task WaitForConnectionAsync(CancellationToken cancellationToken)
-        {
-            Trace.Info("Waiting for debug client to connect...");
-
-            using (cancellationToken.Register(() => _connectionTcs?.TrySetCanceled()))
-            {
-                await _connectionTcs.Task;
-            }
-
-            Trace.Info("Debug client connected");
         }
 
         private async Task ProcessMessagesAsync(CancellationToken cancellationToken)
@@ -676,7 +612,7 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Verbose("Sent DAP message");
         }
 
-        private void SendEvent(Event evt)
+        private void SendMessage(ProtocolMessage message)
         {
             try
             {
@@ -685,53 +621,34 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     if (_stream == null)
                     {
-                        Trace.Warning("Cannot send event: no client connected");
+                        Trace.Warning("Cannot send message: no client connected");
                         return;
                     }
 
-                    evt.Seq = _nextSeq++;
-                    SendMessageInternal(evt);
+                    message.Seq = _nextSeq++;
+                    SendMessageInternal(message);
                 }
                 finally
                 {
                     _sendLock.Release();
                 }
 
-                Trace.Info("Sent event");
+                Trace.Info("Sent message");
             }
             catch (Exception ex)
             {
-                Trace.Warning($"Failed to send event ({ex.GetType().Name})");
+                Trace.Warning($"Failed to send message ({ex.GetType().Name})");
             }
+        }
+
+        private void SendEvent(Event evt)
+        {
+            SendMessage(evt);
         }
 
         private void SendResponse(Response response)
         {
-            try
-            {
-                _sendLock.Wait();
-                try
-                {
-                    if (_stream == null)
-                    {
-                        Trace.Warning("Cannot send response: no client connected");
-                        return;
-                    }
-
-                    response.Seq = _nextSeq++;
-                    SendMessageInternal(response);
-                }
-                finally
-                {
-                    _sendLock.Release();
-                }
-
-                Trace.Info("Sent response");
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning($"Failed to send response ({ex.GetType().Name})");
-            }
+            SendMessage(response);
         }
 
         private void SendOutput(string category, string text)
@@ -745,18 +662,6 @@ namespace GitHub.Runner.Worker.Dap
                     Output = text
                 }
             });
-        }
-
-        internal async Task WaitForHandshakeAsync(CancellationToken cancellationToken)
-        {
-            Trace.Info("Waiting for DAP handshake (configurationDone)...");
-
-            using (cancellationToken.Register(() => _handshakeTcs.TrySetCanceled()))
-            {
-                await _handshakeTcs.Task;
-            }
-
-            Trace.Info("DAP handshake complete, session is ready");
         }
 
         internal async Task OnStepStartingAsync(IStep step, bool isFirstStep)
@@ -902,7 +807,7 @@ namespace GitHub.Runner.Worker.Dap
                 _state = DapSessionState.Ready;
             }
 
-            _handshakeTcs.TrySetResult(true);
+            _readyTcs.TrySetResult(true);
 
             Trace.Info("Configuration done, debug session is ready");
             return CreateResponse(request, true, body: null);
@@ -1246,7 +1151,8 @@ namespace GitHub.Runner.Worker.Dap
 
         /// <summary>
         /// Blocks the step execution thread until a debugger command is received
-        /// or the job is cancelled.
+        /// or the job is cancelled. Job cancellation is handled by the registration
+        /// in StartAsync which sets _commandTcs to Disconnect.
         /// </summary>
         private async Task WaitForCommandAsync(CancellationToken cancellationToken)
         {
@@ -1262,38 +1168,31 @@ namespace GitHub.Runner.Worker.Dap
 
             Trace.Info("Waiting for debugger command...");
 
-            using (cancellationToken.Register(() =>
-            {
-                Trace.Info("Job cancellation detected, releasing debugger wait");
-                _commandTcs?.TrySetResult(DapCommand.Disconnect);
-            }))
-            {
-                var command = await _commandTcs.Task;
+            var command = await _commandTcs.Task;
 
-                Trace.Info("Received debugger command");
+            Trace.Info("Received debugger command");
 
-                lock (_stateLock)
+            lock (_stateLock)
+            {
+                if (_state == DapSessionState.Paused)
                 {
-                    if (_state == DapSessionState.Paused)
+                    _state = DapSessionState.Running;
+                }
+            }
+
+            // Send continued event for normal flow commands
+            if (!cancellationToken.IsCancellationRequested &&
+                (command == DapCommand.Continue || command == DapCommand.Next))
+            {
+                SendEvent(new Event
+                {
+                    EventType = "continued",
+                    Body = new ContinuedEventBody
                     {
-                        _state = DapSessionState.Running;
+                        ThreadId = _jobThreadId,
+                        AllThreadsContinued = true
                     }
-                }
-
-                // Send continued event for normal flow commands
-                if (!cancellationToken.IsCancellationRequested &&
-                    (command == DapCommand.Continue || command == DapCommand.Next))
-                {
-                    SendEvent(new Event
-                    {
-                        EventType = "continued",
-                        Body = new ContinuedEventBody
-                        {
-                            ThreadId = _jobThreadId,
-                            AllThreadsContinued = true
-                        }
-                    });
-                }
+                });
             }
         }
 

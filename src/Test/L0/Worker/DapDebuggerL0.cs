@@ -349,7 +349,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WaitUntilReadyRegistersCancellation()
+        public async Task CancellationUnblocksAndOnJobCompletedTerminates()
         {
             using (CreateTestContext())
             {
@@ -372,8 +372,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     await waitTask;
                     cts.Cancel();
 
-                    Assert.True(SpinWait.SpinUntil(() => _debugger.State == DapSessionState.Terminated, TimeSpan.FromSeconds(5)));
-                    await _debugger.StopAsync();
+                    // In the real runner, JobRunner always calls OnJobCompletedAsync
+                    // from a finally block. The cancellation callback only unblocks
+                    // pending waits; OnJobCompletedAsync handles state + cleanup.
+                    await _debugger.OnJobCompletedAsync();
+                    Assert.Equal(DapSessionState.Terminated, _debugger.State);
                 });
             }
         }
@@ -493,6 +496,119 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Assert.Contains("\"event\":\"initialized\"", initializedEvent);
 
                     await _debugger.StopAsync();
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task CancellationDuringStepPauseReleasesWait()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    var jobContext = CreateJobContext(cts.Token);
+                    await _debugger.StartAsync(jobContext.Object);
+
+                    // Complete handshake so session is ready
+                    var waitTask = _debugger.WaitUntilReadyAsync();
+                    using var client = await ConnectClientAsync(port);
+                    var stream = client.GetStream();
+                    await SendRequestAsync(stream, new Request
+                    {
+                        Seq = 1,
+                        Type = "request",
+                        Command = "configurationDone"
+                    });
+                    await waitTask;
+
+                    // Simulate a step starting (which pauses)
+                    var step = new Mock<IStep>();
+                    step.Setup(s => s.DisplayName).Returns("Test Step");
+                    step.Setup(s => s.ExecutionContext).Returns((IExecutionContext)null);
+                    var stepTask = _debugger.OnStepStartingAsync(step.Object);
+
+                    // Give the step time to pause
+                    await Task.Delay(50);
+
+                    // Cancel the job — should release the step pause
+                    cts.Cancel();
+                    await stepTask;
+
+                    // In the real runner, OnJobCompletedAsync always follows.
+                    await _debugger.OnJobCompletedAsync();
+                    Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StopAsyncSafeAtAnyLifecyclePoint()
+        {
+            using (CreateTestContext())
+            {
+                // StopAsync before start
+                await _debugger.StopAsync();
+
+                // Start then immediate stop (no connection, no WaitUntilReady)
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    var jobContext = CreateJobContext(cts.Token);
+                    await _debugger.StartAsync(jobContext.Object);
+                    await _debugger.StopAsync();
+                });
+
+                // StopAsync after already stopped
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task OnJobCompletedSendsTerminatedAndExitedEvents()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    var jobContext = CreateJobContext(cts.Token);
+                    await _debugger.StartAsync(jobContext.Object);
+
+                    var waitTask = _debugger.WaitUntilReadyAsync();
+                    using var client = await ConnectClientAsync(port);
+                    var stream = client.GetStream();
+                    await SendRequestAsync(stream, new Request
+                    {
+                        Seq = 1,
+                        Type = "request",
+                        Command = "configurationDone"
+                    });
+
+                    // Read the configurationDone response
+                    await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                    await waitTask;
+
+                    // Complete the job — events are sent via OnJobCompletedAsync
+                    await _debugger.OnJobCompletedAsync();
+
+                    var msg1 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                    var msg2 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+
+                    // Both events should arrive (order may vary)
+                    var combined = msg1 + msg2;
+                    Assert.Contains("\"event\":\"terminated\"", combined);
+                    Assert.Contains("\"event\":\"exited\"", combined);
                 });
             }
         }
