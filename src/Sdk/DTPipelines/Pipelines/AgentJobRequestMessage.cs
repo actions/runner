@@ -260,6 +260,13 @@ namespace GitHub.DistributedTask.Pipelines
             set;
         }
 
+        [DataMember(EmitDefaultValue = false)]
+        public DebuggerTunnelInfo DebuggerTunnel
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Gets the collection of variables associated with the current context.
         /// </summary>

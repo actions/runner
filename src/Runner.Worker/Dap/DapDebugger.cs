@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -9,6 +11,9 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using Microsoft.DevTunnels.Connections;
+using Microsoft.DevTunnels.Contracts;
+using Microsoft.DevTunnels.Management;
 using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker.Dap
@@ -30,9 +35,7 @@ namespace GitHub.Runner.Worker.Dap
     /// </summary>
     public sealed class DapDebugger : RunnerService, IDapDebugger
     {
-        private const int _defaultPort = 4711;
         private const int _defaultTimeoutMinutes = 15;
-        private const string _portEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
         private const string _timeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
         private const string _contentLengthHeader = "Content-Length: ";
         private const int _maxMessageSize = 10 * 1024 * 1024; // 10 MB
@@ -57,6 +60,12 @@ namespace GitHub.Runner.Worker.Dap
         private volatile DapSessionState _state = DapSessionState.NotStarted;
         private CancellationTokenRegistration? _cancellationRegistration;
         private bool _isFirstStep = true;
+
+        // Dev Tunnel relay host for remote debugging
+        private TunnelRelayTunnelHost _tunnelRelayHost;
+
+        // When true, skip tunnel relay startup (unit tests only)
+        internal bool SkipTunnelRelay { get; set; }
 
         // Synchronization for step execution
         private TaskCompletionSource<DapCommand> _commandTcs;
@@ -101,11 +110,18 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info("DapDebugger initialized");
         }
 
-        public Task StartAsync(IExecutionContext jobContext)
+        public async Task StartAsync(IExecutionContext jobContext)
         {
             ArgUtil.NotNull(jobContext, nameof(jobContext));
-            var port = ResolvePort();
+            var debuggerConfig = jobContext.Global.Debugger;
 
+            if (debuggerConfig == null || !debuggerConfig.HasValidTunnel)
+            {
+                throw new InvalidOperationException(
+                    "Debugger requires valid tunnel configuration (tunnelId, clusterId, hostToken, port).");
+            }
+
+            var port = debuggerConfig.Tunnel.Port;
             Trace.Info($"Starting DAP debugger on port {port}");
 
             _jobContext = jobContext;
@@ -114,6 +130,15 @@ namespace GitHub.Runner.Worker.Dap
             _listener = new TcpListener(IPAddress.Loopback, port);
             _listener.Start();
             Trace.Info($"DAP debugger listening on {_listener.LocalEndpoint}");
+
+            // Start Dev Tunnel relay so remote clients reach the local DAP port.
+            // The relay is torn down explicitly in StopAsync (after the DAP session
+            // is closed) so we do NOT pass the job cancellation token here — that
+            // would race with the DAP shutdown and drop the transport mid-protocol.
+            if (!SkipTunnelRelay)
+            {
+                await StartTunnelRelayAsync(debuggerConfig);
+            }
 
             _state = DapSessionState.WaitingForConnection;
             _connectionLoopTask = ConnectionLoopAsync(jobContext.CancellationToken);
@@ -126,7 +151,36 @@ namespace GitHub.Runner.Worker.Dap
             });
 
             Trace.Info($"DAP debugger started on port {port}");
-            return Task.CompletedTask;
+        }
+
+        private async Task StartTunnelRelayAsync(DebuggerConfig config)
+        {
+            Trace.Info($"Starting Dev Tunnel relay (tunnel={config.Tunnel.TunnelId}, cluster={config.Tunnel.ClusterId})");
+
+            var managementClient = new TunnelManagementClient(
+                new ProductInfoHeaderValue("actions-runner", "1.0"),
+                () => Task.FromResult(
+                    (AuthenticationHeaderValue)
+                    new AuthenticationHeaderValue("tunnel", config.Tunnel.HostToken)));
+
+            var tunnel = new Tunnel
+            {
+                TunnelId = config.Tunnel.TunnelId,
+                ClusterId = config.Tunnel.ClusterId,
+                AccessTokens = new Dictionary<string, string>
+                {
+                    [TunnelAccessScopes.Host] = config.Tunnel.HostToken
+                },
+                Ports = new[]
+                {
+                    new TunnelPort { PortNumber = (ushort)config.Tunnel.Port }
+                },
+            };
+
+            _tunnelRelayHost = new TunnelRelayTunnelHost(managementClient, new TraceSource("DevTunnelRelay"));
+            await _tunnelRelayHost.StartAsync(tunnel, CancellationToken.None);
+
+            Trace.Info("Dev Tunnel relay started");
         }
 
         public async Task WaitUntilReadyAsync()
@@ -198,6 +252,25 @@ namespace GitHub.Runner.Worker.Dap
                             await Task.WhenAny(_connectionLoopTask, Task.Delay(5000));
                         }
                         catch { /* best effort */ }
+                    }
+
+                    // Tear down Dev Tunnel relay
+                    if (_tunnelRelayHost != null)
+                    {
+                        try
+                        {
+                            Trace.Info("Stopping Dev Tunnel relay");
+                            await _tunnelRelayHost.DisposeAsync();
+                            Trace.Info("Dev Tunnel relay stopped");
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Warning($"Error stopping tunnel relay: {ex.Message}");
+                        }
+                        finally
+                        {
+                            _tunnelRelayHost = null;
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1270,18 +1343,6 @@ namespace GitHub.Runner.Worker.Dap
                 Message = success ? null : message,
                 Body = body
             };
-        }
-
-        internal int ResolvePort()
-        {
-            var portEnv = Environment.GetEnvironmentVariable(_portEnvironmentVariable);
-            if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var customPort) && customPort > 1024 && customPort <= 65535)
-            {
-                Trace.Info($"Using custom DAP port {customPort} from {_portEnvironmentVariable}");
-                return customPort;
-            }
-
-            return _defaultPort;
         }
 
         internal int ResolveTimeout()
