@@ -79,9 +79,13 @@ namespace GitHub.Runner.Worker
                 PreStepTracker = new Dictionary<Guid, IActionRunner>()
             };
             var containerSetupSteps = new List<JobExtensionRunner>();
+            var batchActionResolution = (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.BatchActionResolution) ?? false)
+                || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION"));
             // Stack-local cache: same action (owner/repo@ref) is resolved only once,
             // even if it appears at multiple depths in a composite tree.
-            var resolvedDownloadInfos = new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase);
+            var resolvedDownloadInfos = batchActionResolution
+                ? new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase)
+                : null;
             var depth = 0;
             // We are running at the start of a job
             if (rootStepId == default(Guid))
@@ -108,7 +112,9 @@ namespace GitHub.Runner.Worker
             PrepareActionsState result = new PrepareActionsState();
             try
             {
-                result = await PrepareActionsRecursiveAsync(executionContext, state, actions, resolvedDownloadInfos, depth, rootStepId);
+                result = batchActionResolution
+                    ? await PrepareActionsRecursiveAsync(executionContext, state, actions, resolvedDownloadInfos, depth, rootStepId)
+                    : await PrepareActionsRecursiveLegacyAsync(executionContext, state, actions, depth, rootStepId);
             }
             catch (FailedToResolveActionDownloadInfoException ex)
             {
@@ -290,6 +296,161 @@ namespace GitHub.Runner.Worker
                 // being populated by the recursive calls above).
                 foreach (var action in repositoryActions)
                 {
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    {
+                        var definition = LoadAction(executionContext, action);
+                        if (definition.Data.Execution.HasPre)
+                        {
+                            Trace.Info($"Add 'pre' execution for {action.Id}");
+                            // Root Step
+                            if (depth < 1)
+                            {
+                                var actionRunner = HostContext.CreateService<IActionRunner>();
+                                actionRunner.Action = action;
+                                actionRunner.Stage = ActionRunStage.Pre;
+                                actionRunner.Condition = definition.Data.Execution.InitCondition;
+                                state.PreStepTracker[action.Id] = actionRunner;
+                            }
+                            // Embedded Step
+                            else
+                            {
+                                if (!_cachedEmbeddedPreSteps.ContainsKey(parentStepId))
+                                {
+                                    _cachedEmbeddedPreSteps[parentStepId] = new List<Pipelines.ActionStep>();
+                                }
+                                // Clone action so we can modify the condition without affecting the original
+                                var clonedAction = action.Clone() as Pipelines.ActionStep;
+                                clonedAction.Condition = definition.Data.Execution.InitCondition;
+                                _cachedEmbeddedPreSteps[parentStepId].Add(clonedAction);
+                            }
+                        }
+
+                        if (definition.Data.Execution.HasPost && depth > 0)
+                        {
+                            if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
+                            {
+                                // If we haven't done so already, add the parent to the post steps
+                                _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
+                            }
+                            // Clone action so we can modify the condition without affecting the original
+                            var clonedAction = action.Clone() as Pipelines.ActionStep;
+                            clonedAction.Condition = definition.Data.Execution.CleanupCondition;
+                            _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
+                        }
+                    }
+                    else if (depth > 0)
+                    {
+                        // if we're in a composite action and haven't loaded the local action yet
+                        // we assume it has a post step
+                        if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
+                        {
+                            // If we haven't done so already, add the parent to the post steps
+                            _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
+                        }
+                        // Clone action so we can modify the condition without affecting the original
+                        var clonedAction = action.Clone() as Pipelines.ActionStep;
+                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
+                    }
+                }
+            }
+
+            return state;
+        }
+
+        /// <summary>
+        /// Legacy (non-batched) action resolution. Each composite resolves its
+        /// sub-actions individually, with no cross-depth deduplication.
+        /// Used when the BatchActionResolution feature flag is disabled.
+        /// </summary>
+        private async Task<PrepareActionsState> PrepareActionsRecursiveLegacyAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
+        {
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            if (depth > Constants.CompositeActionsMaxDepth)
+            {
+                throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
+            }
+            var repositoryActions = new List<Pipelines.ActionStep>();
+
+            foreach (var action in actions)
+            {
+                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+                {
+                    ArgUtil.NotNull(action, nameof(action));
+                    var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
+                    ArgUtil.NotNull(containerReference, nameof(containerReference));
+                    ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
+
+                    if (!state.ImagesToPull.ContainsKey(containerReference.Image))
+                    {
+                        state.ImagesToPull[containerReference.Image] = new List<Guid>();
+                    }
+
+                    Trace.Info($"Action {action.Name} ({action.Id}) needs to pull image '{containerReference.Image}'");
+                    state.ImagesToPull[containerReference.Image].Add(action.Id);
+                }
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    repositoryActions.Add(action);
+                }
+            }
+
+            if (repositoryActions.Count > 0)
+            {
+                // Get the download info
+                var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
+
+                // Download each action
+                foreach (var action in repositoryActions)
+                {
+                    var lookupKey = GetDownloadInfoLookupKey(action);
+                    if (string.IsNullOrEmpty(lookupKey))
+                    {
+                        continue;
+                    }
+
+                    if (!downloadInfos.TryGetValue(lookupKey, out var downloadInfo))
+                    {
+                        throw new Exception($"Missing download info for {lookupKey}");
+                    }
+
+                    await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                }
+
+                // More preparation based on content in the repository (action.yml)
+                foreach (var action in repositoryActions)
+                {
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
+                    if (setupInfo != null && setupInfo.Container != null)
+                    {
+                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
+                        {
+                            if (!state.ImagesToPull.ContainsKey(setupInfo.Container.Image))
+                            {
+                                state.ImagesToPull[setupInfo.Container.Image] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
+                            state.ImagesToPull[setupInfo.Container.Image].Add(action.Id);
+                        }
+                        else
+                        {
+                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
+
+                            if (!state.ImagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
+                            {
+                                state.ImagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
+                            state.ImagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
+                            state.ImagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
+                        }
+                    }
+                    else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
+                    {
+                        state = await PrepareActionsRecursiveLegacyAsync(executionContext, state, setupInfo.Steps, depth + 1, action.Id);
+                    }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
                     {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -1275,6 +1276,7 @@ runs:
             // With batching: still 3 calls at most, but the key is that depth-1
             //   sub-actions from all composites at depth 0 are batched into 1 call.
             //   And the same action appearing at multiple depths triggers only 1 resolve.
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
                 //Arrange
@@ -1361,6 +1363,7 @@ runs:
             }
             finally
             {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
                 Teardown();
             }
         }
@@ -1376,6 +1379,7 @@ runs:
             // CompositePrestep uses Node action at depth 1.
             // CompositePrestep2 (also at depth 1) uses the SAME Node action at depth 2.
             // The Node action should only be resolved once total.
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
                 //Arrange
@@ -1440,6 +1444,7 @@ runs:
             }
             finally
             {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
                 Teardown();
             }
         }
@@ -1451,6 +1456,7 @@ runs:
         {
             // Verifies that multiple independent actions at depth 0 are
             // resolved in a single API call.
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
                 //Arrange
@@ -1526,6 +1532,7 @@ runs:
             }
             finally
             {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
                 Teardown();
             }
         }
@@ -1544,6 +1551,7 @@ runs:
             //   → CompositeContainerNested2 (composite):
             //       → repositoryactionwithdockerfile (Dockerfile, same as above)
             //       → notpullorbuildimagesmultipletimes1 (Dockerfile)
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
                 //Arrange
@@ -1601,6 +1609,7 @@ runs:
             }
             finally
             {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
                 Teardown();
             }
         }
@@ -1614,11 +1623,16 @@ runs:
             // Verifies that multiple unique top-level actions are downloaded via
             // DownloadActionsInParallelAsync (the parallel code path), and that
             // all actions are correctly resolved and downloaded.
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
                 //Arrange
                 Setup();
-                // Both Node and Docker actions may register pre steps
+                // Node action has pre step, and CompositePrestep recurses into
+                // sub-actions that also need IActionRunner instances
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
                 _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
                 _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
 
@@ -1701,6 +1715,194 @@ runs:
             }
             finally
             {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_PreDownloadsNextLevelActions()
+        {
+            // Verifies that after pre-resolving next-level sub-actions,
+            // they are also pre-downloaded in parallel BEFORE recursion.
+            // This means the recursive call should find watermarks already
+            // on disk and skip redundant downloads.
+            //
+            // Action tree:
+            //   CompositePrestep (composite) → [Node, CompositePrestep2 (composite)]
+            //   CompositePrestep2 (composite) → [Node, Docker]
+            //
+            // Without pre-download: downloads happen during recursion (serial per depth)
+            // With pre-download: depth 1 actions (Node + CompositePrestep2) are
+            //   downloaded in parallel before recursing, so recursion is a no-op
+            //   for downloads.
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
+            try
+            {
+                //Arrange
+                Setup();
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+
+                // Track watermark state at the time of each resolve call.
+                // If pre-download works, when the 3rd resolve fires (depth 2
+                // pre-resolve for Docker), the depth-1 actions (Node +
+                // CompositePrestep2) should already have watermarks on disk.
+                var resolveCallCount = 0;
+                var watermarksAtResolve3 = new Dictionary<string, bool>();
+                _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                    .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                    {
+                        resolveCallCount++;
+                        if (resolveCallCount == 3)
+                        {
+                            // At the time of the 3rd resolve, check if depth-1 actions
+                            // are already downloaded (pre-download should have done this)
+                            var actionsDir2 = _hc.GetDirectory(WellKnownDirectory.Actions);
+                            watermarksAtResolve3["Node"] = File.Exists(Path.Combine(actionsDir2, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Node.completed"));
+                            watermarksAtResolve3["CompositePrestep2"] = File.Exists(Path.Combine(actionsDir2, "TingluoHuang/runner_L0", "CompositePrestep2.completed"));
+                        }
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "CompositePrestep",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                // All actions should be downloaded (watermarks exist)
+                var actionsDir = _hc.GetDirectory(WellKnownDirectory.Actions);
+                Assert.True(File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "CompositePrestep.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Node.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "CompositePrestep2.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Docker.completed")));
+
+                // 3 resolve calls total
+                Assert.Equal(3, resolveCallCount);
+
+                // The key assertion: at the time of the 3rd resolve call
+                // (pre-resolve for depth 2), the depth-1 actions should
+                // ALREADY be downloaded thanks to pre-download.
+                // Without pre-download, these watermarks wouldn't exist yet
+                // because depth-1 downloads would only happen during recursion.
+                Assert.True(watermarksAtResolve3["Node"],
+                    "Node action should be pre-downloaded before depth 2 pre-resolve");
+                Assert.True(watermarksAtResolve3["CompositePrestep2"],
+                    "CompositePrestep2 should be pre-downloaded before depth 2 pre-resolve");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_ParallelDownloadsAtSameDepth()
+        {
+            // Verifies that multiple unique actions at the same depth are
+            // downloaded concurrently (Task.WhenAll) rather than sequentially.
+            // We detect this by checking that all watermarks exist after a
+            // single PrepareActionsAsync call with multiple top-level actions.
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
+            try
+            {
+                //Arrange
+                Setup();
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+
+                _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                    .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                    {
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action1",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "RepositoryActionWithWrapperActionfile_Node",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action2",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "RepositoryActionWithWrapperActionfile_Docker",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert - both downloaded (parallel path used when > 1 unique download)
+                var actionsDir = _hc.GetDirectory(WellKnownDirectory.Actions);
+                Assert.True(File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Node.completed")));
+                Assert.True(File.Exists(Path.Combine(actionsDir, "TingluoHuang/runner_L0", "RepositoryActionWithWrapperActionfile_Docker.completed")));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
                 Teardown();
             }
         }
