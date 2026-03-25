@@ -1,4 +1,4 @@
-﻿{
+{
     "definitions": {
         "action-root": {
             "description": "Action file",
@@ -163,6 +163,7 @@
         "output-value": {
             "context": [
                 "github",
+                "vars",
                 "strategy",
                 "matrix",
                 "steps",
@@ -193,6 +194,7 @@
             "context": [
                 "github",
                 "inputs",
+                "vars",
                 "strategy",
                 "matrix",
                 "steps",
@@ -207,6 +209,7 @@
             "context": [
                 "github",
                 "inputs",
+                "vars",
                 "strategy",
                 "matrix",
                 "steps",
@@ -221,6 +224,7 @@
             "context": [
                 "github",
                 "inputs",
+                "vars",
                 "strategy",
                 "matrix",
                 "steps",
@@ -238,6 +242,7 @@
             "context": [
               "github",
               "inputs",
+              "vars",
               "strategy",
               "matrix",
               "steps",
@@ -256,6 +261,7 @@
             "context": [
                 "github",
                 "inputs",
+                "vars",
                 "strategy",
                 "matrix",
                 "steps",
