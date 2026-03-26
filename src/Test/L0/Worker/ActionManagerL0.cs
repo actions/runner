@@ -1723,12 +1723,13 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_PreDownloadsNextLevelActions()
+        public async void PrepareActions_DownloadsNextLevelActionsBeforeRecursing()
         {
-            // Verifies that after pre-resolving next-level sub-actions,
-            // they are also pre-downloaded in parallel BEFORE recursion.
-            // This means the recursive call should find watermarks already
-            // on disk and skip redundant downloads.
+            // Verifies that depth-1 actions are downloaded before the depth-2
+            // pre-resolve fires. We detect this by snapshotting watermark state
+            // inside the 3rd ResolveActionDownloadInfoAsync callback (which is
+            // the depth-2 pre-resolve). If pre-download works, depth-1 watermarks
+            // already exist at that point.
             //
             // Action tree:
             //   CompositePrestep (composite) → [Node, CompositePrestep2 (composite)]

@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker
             // Stack-local cache: same action (owner/repo@ref) is resolved only once,
             // even if it appears at multiple depths in a composite tree.
             var resolvedDownloadInfos = batchActionResolution
-                ? new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase)
+                ? new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.Ordinal)
                 : null;
             var depth = 0;
             // We are running at the start of a job
@@ -963,7 +963,7 @@ namespace GitHub.Runner.Worker
         private async Task ResolveNewActionsAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos)
         {
             var actionsToResolve = new List<Pipelines.ActionStep>();
-            var pendingKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var pendingKeys = new HashSet<string>(StringComparer.Ordinal);
             foreach (var action in actions)
             {
                 var lookupKey = GetDownloadInfoLookupKey(action);
