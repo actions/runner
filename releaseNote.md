@@ -1,33 +1,7 @@
 ## What's Changed
-* Log inner exception message. by @TingluoHuang in https://github.com/actions/runner/pull/4265
-* Fix composite post-step marker display names by @ericsciple in https://github.com/actions/runner/pull/4267
-* Bump actions/download-artifact from 7 to 8 by @dependabot[bot] in https://github.com/actions/runner/pull/4269
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4272
-* Avoid throw in SelfUpdaters. by @TingluoHuang in https://github.com/actions/runner/pull/4274
-* Fix parser comparison mismatches by @ericsciple in https://github.com/actions/runner/pull/4273
-* Devcontainer: bump base image Ubuntu version by @MaxHorstmann in https://github.com/actions/runner/pull/4277
-* Support `entrypoint` and `command` for service containers by @ericsciple in https://github.com/actions/runner/pull/4276
-* Bump actions/upload-artifact from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4270
-* Bump docker/login-action from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4278
-* Fix positional arg bug in ExpressionParser.CreateTree by @ericsciple in https://github.com/actions/runner/pull/4279
-* Bump docker/build-push-action from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4283
-* Bump docker/setup-buildx-action from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4282
-* Bump actions/attest-build-provenance from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4266
-* Bump @stylistic/eslint-plugin from 5.9.0 to 5.10.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4281
-* Update Docker to v29.3.0 and Buildx to v0.32.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4286
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4287
-* Fix cancellation token race during parser comparison by @ericsciple in https://github.com/actions/runner/pull/4280
-* Bump @typescript-eslint/eslint-plugin from 8.47.0 to 8.54.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4230
-* Exit with specified exit code when runner is outdated by @nikola-jokic in https://github.com/actions/runner/pull/4285
-* Report infra_error for action download failures. by @TingluoHuang in https://github.com/actions/runner/pull/4294
-* Update dotnet sdk to latest version @8.0.419 by @github-actions[bot] in https://github.com/actions/runner/pull/4301
-* Node 24 enforcement + Linux ARM32 deprecation support by @salmanmkc in https://github.com/actions/runner/pull/4303
-* Bump @typescript-eslint/eslint-plugin from 8.54.0 to 8.57.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4304
+* Remove AllowCaseFunction feature flag by @ericsciple in https://github.com/actions/runner/pull/4316
 
-## New Contributors
-* @MaxHorstmann made their first contribution in https://github.com/actions/runner/pull/4277
-
-**Full Changelog**: https://github.com/actions/runner/compare/v2.332.0...v2.333.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.333.0...v2.333.1
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

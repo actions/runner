@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 using System.Collections.Generic;
@@ -112,12 +112,6 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating
         /// Used during evaluation only.
         /// </summary>
         internal Boolean StrictJsonParsing { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the case expression function is allowed.
-        /// Defaults to true. Set to false to disable the case function.
-        /// </summary>
-        internal Boolean AllowCaseFunction { get; set; } = true;
 
         internal ITraceWriter TraceWriter { get; set; }
 
