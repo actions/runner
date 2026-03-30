@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
@@ -115,19 +116,18 @@ namespace GitHub.Runner.Worker.Dap
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             var debuggerConfig = jobContext.Global.Debugger;
 
-            if (debuggerConfig == null || !debuggerConfig.HasValidTunnel)
+            if (!debuggerConfig.HasValidTunnel)
             {
-                throw new InvalidOperationException(
+                throw new ArgumentException(
                     "Debugger requires valid tunnel configuration (tunnelId, clusterId, hostToken, port).");
             }
 
-            var port = debuggerConfig.Tunnel.Port;
-            Trace.Info($"Starting DAP debugger on port {port}");
+            Trace.Info($"Starting DAP debugger on port {debuggerConfig.Tunnel.Port}");
 
             _jobContext = jobContext;
             _readyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _listener = new TcpListener(IPAddress.Loopback, port);
+            _listener = new TcpListener(IPAddress.Loopback, debuggerConfig.Tunnel.Port);
             _listener.Start();
             Trace.Info($"DAP debugger listening on {_listener.LocalEndpoint}");
 
@@ -150,18 +150,22 @@ namespace GitHub.Runner.Worker.Dap
                 _commandTcs?.TrySetResult(DapCommand.Disconnect);
             });
 
-            Trace.Info($"DAP debugger started on port {port}");
+            Trace.Info($"DAP debugger started on port {debuggerConfig.Tunnel.Port}");
         }
 
         private async Task StartTunnelRelayAsync(DebuggerConfig config)
         {
             Trace.Info($"Starting Dev Tunnel relay (tunnel={config.Tunnel.TunnelId}, cluster={config.Tunnel.ClusterId})");
 
+            var userAgents = HostContext.UserAgents.ToArray();
+            var httpHandler = HostContext.CreateHttpClientHandler();
+            httpHandler.AllowAutoRedirect = false;
+
             var managementClient = new TunnelManagementClient(
-                new ProductInfoHeaderValue("actions-runner", "1.0"),
-                () => Task.FromResult(
-                    (AuthenticationHeaderValue)
-                    new AuthenticationHeaderValue("tunnel", config.Tunnel.HostToken)));
+                userAgents,
+                () => Task.FromResult<AuthenticationHeaderValue>(new AuthenticationHeaderValue("tunnel", config.Tunnel.HostToken)),
+                tunnelServiceUri: null,
+                httpHandler);
 
             var tunnel = new Tunnel
             {
@@ -173,7 +177,7 @@ namespace GitHub.Runner.Worker.Dap
                 },
                 Ports = new[]
                 {
-                    new TunnelPort { PortNumber = (ushort)config.Tunnel.Port }
+                    new TunnelPort { PortNumber = config.Tunnel.Port }
                 },
             };
 
@@ -500,12 +504,24 @@ namespace GitHub.Runner.Worker.Dap
                     HandleClientDisconnected();
                     CleanupConnection();
                 }
+                catch (ObjectDisposedException)
+                {
+                    // Listener was stopped/disposed by StopAsync — exit cleanly.
+                    break;
+                }
                 catch (Exception ex)
                 {
                     CleanupConnection();
 
                     if (cancellationToken.IsCancellationRequested)
                     {
+                        break;
+                    }
+
+                    // If the listener has been stopped, don't retry.
+                    if (_listener == null || !_listener.Server.IsBound)
+                    {
+                        Trace.Info("Listener stopped, exiting connection loop");
                         break;
                     }
 

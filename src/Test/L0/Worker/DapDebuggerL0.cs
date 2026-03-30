@@ -56,11 +56,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private static int GetFreePort()
+        private static ushort GetFreePort()
         {
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
+            return (ushort)((IPEndPoint)listener.LocalEndpoint).Port;
         }
 
         private static async Task<TcpClient> ConnectClientAsync(int port)
@@ -140,7 +140,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             return Encoding.UTF8.GetString(body);
         }
 
-        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, int port, string jobName = null)
+        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null)
         {
             var tunnel = new GitHub.DistributedTask.Pipelines.DebuggerTunnelInfo
             {
@@ -186,7 +186,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Debugger = new DebuggerConfig(true, null)
                 });
 
-                await Assert.ThrowsAsync<InvalidOperationException>(() => _debugger.StartAsync(jobContext.Object));
+                await Assert.ThrowsAsync<ArgumentException>(() => _debugger.StartAsync(jobContext.Object));
             }
         }
 

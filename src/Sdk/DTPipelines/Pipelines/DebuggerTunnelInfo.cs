@@ -19,6 +19,6 @@ namespace GitHub.DistributedTask.Pipelines
         public string HostToken { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public int Port { get; set; }
+        public ushort Port { get; set; }
     }
 }
