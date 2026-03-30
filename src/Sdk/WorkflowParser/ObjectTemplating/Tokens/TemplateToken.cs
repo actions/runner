@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 using System.Collections.Generic;
@@ -55,7 +55,7 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions, allowCaseFunction: context.AllowCaseFunction);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
@@ -93,7 +93,7 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions, allowCaseFunction: context.AllowCaseFunction);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
@@ -123,7 +123,7 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions, allowCaseFunction: context.AllowCaseFunction);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
@@ -153,7 +153,7 @@ namespace GitHub.Actions.WorkflowParser.ObjectTemplating.Tokens
             var originalBytes = context.Memory.CurrentBytes;
             try
             {
-                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions, allowCaseFunction: context.AllowCaseFunction);
+                var tree = new ExpressionParser().CreateTree(expression, null, context.GetExpressionNamedValues(), context.ExpressionFunctions);
                 var options = new EvaluationOptions
                 {
                     MaxMemory = context.Memory.MaxBytes,
