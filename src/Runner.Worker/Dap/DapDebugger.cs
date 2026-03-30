@@ -241,6 +241,34 @@ namespace GitHub.Runner.Worker.Dap
                     Trace.Info("Stopping DAP debugger");
                 }
 
+                // Tear down Dev Tunnel relay FIRST — it may hold connections to the
+                // local port and must be fully disposed before we release the listener,
+                // otherwise the next worker can't bind the same port.
+                if (_tunnelRelayHost != null)
+                {
+                    try
+                    {
+                        Trace.Info("Stopping Dev Tunnel relay");
+                        var disposeTask = _tunnelRelayHost.DisposeAsync().AsTask();
+                        if (await Task.WhenAny(disposeTask, Task.Delay(10_000)) != disposeTask)
+                        {
+                            Trace.Warning("Dev Tunnel relay dispose timed out after 10s");
+                        }
+                        else
+                        {
+                            Trace.Info("Dev Tunnel relay stopped");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"Error stopping tunnel relay: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _tunnelRelayHost = null;
+                    }
+                }
+
                 CleanupConnection();
 
                 try { _listener?.Stop(); }
@@ -253,25 +281,6 @@ namespace GitHub.Runner.Worker.Dap
                         await Task.WhenAny(_connectionLoopTask, Task.Delay(5000));
                     }
                     catch { /* best effort */ }
-                }
-
-                // Tear down Dev Tunnel relay
-                if (_tunnelRelayHost != null)
-                {
-                    try
-                    {
-                        Trace.Info("Stopping Dev Tunnel relay");
-                        await _tunnelRelayHost.DisposeAsync();
-                        Trace.Info("Dev Tunnel relay stopped");
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Warning($"Error stopping tunnel relay: {ex.Message}");
-                    }
-                    finally
-                    {
-                        _tunnelRelayHost = null;
-                    }
                 }
             }
             catch (Exception ex)
