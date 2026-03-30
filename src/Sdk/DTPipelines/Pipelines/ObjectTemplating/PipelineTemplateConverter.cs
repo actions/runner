@@ -681,7 +681,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var node = default(ExpressionNode);
             try
             {
-                node = expressionParser.CreateTree(condition, null, namedValues, functions, allowCaseFunction: context.AllowCaseFunction) as ExpressionNode;
+                node = expressionParser.CreateTree(condition, null, namedValues, functions) as ExpressionNode;
             }
             catch (Exception ex)
             {
