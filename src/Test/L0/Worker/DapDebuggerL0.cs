@@ -140,17 +140,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             return Encoding.UTF8.GetString(body);
         }
 
-        private static Mock<IExecutionContext> CreateJobContext(CancellationToken cancellationToken, string jobName = null)
-        {
-            var jobContext = new Mock<IExecutionContext>();
-            jobContext.Setup(x => x.CancellationToken).Returns(cancellationToken);
-            jobContext.Setup(x => x.Global).Returns(new GlobalContext());
-            jobContext
-                .Setup(x => x.GetGitHubContext(It.IsAny<string>()))
-                .Returns((string contextName) => string.Equals(contextName, "job", StringComparison.Ordinal) ? jobName : null);
-            return jobContext;
-        }
-
         private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, int port, string jobName = null)
         {
             var tunnel = new GitHub.DistributedTask.Pipelines.DebuggerTunnelInfo

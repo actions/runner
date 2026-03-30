@@ -234,50 +234,50 @@ namespace GitHub.Runner.Worker.Dap
                 _cancellationRegistration = null;
             }
 
-            if (_state != DapSessionState.NotStarted)
+            try
             {
-                try
+                if (_listener != null || _tunnelRelayHost != null || _connectionLoopTask != null)
                 {
                     Trace.Info("Stopping DAP debugger");
-
-                    CleanupConnection();
-
-                    try { _listener?.Stop(); }
-                    catch { /* best effort */ }
-
-                    if (_connectionLoopTask != null)
-                    {
-                        try
-                        {
-                            await Task.WhenAny(_connectionLoopTask, Task.Delay(5000));
-                        }
-                        catch { /* best effort */ }
-                    }
-
-                    // Tear down Dev Tunnel relay
-                    if (_tunnelRelayHost != null)
-                    {
-                        try
-                        {
-                            Trace.Info("Stopping Dev Tunnel relay");
-                            await _tunnelRelayHost.DisposeAsync();
-                            Trace.Info("Dev Tunnel relay stopped");
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Warning($"Error stopping tunnel relay: {ex.Message}");
-                        }
-                        finally
-                        {
-                            _tunnelRelayHost = null;
-                        }
-                    }
                 }
-                catch (Exception ex)
+
+                CleanupConnection();
+
+                try { _listener?.Stop(); }
+                catch { /* best effort */ }
+
+                if (_connectionLoopTask != null)
                 {
-                    Trace.Error("Error stopping DAP debugger");
-                    Trace.Error(ex);
+                    try
+                    {
+                        await Task.WhenAny(_connectionLoopTask, Task.Delay(5000));
+                    }
+                    catch { /* best effort */ }
                 }
+
+                // Tear down Dev Tunnel relay
+                if (_tunnelRelayHost != null)
+                {
+                    try
+                    {
+                        Trace.Info("Stopping Dev Tunnel relay");
+                        await _tunnelRelayHost.DisposeAsync();
+                        Trace.Info("Dev Tunnel relay stopped");
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"Error stopping tunnel relay: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _tunnelRelayHost = null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Error stopping DAP debugger");
+                Trace.Error(ex);
             }
 
             lock (_stateLock)
