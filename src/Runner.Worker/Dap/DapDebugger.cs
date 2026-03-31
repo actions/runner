@@ -182,7 +182,8 @@ namespace GitHub.Runner.Worker.Dap
             };
 
             _tunnelRelayHost = new TunnelRelayTunnelHost(managementClient, HostContext.GetTrace("DevTunnelRelay").Source);
-            await _tunnelRelayHost.ConnectAsync(tunnel, CancellationToken.None);
+            using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await _tunnelRelayHost.ConnectAsync(tunnel, connectCts.Token);
 
             Trace.Info("Dev Tunnel relay started");
         }
