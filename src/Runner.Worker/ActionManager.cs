@@ -1367,16 +1367,29 @@ namespace GitHub.Runner.Worker
             return $"{repositoryReference.Name}@{repositoryReference.Ref}";
         }
 
-        private AuthenticationHeaderValue CreateAuthHeader(string token)
+        private AuthenticationHeaderValue CreateAuthHeader(IExecutionContext executionContext, string downloadUrl, string token)
         {
             if (string.IsNullOrEmpty(token))
             {
                 return null;
             }
 
-            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
-            HostContext.SecretMasker.AddValue(base64EncodingToken);
-            return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseBearerTokenForCodeload) == true &&
+                Uri.TryCreate(downloadUrl, UriKind.Absolute, out var parsedUrl) &&
+                !string.IsNullOrEmpty(parsedUrl?.Host) &&
+                !string.IsNullOrEmpty(parsedUrl?.PathAndQuery) &&
+                (parsedUrl.Host.StartsWith("codeload.", StringComparison.OrdinalIgnoreCase) || parsedUrl.PathAndQuery.StartsWith("/_codeload/", StringComparison.OrdinalIgnoreCase)))
+            {
+                Trace.Info("Using Bearer token for action archive download directly to codeload.");
+                return new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                Trace.Info("Using Basic token for action archive download.");
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
+                HostContext.SecretMasker.AddValue(base64EncodingToken);
+                return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            }
         }
 
         private async Task DownloadRepositoryArchive(IExecutionContext executionContext, string downloadUrl, string downloadAuthToken, string archiveFile)
@@ -1401,7 +1414,7 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadAuthToken);
+                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(executionContext, downloadUrl, downloadAuthToken);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(downloadUrl))
