@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Sdk;
-
 namespace GitHub.Runner.Common
 {
     public sealed class Tracing : ITraceWriter, IDisposable
