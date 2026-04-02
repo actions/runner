@@ -38,6 +38,8 @@ namespace GitHub.Runner.Worker.Dap
     {
         private const int _defaultTimeoutMinutes = 15;
         private const string _timeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
+        private const int _defaultTunnelConnectTimeoutSeconds = 30;
+        private const string _tunnelConnectTimeoutSeconds = "ACTIONS_RUNNER_DAP_TUNNEL_CONNECT_TIMEOUT_SECONDS";
         private const string _contentLengthHeader = "Content-Length: ";
         private const int _maxMessageSize = 10 * 1024 * 1024; // 10 MB
         private const int _maxHeaderLineLength = 8192; // 8 KB
@@ -64,6 +66,10 @@ namespace GitHub.Runner.Worker.Dap
 
         // Dev Tunnel relay host for remote debugging
         private TunnelRelayTunnelHost _tunnelRelayHost;
+
+        // Cancellation source for the connection loop, cancelled in StopAsync
+        // so AcceptTcpClientAsync unblocks cleanly without relying on listener disposal.
+        private CancellationTokenSource _loopCts;
 
         // When true, skip tunnel relay startup (unit tests only)
         internal bool SkipTunnelRelay { get; set; }
@@ -141,7 +147,8 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             _state = DapSessionState.WaitingForConnection;
-            _connectionLoopTask = ConnectionLoopAsync(jobContext.CancellationToken);
+            _loopCts = CancellationTokenSource.CreateLinkedTokenSource(jobContext.CancellationToken);
+            _connectionLoopTask = ConnectionLoopAsync(_loopCts.Token);
 
             _cancellationRegistration = jobContext.CancellationToken.Register(() =>
             {
@@ -182,7 +189,9 @@ namespace GitHub.Runner.Worker.Dap
             };
 
             _tunnelRelayHost = new TunnelRelayTunnelHost(managementClient, HostContext.GetTrace("DevTunnelRelay").Source);
-            using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var tunnelConnectTimeoutSeconds = ResolveTunnelConnectTimeout();
+            using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(tunnelConnectTimeoutSeconds));
+            Trace.Info($"Connecting to Dev Tunnel relay (timeout: {tunnelConnectTimeoutSeconds}s)");
             await _tunnelRelayHost.ConnectAsync(tunnel, connectCts.Token);
 
             Trace.Info("Dev Tunnel relay started");
@@ -251,30 +260,26 @@ namespace GitHub.Runner.Worker.Dap
                 // otherwise the next worker can't bind the same port.
                 if (_tunnelRelayHost != null)
                 {
-                    try
+                    Trace.Info("Stopping Dev Tunnel relay");
+                    var disposeTask = _tunnelRelayHost.DisposeAsync().AsTask();
+                    if (await Task.WhenAny(disposeTask, Task.Delay(10_000)) != disposeTask)
                     {
-                        Trace.Info("Stopping Dev Tunnel relay");
-                        var disposeTask = _tunnelRelayHost.DisposeAsync().AsTask();
-                        if (await Task.WhenAny(disposeTask, Task.Delay(10_000)) != disposeTask)
-                        {
-                            Trace.Warning("Dev Tunnel relay dispose timed out after 10s");
-                        }
-                        else
-                        {
-                            Trace.Info("Dev Tunnel relay stopped");
-                        }
+                        Trace.Warning("Dev Tunnel relay dispose timed out after 10s");
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        Trace.Warning($"Error stopping tunnel relay: {ex.Message}");
+                        Trace.Info("Dev Tunnel relay stopped");
                     }
-                    finally
-                    {
-                        _tunnelRelayHost = null;
-                    }
+
+                    _tunnelRelayHost = null;
                 }
 
                 CleanupConnection();
+
+                // Cancel the connection loop first so AcceptTcpClientAsync unblocks
+                // cleanly, then stop the listener once nothing is using it.
+                try { _loopCts?.Cancel(); }
+                catch { /* best effort */ }
 
                 try { _listener?.Stop(); }
                 catch { /* best effort */ }
@@ -308,6 +313,8 @@ namespace GitHub.Runner.Worker.Dap
             _stream = null;
             _readyTcs = null;
             _connectionLoopTask = null;
+            _loopCts?.Dispose();
+            _loopCts = null;
         }
 
         public async Task OnStepStartingAsync(IStep step)
@@ -485,12 +492,7 @@ namespace GitHub.Runner.Worker.Dap
                 try
                 {
                     Trace.Info("Waiting for debug client connection...");
-                    _client = await _listener.AcceptTcpClientAsync();
-
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
+                    _client = await _listener.AcceptTcpClientAsync(cancellationToken);
 
                     _stream = _client.GetStream();
                     var remoteEndPoint = _client.Client.RemoteEndPoint;
@@ -505,9 +507,8 @@ namespace GitHub.Runner.Worker.Dap
                     HandleClientDisconnected();
                     CleanupConnection();
                 }
-                catch (ObjectDisposedException)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    // Listener was stopped/disposed by StopAsync — exit cleanly.
                     break;
                 }
                 catch (Exception ex)
@@ -1381,6 +1382,18 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             return _defaultTimeoutMinutes;
+        }
+
+        internal int ResolveTunnelConnectTimeout()
+        {
+            var raw = Environment.GetEnvironmentVariable(_tunnelConnectTimeoutSeconds);
+            if (!string.IsNullOrEmpty(raw) && int.TryParse(raw, out var customTimeout) && customTimeout > 0)
+            {
+                Trace.Info($"Using custom tunnel connect timeout {customTimeout}s from {_tunnelConnectTimeoutSeconds}");
+                return customTimeout;
+            }
+
+            return _defaultTunnelConnectTimeoutSeconds;
         }
     }
 }

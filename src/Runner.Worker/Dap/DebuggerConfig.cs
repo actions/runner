@@ -28,6 +28,6 @@ namespace GitHub.Runner.Worker.Dap
             && !string.IsNullOrEmpty(Tunnel.TunnelId)
             && !string.IsNullOrEmpty(Tunnel.ClusterId)
             && !string.IsNullOrEmpty(Tunnel.HostToken)
-            && Tunnel.Port >= 1024;
+            && Tunnel.Port >= 1024 && Tunnel.Port <= 65535;
     }
 }

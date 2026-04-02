@@ -17,6 +17,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class DapDebuggerL0
     {
         private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
+        private const string TunnelConnectTimeoutVariable = "ACTIONS_RUNNER_DAP_TUNNEL_CONNECT_TIMEOUT_SECONDS";
         private DapDebugger _debugger;
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
@@ -580,6 +581,59 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var combined = msg1 + msg2;
                 Assert.Contains("\"event\":\"terminated\"", combined);
                 Assert.Contains("\"event\":\"exited\"", combined);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutReturnsDefaultWhenNoVariable()
+        {
+            using (CreateTestContext())
+            {
+                Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutUsesCustomValue()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TunnelConnectTimeoutVariable, "60", () =>
+                {
+                    Assert.Equal(60, _debugger.ResolveTunnelConnectTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutIgnoresInvalidValue()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TunnelConnectTimeoutVariable, "not-a-number", () =>
+                {
+                    Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutIgnoresZeroValue()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TunnelConnectTimeoutVariable, "0", () =>
+                {
+                    Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
+                });
             }
         }
     }
