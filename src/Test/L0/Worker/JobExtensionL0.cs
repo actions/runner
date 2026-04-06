@@ -8,6 +8,7 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Dap;
 using Moq;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -547,6 +548,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var _stepsRunner = new StepsRunner();
                 _stepsRunner.Initialize(hc);
+
+                var mockDapDebugger = new Mock<IDapDebugger>();
+                hc.SetSingleton(mockDapDebugger.Object);
+
                 await _stepsRunner.RunAsync(_jobEc);
 
                 Assert.Equal("Create custom image", snapshotStep.DisplayName);

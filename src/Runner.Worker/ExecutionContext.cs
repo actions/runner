@@ -77,8 +77,7 @@ namespace GitHub.Runner.Worker
 
         List<string> StepEnvironmentOverrides { get; }
 
-        ExecutionContext Root { get; }
-        ExecutionContext Parent { get; }
+        IExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -251,7 +250,9 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ExecutionContext Root
+        IExecutionContext IExecutionContext.Root => Root;
+
+        private ExecutionContext Root
         {
             get
             {
@@ -266,13 +267,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ExecutionContext Parent
-        {
-            get
-            {
-                return _parentExecutionContext;
-            }
-        }
+
 
         public JobContext JobContext
         {
@@ -859,6 +854,12 @@ namespace GitHub.Runner.Worker
             // Track Node.js 20 actions for deprecation warning
             Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // Track actions upgraded from Node.js 20 to Node.js 24
+            Global.UpgradedToNode24Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Track actions stuck on Node.js 20 due to ARM32 (separate from general deprecation)
+            Global.Arm32Node20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -967,6 +968,9 @@ namespace GitHub.Runner.Worker
 
             // Verbosity (from GitHub.Step_Debug).
             Global.WriteDebug = Global.Variables.Step_Debug ?? false;
+
+            // Debugger enabled flag (from acquire response).
+            Global.EnableDebugger = message.EnableDebugger;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
