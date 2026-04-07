@@ -4,6 +4,7 @@ using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
+using GitHub.Runner.Worker.Dap;
 using Newtonsoft.Json.Linq;
 using Sdk.RSWebApi.Contracts;
 
@@ -27,7 +28,7 @@ namespace GitHub.Runner.Worker
         public StepsContext StepsContext { get; set; }
         public Variables Variables { get; set; }
         public bool WriteDebug { get; set; }
-        public bool EnableDebugger { get; set; }
+        public DebuggerConfig Debugger { get; set; }
         public string InfrastructureFailureCategory { get; set; }
         public JObject ContainerHookState { get; set; }
         public bool HasTemplateEvaluatorMismatch { get; set; }
