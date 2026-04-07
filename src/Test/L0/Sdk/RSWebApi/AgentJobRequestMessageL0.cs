@@ -69,6 +69,56 @@ public sealed class AgentJobRequestMessageL0
         Assert.False(recoveredMessage.EnableDebugger, "EnableDebugger should be false when JSON contains 'EnableDebugger': false");
     }
 
+    [Fact]
+    [Trait("Level", "L0")]
+    [Trait("Category", "Common")]
+    public void VerifyDebuggerTunnelDeserialization_WithTunnel()
+    {
+        // Arrange
+        var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage), new DataContractJsonSerializerSettings
+        {
+            KnownTypes = new[] { typeof(DebuggerTunnelInfo) }
+        });
+        string json = DoubleQuotify(
+            "{'EnableDebugger': true, 'DebuggerTunnel': {'TunnelId': 'tun-123', 'ClusterId': 'use2', 'HostToken': 'tok-abc', 'Port': 4711}}");
+
+        // Act
+        using var stream = new MemoryStream();
+        stream.Write(Encoding.UTF8.GetBytes(json));
+        stream.Position = 0;
+        var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
+
+        // Assert
+        Assert.NotNull(recoveredMessage);
+        Assert.True(recoveredMessage.EnableDebugger);
+        Assert.NotNull(recoveredMessage.DebuggerTunnel);
+        Assert.Equal("tun-123", recoveredMessage.DebuggerTunnel.TunnelId);
+        Assert.Equal("use2", recoveredMessage.DebuggerTunnel.ClusterId);
+        Assert.Equal("tok-abc", recoveredMessage.DebuggerTunnel.HostToken);
+        Assert.Equal(4711, recoveredMessage.DebuggerTunnel.Port);
+    }
+
+    [Fact]
+    [Trait("Level", "L0")]
+    [Trait("Category", "Common")]
+    public void VerifyDebuggerTunnelDeserialization_WithoutTunnel()
+    {
+        // Arrange
+        var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage));
+        string json = DoubleQuotify("{'EnableDebugger': true}");
+
+        // Act
+        using var stream = new MemoryStream();
+        stream.Write(Encoding.UTF8.GetBytes(json));
+        stream.Position = 0;
+        var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
+
+        // Assert
+        Assert.NotNull(recoveredMessage);
+        Assert.True(recoveredMessage.EnableDebugger);
+        Assert.Null(recoveredMessage.DebuggerTunnel);
+    }
+
     private static string DoubleQuotify(string text)
     {
         return text.Replace('\'', '"');

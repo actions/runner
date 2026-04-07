@@ -16,8 +16,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class DapDebuggerL0
     {
-        private const string PortEnvironmentVariable = "ACTIONS_RUNNER_DAP_PORT";
         private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
+        private const string TunnelConnectTimeoutVariable = "ACTIONS_RUNNER_DAP_TUNNEL_CONNECT_TIMEOUT_SECONDS";
         private DapDebugger _debugger;
 
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
@@ -25,6 +25,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var hc = new TestHostContext(this, testName);
             _debugger = new DapDebugger();
             _debugger.Initialize(hc);
+            _debugger.SkipTunnelRelay = true;
             return hc;
         }
 
@@ -56,11 +57,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private static int GetFreePort()
+        private static ushort GetFreePort()
         {
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
+            return (ushort)((IPEndPoint)listener.LocalEndpoint).Port;
         }
 
         private static async Task<TcpClient> ConnectClientAsync(int port)
@@ -140,10 +141,19 @@ namespace GitHub.Runner.Common.Tests.Worker
             return Encoding.UTF8.GetString(body);
         }
 
-        private static Mock<IExecutionContext> CreateJobContext(CancellationToken cancellationToken, string jobName = null)
+        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null)
         {
+            var tunnel = new GitHub.DistributedTask.Pipelines.DebuggerTunnelInfo
+            {
+                TunnelId = "test-tunnel",
+                ClusterId = "test-cluster",
+                HostToken = "test-token",
+                Port = port
+            };
+            var debuggerConfig = new DebuggerConfig(true, tunnel);
             var jobContext = new Mock<IExecutionContext>();
             jobContext.Setup(x => x.CancellationToken).Returns(cancellationToken);
+            jobContext.Setup(x => x.Global).Returns(new GlobalContext { Debugger = debuggerConfig });
             jobContext
                 .Setup(x => x.GetGitHubContext(It.IsAny<string>()))
                 .Returns((string contextName) => string.Equals(contextName, "job", StringComparison.Ordinal) ? jobName : null);
@@ -165,42 +175,36 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void ResolvePortUsesCustomPortFromEnvironment()
+        public async Task StartAsyncFailsWithoutValidTunnelConfig()
         {
             using (CreateTestContext())
             {
-                WithEnvironmentVariable(PortEnvironmentVariable, "9999", () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = new Mock<IExecutionContext>();
+                jobContext.Setup(x => x.CancellationToken).Returns(cts.Token);
+                jobContext.Setup(x => x.Global).Returns(new GlobalContext
                 {
-                    Assert.Equal(9999, _debugger.ResolvePort());
+                    Debugger = new DebuggerConfig(true, null)
                 });
+
+                await Assert.ThrowsAsync<ArgumentException>(() => _debugger.StartAsync(jobContext.Object));
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void ResolvePortIgnoresInvalidPortFromEnvironment()
+        public async Task StartAsyncUsesPortFromTunnelConfig()
         {
             using (CreateTestContext())
             {
-                WithEnvironmentVariable(PortEnvironmentVariable, "not-a-number", () =>
-                {
-                    Assert.Equal(4711, _debugger.ResolvePort());
-                });
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void ResolvePortIgnoresOutOfRangePortFromEnvironment()
-        {
-            using (CreateTestContext())
-            {
-                WithEnvironmentVariable(PortEnvironmentVariable, "99999", () =>
-                {
-                    Assert.Equal(4711, _debugger.ResolvePort());
-                });
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+                using var client = await ConnectClientAsync(port);
+                Assert.True(client.Connected);
+                await _debugger.StopAsync();
             }
         }
 
@@ -254,15 +258,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
-                {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-                    using var client = await ConnectClientAsync(port);
-                    Assert.True(client.Connected);
-                    await _debugger.StopAsync();
-                });
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+                using var client = await ConnectClientAsync(port);
+                Assert.True(client.Connected);
+                await _debugger.StopAsync();
             }
         }
 
@@ -275,13 +276,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 foreach (var port in new[] { GetFreePort(), GetFreePort() })
                 {
-                    await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
-                    {
-                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                        var jobContext = CreateJobContext(cts.Token);
-                        await _debugger.StartAsync(jobContext.Object);
-                        await _debugger.StopAsync();
-                    });
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                    await _debugger.StartAsync(jobContext.Object);
+                    await _debugger.StopAsync();
                 }
             }
         }
@@ -294,25 +292,22 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                await SendRequestAsync(client.GetStream(), new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-
-                    var waitTask = _debugger.WaitUntilReadyAsync();
-                    using var client = await ConnectClientAsync(port);
-                    await SendRequestAsync(client.GetStream(), new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "configurationDone"
-                    });
-
-                    await waitTask;
-                    Assert.Equal(DapSessionState.Ready, _debugger.State);
-                    await _debugger.StopAsync();
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
                 });
+
+                await waitTask;
+                Assert.Equal(DapSessionState.Ready, _debugger.State);
+                await _debugger.StopAsync();
             }
         }
 
@@ -324,25 +319,22 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port, "ci-job");
+                await _debugger.StartAsync(jobContext.Object);
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(client.GetStream(), new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token, "ci-job");
-                    await _debugger.StartAsync(jobContext.Object);
-                    using var client = await ConnectClientAsync(port);
-                    var stream = client.GetStream();
-                    await SendRequestAsync(client.GetStream(), new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "threads"
-                    });
-
-                    var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                    Assert.Contains("\"command\":\"threads\"", response);
-                    Assert.Contains("\"name\":\"Job: ci-job\"", response);
-                    await _debugger.StopAsync();
+                    Seq = 1,
+                    Type = "request",
+                    Command = "threads"
                 });
+
+                var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"threads\"", response);
+                Assert.Contains("\"name\":\"Job: ci-job\"", response);
+                await _debugger.StopAsync();
             }
         }
 
@@ -354,30 +346,27 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                await SendRequestAsync(client.GetStream(), new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-
-                    var waitTask = _debugger.WaitUntilReadyAsync();
-                    using var client = await ConnectClientAsync(port);
-                    await SendRequestAsync(client.GetStream(), new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "configurationDone"
-                    });
-
-                    await waitTask;
-                    cts.Cancel();
-
-                    // In the real runner, JobRunner always calls OnJobCompletedAsync
-                    // from a finally block. The cancellation callback only unblocks
-                    // pending waits; OnJobCompletedAsync handles state + cleanup.
-                    await _debugger.OnJobCompletedAsync();
-                    Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
                 });
+
+                await waitTask;
+                cts.Cancel();
+
+                // In the real runner, JobRunner always calls OnJobCompletedAsync
+                // from a finally block. The cancellation callback only unblocks
+                // pending waits; OnJobCompletedAsync handles state + cleanup.
+                await _debugger.OnJobCompletedAsync();
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
             }
         }
 
@@ -400,25 +389,22 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                await SendRequestAsync(client.GetStream(), new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-
-                    var waitTask = _debugger.WaitUntilReadyAsync();
-                    using var client = await ConnectClientAsync(port);
-                    await SendRequestAsync(client.GetStream(), new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "configurationDone"
-                    });
-
-                    await waitTask;
-                    await _debugger.OnJobCompletedAsync();
-                    Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
                 });
+
+                await waitTask;
+                await _debugger.OnJobCompletedAsync();
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
             }
         }
 
@@ -441,20 +427,17 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
-                {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
 
-                    var waitTask = _debugger.WaitUntilReadyAsync();
-                    await Task.Delay(50);
-                    cts.Cancel();
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                await Task.Delay(50);
+                cts.Cancel();
 
-                    var ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
-                    Assert.IsNotType<TimeoutException>(ex);
-                    await _debugger.StopAsync();
-                });
+                var ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
+                Assert.IsNotType<TimeoutException>(ex);
+                await _debugger.StopAsync();
             }
         }
 
@@ -471,32 +454,29 @@ namespace GitHub.Runner.Common.Tests.Worker
                 hc.SecretMasker.AddValue("initialized");
 
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-                    using var client = await ConnectClientAsync(port);
-                    var stream = client.GetStream();
-
-                    await SendRequestAsync(stream, new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "initialize"
-                    });
-
-                    var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                    Assert.Contains("\"type\":\"response\"", response);
-                    Assert.Contains("\"command\":\"initialize\"", response);
-                    Assert.Contains("\"success\":true", response);
-
-                    var initializedEvent = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                    Assert.Contains("\"type\":\"event\"", initializedEvent);
-                    Assert.Contains("\"event\":\"initialized\"", initializedEvent);
-
-                    await _debugger.StopAsync();
+                    Seq = 1,
+                    Type = "request",
+                    Command = "initialize"
                 });
+
+                var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"type\":\"response\"", response);
+                Assert.Contains("\"command\":\"initialize\"", response);
+                Assert.Contains("\"success\":true", response);
+
+                var initializedEvent = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"type\":\"event\"", initializedEvent);
+                Assert.Contains("\"event\":\"initialized\"", initializedEvent);
+
+                await _debugger.StopAsync();
             }
         }
 
@@ -508,41 +488,38 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                // Complete handshake so session is ready
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(stream, new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-
-                    // Complete handshake so session is ready
-                    var waitTask = _debugger.WaitUntilReadyAsync();
-                    using var client = await ConnectClientAsync(port);
-                    var stream = client.GetStream();
-                    await SendRequestAsync(stream, new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "configurationDone"
-                    });
-                    await waitTask;
-
-                    // Simulate a step starting (which pauses)
-                    var step = new Mock<IStep>();
-                    step.Setup(s => s.DisplayName).Returns("Test Step");
-                    step.Setup(s => s.ExecutionContext).Returns((IExecutionContext)null);
-                    var stepTask = _debugger.OnStepStartingAsync(step.Object);
-
-                    // Give the step time to pause
-                    await Task.Delay(50);
-
-                    // Cancel the job — should release the step pause
-                    cts.Cancel();
-                    await stepTask;
-
-                    // In the real runner, OnJobCompletedAsync always follows.
-                    await _debugger.OnJobCompletedAsync();
-                    Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
                 });
+                await waitTask;
+
+                // Simulate a step starting (which pauses)
+                var step = new Mock<IStep>();
+                step.Setup(s => s.DisplayName).Returns("Test Step");
+                step.Setup(s => s.ExecutionContext).Returns((IExecutionContext)null);
+                var stepTask = _debugger.OnStepStartingAsync(step.Object);
+
+                // Give the step time to pause
+                await Task.Delay(50);
+
+                // Cancel the job — should release the step pause
+                cts.Cancel();
+                await stepTask;
+
+                // In the real runner, OnJobCompletedAsync always follows.
+                await _debugger.OnJobCompletedAsync();
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
             }
         }
 
@@ -558,13 +535,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Start then immediate stop (no connection, no WaitUntilReady)
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
-                {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
-                    await _debugger.StopAsync();
-                });
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+                await _debugger.StopAsync();
 
                 // StopAsync after already stopped
                 await _debugger.StopAsync();
@@ -579,36 +553,86 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var port = GetFreePort();
-                await WithEnvironmentVariableAsync(PortEnvironmentVariable, port.ToString(), async () =>
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(stream, new Request
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                    var jobContext = CreateJobContext(cts.Token);
-                    await _debugger.StartAsync(jobContext.Object);
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
 
-                    var waitTask = _debugger.WaitUntilReadyAsync();
-                    using var client = await ConnectClientAsync(port);
-                    var stream = client.GetStream();
-                    await SendRequestAsync(stream, new Request
-                    {
-                        Seq = 1,
-                        Type = "request",
-                        Command = "configurationDone"
-                    });
+                // Read the configurationDone response
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                await waitTask;
 
-                    // Read the configurationDone response
-                    await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                    await waitTask;
+                // Complete the job — events are sent via OnJobCompletedAsync
+                await _debugger.OnJobCompletedAsync();
 
-                    // Complete the job — events are sent via OnJobCompletedAsync
-                    await _debugger.OnJobCompletedAsync();
+                var msg1 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                var msg2 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
 
-                    var msg1 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                    var msg2 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                // Both events should arrive (order may vary)
+                var combined = msg1 + msg2;
+                Assert.Contains("\"event\":\"terminated\"", combined);
+                Assert.Contains("\"event\":\"exited\"", combined);
+            }
+        }
 
-                    // Both events should arrive (order may vary)
-                    var combined = msg1 + msg2;
-                    Assert.Contains("\"event\":\"terminated\"", combined);
-                    Assert.Contains("\"event\":\"exited\"", combined);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutReturnsDefaultWhenNoVariable()
+        {
+            using (CreateTestContext())
+            {
+                Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutUsesCustomValue()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TunnelConnectTimeoutVariable, "60", () =>
+                {
+                    Assert.Equal(60, _debugger.ResolveTunnelConnectTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutIgnoresInvalidValue()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TunnelConnectTimeoutVariable, "not-a-number", () =>
+                {
+                    Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
+                });
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ResolveTunnelConnectTimeoutIgnoresZeroValue()
+        {
+            using (CreateTestContext())
+            {
+                WithEnvironmentVariable(TunnelConnectTimeoutVariable, "0", () =>
+                {
+                    Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
                 });
             }
         }
