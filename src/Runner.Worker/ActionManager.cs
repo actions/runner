@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker
             // Stack-local cache: same action (owner/repo@ref) is resolved only once,
             // even if it appears at multiple depths in a composite tree.
             var resolvedDownloadInfos = batchActionResolution
-                ? new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase)
+                ? new Dictionary<string, WebApi.ActionDownloadInfo>(ActionLookupKeyComparer.Instance)
                 : null;
             var depth = 0;
             // We are running at the start of a job
@@ -864,7 +864,7 @@ namespace GitHub.Runner.Worker
 
             // Convert to action reference
             var actionReferences = actions
-                .GroupBy(x => GetDownloadInfoLookupKey(x), StringComparer.OrdinalIgnoreCase)
+                .GroupBy(x => GetDownloadInfoLookupKey(x), ActionLookupKeyComparer.Instance)
                 .Where(x => !string.IsNullOrEmpty(x.Key))
                 .Select(x =>
                 {
@@ -883,7 +883,7 @@ namespace GitHub.Runner.Worker
             // Nothing to resolve?
             if (actionReferences.Count == 0)
             {
-                return new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase);
+                return new Dictionary<string, WebApi.ActionDownloadInfo>(ActionLookupKeyComparer.Instance);
             }
 
             // Resolve download info
@@ -959,7 +959,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            return new Dictionary<string, WebApi.ActionDownloadInfo>(actionDownloadInfos.Actions, StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, WebApi.ActionDownloadInfo>(actionDownloadInfos.Actions, ActionLookupKeyComparer.Instance);
         }
 
         /// <summary>
@@ -969,7 +969,7 @@ namespace GitHub.Runner.Worker
         private async Task ResolveNewActionsAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos)
         {
             var actionsToResolve = new List<Pipelines.ActionStep>();
-            var pendingKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var pendingKeys = new HashSet<string>(ActionLookupKeyComparer.Instance);
             foreach (var action in actions)
             {
                 var lookupKey = GetDownloadInfoLookupKey(action);
@@ -1387,6 +1387,41 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
             return $"{repositoryReference.Name}@{repositoryReference.Ref}";
+        }
+
+        /// <summary>
+        /// Compares action lookup keys ("{owner/repo}@{ref}") with case-insensitive
+        /// owner/repo (GitHub names are case-insensitive) and case-sensitive ref
+        /// (git refs are case-sensitive).
+        /// </summary>
+        private sealed class ActionLookupKeyComparer : IEqualityComparer<string>
+        {
+            public static readonly ActionLookupKeyComparer Instance = new();
+
+            public bool Equals(string x, string y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null || y is null) return false;
+
+                var xAt = x.LastIndexOf('@');
+                var yAt = y.LastIndexOf('@');
+                if (xAt < 0 || yAt < 0) return StringComparer.OrdinalIgnoreCase.Equals(x, y);
+
+                // Name (owner/repo) is case-insensitive; @ref is case-sensitive
+                return x.AsSpan(0, xAt).Equals(y.AsSpan(0, yAt), StringComparison.OrdinalIgnoreCase)
+                    && x.AsSpan(xAt).Equals(y.AsSpan(yAt), StringComparison.Ordinal);
+            }
+
+            public int GetHashCode(string obj)
+            {
+                if (obj is null) return 0;
+                var at = obj.LastIndexOf('@');
+                if (at < 0) return StringComparer.OrdinalIgnoreCase.GetHashCode(obj);
+
+                return HashCode.Combine(
+                    StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Substring(0, at)),
+                    StringComparer.Ordinal.GetHashCode(obj.Substring(at)));
+            }
         }
 
         private AuthenticationHeaderValue CreateAuthHeader(IExecutionContext executionContext, string downloadUrl, string token)
