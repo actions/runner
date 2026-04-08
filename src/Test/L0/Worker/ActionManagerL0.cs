@@ -1533,6 +1533,21 @@ runs:
                 //Assert
                 // All three references should deduplicate to a single resolve call
                 Assert.Equal(1, allResolvedKeys.Count);
+
+                // Verify all actions are usable: the download went to one directory and
+                // reference normalization ensures all three steps find the action there.
+                // The completed watermark proves the download + prepare succeeded.
+                Assert.True(File.Exists(Path.Combine(
+                    _hc.GetDirectory(WellKnownDirectory.Actions),
+                    "TingluoHuang/runner_L0",
+                    "RepositoryActionWithWrapperActionfile_Node.completed")));
+
+                // Verify the references were normalized to the canonical casing
+                foreach (var action in actions)
+                {
+                    var repoRef = action.Reference as Pipelines.RepositoryPathReference;
+                    Assert.Equal("TingluoHuang/runner_L0", repoRef.Name);
+                }
             }
             finally
             {

@@ -228,6 +228,9 @@ namespace GitHub.Runner.Worker
                     {
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
+                    // Normalize the reference name to match the resolved download info so that
+                    // directory paths are consistent on case-sensitive filesystems (Linux).
+                    NormalizeRepositoryReference(action, downloadInfo);
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
                 }
 
@@ -414,6 +417,9 @@ namespace GitHub.Runner.Worker
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
 
+                    // Normalize the reference name to match the resolved download info so that
+                    // directory paths are consistent on case-sensitive filesystems (Linux).
+                    NormalizeRepositoryReference(action, downloadInfo);
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
                 }
 
@@ -877,7 +883,7 @@ namespace GitHub.Runner.Worker
             // Nothing to resolve?
             if (actionReferences.Count == 0)
             {
-                return new Dictionary<string, WebApi.ActionDownloadInfo>();
+                return new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase);
             }
 
             // Resolve download info
@@ -1339,6 +1345,22 @@ namespace GitHub.Runner.Worker
                     reference = $"{reference}@{repositoryReference.Ref}";
                 }
                 throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' for action '{reference}'.");
+            }
+        }
+
+        /// <summary>
+        /// After case-insensitive deduplication, the resolved download info may use
+        /// a different casing than the action step's reference. Normalize the reference
+        /// so that directory paths (used by DownloadRepositoryActionAsync,
+        /// PrepareRepositoryActionAsync, and LoadAction) are consistent on
+        /// case-sensitive filesystems.
+        /// </summary>
+        private static void NormalizeRepositoryReference(Pipelines.ActionStep action, WebApi.ActionDownloadInfo downloadInfo)
+        {
+            if (action.Reference is Pipelines.RepositoryPathReference repoRef &&
+                !string.Equals(repoRef.Name, downloadInfo.NameWithOwner, StringComparison.Ordinal))
+            {
+                repoRef.Name = downloadInfo.NameWithOwner;
             }
         }
 
