@@ -148,9 +148,17 @@ namespace GitHub.Runner.Common.Tests.Worker
             await stream.WriteAsync(request, 0, request.Length);
             await stream.FlushAsync();
 
+            // Read until the server closes the connection (Connection: close).
+            // A single ReadAsync may return a partial response on some platforms.
+            using var ms = new MemoryStream();
             var responseBuffer = new byte[1024];
-            var bytesRead = await stream.ReadAsync(responseBuffer, 0, responseBuffer.Length);
-            var response = Encoding.ASCII.GetString(responseBuffer, 0, bytesRead);
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(responseBuffer, 0, responseBuffer.Length)) > 0)
+            {
+                ms.Write(responseBuffer, 0, bytesRead);
+            }
+
+            var response = Encoding.ASCII.GetString(ms.ToArray());
 
             Assert.Contains("400 BadRequest", response);
             Assert.Contains("Expected a websocket upgrade request.", response);
