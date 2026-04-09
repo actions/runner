@@ -511,6 +511,22 @@ namespace GitHub.Runner.Listener
 
                     jobDispatcher.JobStatus += _listener.OnJobStatus;
 
+                    // For ephemeral runners, set up an idle timeout. If no job is received within
+                    // this period, the runner exits to free up the slot for a replacement.
+                    // This prevents orphaned runners (e.g., from pod recreation or session conflicts)
+                    // from blocking scale set capacity indefinitely.
+                    Task idleTimeoutTask = Task.Delay(Timeout.Infinite, messageQueueLoopTokenSource.Token);
+                    if (runOnce)
+                    {
+                        var idleTimeoutEnv = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_IDLE_TIMEOUT_MINUTES");
+                        var idleTimeoutMinutes = int.TryParse(idleTimeoutEnv, out var parsed) ? parsed : 10;
+                        if (idleTimeoutMinutes > 0)
+                        {
+                            Trace.Info($"Ephemeral runner idle timeout set to {idleTimeoutMinutes} minutes.");
+                            idleTimeoutTask = Task.Delay(TimeSpan.FromMinutes(idleTimeoutMinutes), messageQueueLoopTokenSource.Token);
+                        }
+                    }
+
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         // Check if we need to restart the session and can do so (job dispatcher not busy)
@@ -527,6 +543,30 @@ namespace GitHub.Runner.Listener
                         try
                         {
                             Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(messageQueueLoopTokenSource.Token);
+
+                            // For ephemeral runners that haven't received a job yet,
+                            // race the message poll against the idle timeout.
+                            if (runOnce && !runOnceJobReceived && !idleTimeoutTask.IsCompleted)
+                            {
+                                Task completedTask = await Task.WhenAny(getNextMessage, idleTimeoutTask);
+                                if (completedTask == idleTimeoutTask)
+                                {
+                                    Trace.Info("Ephemeral runner idle timeout reached without receiving a job. Exiting.");
+                                    _term.WriteError($"{DateTime.UtcNow:u}: Ephemeral runner idle timeout reached without receiving a job. Exiting to free up capacity.");
+                                    messageQueueLoopTokenSource.Cancel();
+                                    try
+                                    {
+                                        await getNextMessage;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                    }
+
+                                    return Constants.Runner.ReturnCode.TerminatedError;
+                                }
+                            }
+
                             if (autoUpdateInProgress)
                             {
                                 Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
