@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -30,6 +30,7 @@ namespace GitHub.Runner.Worker.Dap
         private const int _defaultMaxInboundMessageSize = 10 * 1024 * 1024; // 10 MB
         private static readonly TimeSpan _keepAliveInterval = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan _closeTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan _handshakeTimeout = TimeSpan.FromSeconds(10);
         private const string _webSocketAcceptMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
         private readonly Tracing _trace;
@@ -67,22 +68,15 @@ namespace GitHub.Runner.Worker.Dap
 
         public async ValueTask DisposeAsync()
         {
-            try
-            {
-                _loopCts?.Cancel();
-            }
-            catch
-            {
-                // best effort during shutdown
-            }
+            _loopCts?.Cancel();
 
             try
             {
                 _listener?.Stop();
             }
-            catch
+            catch (Exception ex)
             {
-                // best effort during shutdown
+                _trace.Warning($"Error stopping listener during shutdown ({ex.GetType().Name})");
             }
 
             if (_acceptLoopTask != null)
@@ -118,15 +112,15 @@ namespace GitHub.Runner.Worker.Dap
                 {
                     break;
                 }
-                catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
                 catch (Exception ex)
                 {
                     client?.Dispose();
                     _trace.Error($"WebSocket DAP bridge connection error");
                     _trace.Error(ex);
+                }
+                finally
+                {
+                    client?.Dispose();
                 }
             }
 
@@ -135,12 +129,24 @@ namespace GitHub.Runner.Worker.Dap
 
         private async Task HandleClientAsync(TcpClient incomingClient, CancellationToken cancellationToken)
         {
-            using (incomingClient)
             using (var incomingStream = incomingClient.GetStream())
             {
                 _trace.Info($"WebSocket DAP bridge accepted client {incomingClient.Client.RemoteEndPoint}");
 
-                var webSocket = await AcceptWebSocketAsync(incomingStream, cancellationToken);
+                WebSocket webSocket;
+                using (var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                {
+                    handshakeCts.CancelAfter(_handshakeTimeout);
+                    try
+                    {
+                        webSocket = await AcceptWebSocketAsync(incomingStream, handshakeCts.Token);
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        _trace.Warning("WebSocket handshake timed out");
+                        return;
+                    }
+                }
                 if (webSocket == null)
                 {
                     return;
@@ -262,8 +268,17 @@ namespace GitHub.Runner.Worker.Dap
 
             if (!IsValidWebSocketRequest(requestLine, headers))
             {
-                _trace.Info($"Rejected non-websocket request: {requestLine}");
+                var method = requestLine.Split(' ')[0];
+                _trace.Info($"Rejected non-websocket request (method={method})");
                 await WriteHttpErrorAsync(stream, HttpStatusCode.BadRequest, "Expected a websocket upgrade request.", cancellationToken);
+                return null;
+            }
+
+            if (!headers.TryGetValue("Sec-WebSocket-Version", out var webSocketVersion) ||
+                !string.Equals(webSocketVersion.Trim(), "13", StringComparison.Ordinal))
+            {
+                _trace.Warning("Rejected WebSocket request with unsupported version");
+                await WriteHttpErrorAsync(stream, (HttpStatusCode)426, "Unsupported WebSocket version. Expected: 13.", cancellationToken);
                 return null;
             }
 
@@ -356,10 +371,7 @@ namespace GitHub.Runner.Worker.Dap
                     break;
                 }
 
-                for (int i = 0; i < bytesRead; i++)
-                {
-                    dapBuffer.Add(readBuffer[i]);
-                }
+                dapBuffer.AddRange(new ArraySegment<byte>(readBuffer, 0, bytesRead));
 
                 while (TryParseDapMessage(dapBuffer, out var messageBody))
                 {

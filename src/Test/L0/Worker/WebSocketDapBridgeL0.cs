@@ -209,9 +209,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // The bridge should close the connection with MessageTooBig
             var receiveBuffer = new byte[256];
+            using var receiveCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var result = await client.ReceiveAsync(
                 new ArraySegment<byte>(receiveBuffer),
-                new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+                receiveCts.Token);
 
             Assert.Equal(WebSocketMessageType.Close, result.MessageType);
             Assert.Equal(WebSocketCloseStatus.MessageTooBig, client.CloseStatus);
