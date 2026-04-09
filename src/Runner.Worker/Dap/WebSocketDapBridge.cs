@@ -125,7 +125,7 @@ namespace GitHub.Runner.Worker.Dap
                 catch (Exception ex)
                 {
                     client?.Dispose();
-                    _trace.Warning($"WebSocket DAP bridge connection error ({ex.GetType().Name})");
+                    _trace.Error($"WebSocket DAP bridge connection error");
                     _trace.Error(ex);
                 }
             }
