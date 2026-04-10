@@ -146,51 +146,5 @@ namespace GitHub.Runner.Worker
                 this["workflow_file_path"] = value != null ? new StringContextData(value) : null;
             }
         }
-
-        /// <summary>
-        /// Parses a composite workflow_ref (e.g. "owner/repo/.github/workflows/file.yml@refs/heads/main")
-        /// and populates workflow_repository and workflow_file_path if they are not already set.
-        /// </summary>
-        public void DeriveWorkflowRefComponents()
-        {
-            var workflowRef = WorkflowRef;
-            if (string.IsNullOrEmpty(workflowRef))
-            {
-                return;
-            }
-
-            // Format: owner/repo/.github/workflows/file.yml@ref
-            var atIndex = workflowRef.IndexOf('@');
-            var pathPart = atIndex >= 0 ? workflowRef.Substring(0, atIndex) : workflowRef;
-
-            // Split at /.github/workflows/ to correctly handle repos named ".github"
-            // e.g. "octo-org/.github/.github/workflows/ci.yml" → repo="octo-org/.github"
-            var marker = "/.github/workflows/";
-            var markerIndex = pathPart.IndexOf(marker);
-            if (markerIndex < 0)
-            {
-                return;
-            }
-
-            var repo = pathPart.Substring(0, markerIndex);
-            var filePath = pathPart.Substring(markerIndex + 1); // skip leading '/'
-
-            // Validate repo is owner/repo format (must have at least one slash with non-empty segments)
-            var slashIndex = repo.IndexOf('/');
-            if (slashIndex <= 0 || slashIndex >= repo.Length - 1)
-            {
-                return;
-            }
-
-            if (WorkflowRepository == null || WorkflowRepository == "")
-            {
-                WorkflowRepository = repo;
-            }
-
-            if (WorkflowFilePath == null || WorkflowFilePath == "")
-            {
-                WorkflowFilePath = filePath;
-            }
-        }
     }
 }
