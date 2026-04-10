@@ -169,17 +169,10 @@ namespace GitHub.Runner.Worker.Dap
                         var wsToTcpTask = PumpWebSocketToTcpAsync(webSocket, dapStream, proxyToken);
                         var tcpToWsTask = PumpTcpToWebSocketAsync(dapStream, webSocket, proxyToken);
 
-                        var completedTask = await Task.WhenAny(wsToTcpTask, tcpToWsTask);
+                        await Task.WhenAny(wsToTcpTask, tcpToWsTask);
                         sessionCts.Cancel();
 
-                        try
-                        {
-                            await completedTask;
-                        }
-                        catch (OperationCanceledException) when (proxyToken.IsCancellationRequested)
-                        {
-                            // expected during shutdown
-                        }
+                        await CloseWebSocketAsync(webSocket);
 
                         try
                         {
@@ -198,8 +191,6 @@ namespace GitHub.Runner.Worker.Dap
                             // peer disconnected while unwinding
                         }
                     }
-
-                    await CloseWebSocketAsync(webSocket);
                 }
             }
         }
