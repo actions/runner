@@ -159,25 +159,27 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
-            // Format: owner/repo/path/to/file.yml@ref
+            // Format: owner/repo/.github/workflows/file.yml@ref
             var atIndex = workflowRef.IndexOf('@');
             var pathPart = atIndex >= 0 ? workflowRef.Substring(0, atIndex) : workflowRef;
 
-            // Split into owner/repo and file path at the .github/ boundary
-            var githubDirIndex = pathPart.IndexOf("/.github/");
-            if (githubDirIndex < 0)
+            // Split at /.github/workflows/ to correctly handle repos named ".github"
+            // e.g. "octo-org/.github/.github/workflows/ci.yml" → repo="octo-org/.github"
+            var marker = "/.github/workflows/";
+            var markerIndex = pathPart.IndexOf(marker);
+            if (markerIndex < 0)
             {
                 return;
             }
 
-            if (WorkflowRepository == null)
+            if (WorkflowRepository == null || WorkflowRepository == "")
             {
-                WorkflowRepository = pathPart.Substring(0, githubDirIndex);
+                WorkflowRepository = pathPart.Substring(0, markerIndex);
             }
 
-            if (WorkflowFilePath == null)
+            if (WorkflowFilePath == null || WorkflowFilePath == "")
             {
-                WorkflowFilePath = pathPart.Substring(githubDirIndex + 1); // skip leading '/'
+                WorkflowFilePath = pathPart.Substring(markerIndex + 1); // skip leading '/'
             }
         }
     }

@@ -194,5 +194,30 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("my-org/my-repo", ctx.WorkflowRepository);
             Assert.Equal(".github/workflows/deploy.yml", ctx.WorkflowFilePath);
         }
+
+        [Fact]
+        public void DeriveWorkflowRefComponents_HandlesDotGithubRepoName()
+        {
+            // Repos can be named ".github" — the marker must be /.github/workflows/ not /.github/
+            var ctx = new JobContext();
+            ctx.WorkflowRef = "octo-org/.github/.github/workflows/ci.yml@refs/heads/main";
+            ctx.DeriveWorkflowRefComponents();
+
+            Assert.Equal("octo-org/.github", ctx.WorkflowRepository);
+            Assert.Equal(".github/workflows/ci.yml", ctx.WorkflowFilePath);
+        }
+
+        [Fact]
+        public void DeriveWorkflowRefComponents_TreatsEmptyStringAsUnset()
+        {
+            var ctx = new JobContext();
+            ctx.WorkflowRef = "my-org/my-repo/.github/workflows/deploy.yml@refs/heads/main";
+            ctx.WorkflowRepository = "";
+            ctx.WorkflowFilePath = "";
+            ctx.DeriveWorkflowRefComponents();
+
+            Assert.Equal("my-org/my-repo", ctx.WorkflowRepository);
+            Assert.Equal(".github/workflows/deploy.yml", ctx.WorkflowFilePath);
+        }
     }
 }
