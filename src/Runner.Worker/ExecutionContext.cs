@@ -902,6 +902,10 @@ namespace GitHub.Runner.Worker
                         jobContext[pair.Key] = pair.Value;
                     }
                 }
+
+                // Derive workflow_repository and workflow_file_path from workflow_ref
+                // if the server sent workflow_ref but not the decomposed fields
+                jobContext.DeriveWorkflowRefComponents();
             }
             ExpressionValues["job"] = jobContext;
 

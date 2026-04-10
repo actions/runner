@@ -1239,6 +1239,124 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_HydratesJobContextWithWorkflowIdentity()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message with the feature flag enabled
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("true"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Add workflow identity to the job context
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["workflow_ref"] = new StringContextData("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main");
+                jobContext["workflow_sha"] = new StringContextData("abc123def456");
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert: direct properties from server
+                Assert.NotNull(ec.JobContext);
+                Assert.Equal("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main", ec.JobContext.WorkflowRef);
+                Assert.Equal("abc123def456", ec.JobContext.WorkflowSha);
+
+                // Assert: derived properties
+                Assert.Equal("my-org/my-repo", ec.JobContext.WorkflowRepository);
+                Assert.Equal(".github/workflows/reusable.yml", ec.JobContext.WorkflowFilePath);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_WorkflowIdentityNotSet_WhenFeatureFlagDisabled()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message with the feature flag disabled
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("false"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Add workflow identity to the job context
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["workflow_ref"] = new StringContextData("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main");
+                jobContext["workflow_sha"] = new StringContextData("abc123def456");
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert: properties should not be populated when flag is off
+                Assert.NotNull(ec.JobContext);
+                Assert.Null(ec.JobContext.WorkflowRef);
+                Assert.Null(ec.JobContext.WorkflowSha);
+                Assert.Null(ec.JobContext.WorkflowRepository);
+                Assert.Null(ec.JobContext.WorkflowFilePath);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_WorkflowIdentityDerived_WhenServerSendsAllFields()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Server sends all 4 fields explicitly
+                var variables = new Dictionary<string, VariableValue>()
+                {
+                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("true"),
+                };
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Server sends all fields, derivation should not overwrite
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["workflow_ref"] = new StringContextData("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main");
+                jobContext["workflow_sha"] = new StringContextData("abc123def456");
+                jobContext["workflow_repository"] = new StringContextData("explicit-org/explicit-repo");
+                jobContext["workflow_file_path"] = new StringContextData(".github/workflows/explicit.yml");
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert: explicit values should be preserved, not overwritten by derivation
+                Assert.Equal("explicit-org/explicit-repo", ec.JobContext.WorkflowRepository);
+                Assert.Equal(".github/workflows/explicit.yml", ec.JobContext.WorkflowFilePath);
+            }
+        }
+
         private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
         {
             foreach (var key in expect.Keys.ToList())
