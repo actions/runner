@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using GitHub.Actions.WorkflowParser.Conversion;
@@ -17,7 +17,7 @@ namespace GitHub.Actions.WorkflowParser
         public Permissions(Permissions copy)
         {
             Actions = copy.Actions;
-			ArtifactMetadata = copy.ArtifactMetadata;
+            ArtifactMetadata = copy.ArtifactMetadata;
             Attestations = copy.Attestations;
             Checks = copy.Checks;
             Contents = copy.Contents;
@@ -32,6 +32,7 @@ namespace GitHub.Actions.WorkflowParser
             SecurityEvents = copy.SecurityEvents;
             IdToken = copy.IdToken;
             Models = copy.Models;
+            Workflows = copy.Workflows;
         }
 
         public Permissions(
@@ -41,7 +42,7 @@ namespace GitHub.Actions.WorkflowParser
             bool includeModels)
         {
             Actions = permissionLevel;
-			ArtifactMetadata = permissionLevel;
+            ArtifactMetadata = permissionLevel;
             Attestations = includeAttestations ? permissionLevel : PermissionLevel.NoAccess;
             Checks = permissionLevel;
             Contents = permissionLevel;
@@ -56,9 +57,11 @@ namespace GitHub.Actions.WorkflowParser
             SecurityEvents = permissionLevel;
             IdToken = includeIdToken ? permissionLevel : PermissionLevel.NoAccess;
             // Models must not have higher permissions than Read
-            Models = includeModels 
-                ? (permissionLevel == PermissionLevel.Write ? PermissionLevel.Read : permissionLevel) 
+            Models = includeModels
+                ? (permissionLevel == PermissionLevel.Write ? PermissionLevel.Read : permissionLevel)
                 : PermissionLevel.NoAccess;
+            // Workflows is excluded from write-all / read-all; must be explicitly requested
+            Workflows = PermissionLevel.NoAccess;
         }
 
         private static KeyValuePair<string, (PermissionLevel, PermissionLevel)>[] ComparisonKeyMapping(Permissions left, Permissions right)
@@ -81,6 +84,7 @@ namespace GitHub.Actions.WorkflowParser
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("security-events", (left.SecurityEvents, right.SecurityEvents)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("id-token", (left.IdToken, right.IdToken)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("models", (left.Models, right.Models)),
+                new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("workflows", (left.Workflows, right.Workflows)),
             };
         }
 
@@ -191,6 +195,13 @@ namespace GitHub.Actions.WorkflowParser
 
         [DataMember(Name = "statuses", EmitDefaultValue = false)]
         public PermissionLevel Statuses
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Name = "workflows", EmitDefaultValue = false)]
+        public PermissionLevel Workflows
         {
             get;
             set;

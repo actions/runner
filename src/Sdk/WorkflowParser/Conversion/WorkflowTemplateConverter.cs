@@ -1957,6 +1957,24 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                             context.Error(key, $"The permission 'models' is not allowed");
                         }
                         break;
+                    case "workflows":
+                        if (context.GetFeatures().AllowWorkflowsPermission)
+                        {
+                            // Workflows only supports write; downgrade read to none
+                            if (permissionLevel == PermissionLevel.Read)
+                            {
+                                permissions.Workflows = PermissionLevel.NoAccess;
+                            }
+                            else
+                            {
+                                permissions.Workflows = permissionLevel;
+                            }
+                        }
+                        else
+                        {
+                            context.Error(key, $"The permission 'workflows' is not allowed");
+                        }
+                        break;
                     default:
                         break;
                 }
