@@ -149,10 +149,9 @@ namespace GitHub.Runner.Worker.Dap
             else
             {
                 Trace.Info($"Internal DAP debugger listening on {_listener.LocalEndpoint}");
-                _webSocketBridge = new WebSocketDapBridge(
-                    HostContext.GetTrace("DapWebSocketBridge"),
-                    debuggerConfig.Tunnel.Port,
-                    InternalDapPort);
+                _webSocketBridge = new WebSocketDapBridge();
+                _webSocketBridge.Initialize(HostContext);
+                _webSocketBridge.Configure(debuggerConfig.Tunnel.Port, InternalDapPort);
                 _webSocketBridge.Start();
             }
 
@@ -296,10 +295,10 @@ namespace GitHub.Runner.Worker.Dap
                 if (_webSocketBridge != null)
                 {
                     Trace.Info("Stopping WebSocket DAP bridge");
-                    var disposeTask = _webSocketBridge.DisposeAsync().AsTask();
-                    if (await Task.WhenAny(disposeTask, Task.Delay(5_000)) != disposeTask)
+                    var shutdownTask = _webSocketBridge.ShutdownAsync();
+                    if (await Task.WhenAny(shutdownTask, Task.Delay(5_000)) != shutdownTask)
                     {
-                        Trace.Warning("WebSocket DAP bridge dispose timed out after 5s");
+                        Trace.Warning("WebSocket DAP bridge shutdown timed out after 5s");
                     }
                     else
                     {

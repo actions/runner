@@ -13,7 +13,7 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
 {
-    internal sealed class WebSocketDapBridge : IAsyncDisposable
+    internal sealed class WebSocketDapBridge : RunnerService
     {
         internal enum IncomingStreamPrefixKind
         {
@@ -33,26 +33,30 @@ namespace GitHub.Runner.Worker.Dap
         private static readonly TimeSpan _handshakeTimeout = TimeSpan.FromSeconds(10);
         private const string _webSocketAcceptMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-        private readonly Tracing _trace;
-        private readonly int _listenPort;
-        private readonly int _targetPort;
+        private int _listenPort;
+        private int _targetPort;
+        private bool _configured;
 
         private TcpListener _listener;
         private CancellationTokenSource _loopCts;
         private Task _acceptLoopTask;
 
-        // Overridable for unit tests to avoid allocating 10 MB payloads.
-        internal int MaxInboundMessageSize { get; set; } = _defaultMaxInboundMessageSize;
+        public int MaxInboundMessageSize { get; set; } = _defaultMaxInboundMessageSize;
 
-        public WebSocketDapBridge(Tracing trace, int listenPort, int targetPort)
+        public void Configure(int listenPort, int targetPort)
         {
-            _trace = trace ?? throw new ArgumentNullException(nameof(trace));
             _listenPort = listenPort;
             _targetPort = targetPort;
+            _configured = true;
         }
 
         public void Start()
         {
+            if (!_configured)
+            {
+                throw new InvalidOperationException("Configure must be called before Start.");
+            }
+
             if (_listener != null)
             {
                 throw new InvalidOperationException("WebSocket DAP bridge already started.");
@@ -63,10 +67,10 @@ namespace GitHub.Runner.Worker.Dap
             _loopCts = new CancellationTokenSource();
             _acceptLoopTask = AcceptLoopAsync(_loopCts.Token);
 
-            _trace.Info($"WebSocket DAP bridge listening on {_listener.LocalEndpoint} -> 127.0.0.1:{_targetPort}");
+            Trace.Info($"WebSocket DAP bridge listening on {_listener.LocalEndpoint} -> 127.0.0.1:{_targetPort}");
         }
 
-        public async ValueTask DisposeAsync()
+        public async Task ShutdownAsync()
         {
             _loopCts?.Cancel();
 
@@ -76,7 +80,7 @@ namespace GitHub.Runner.Worker.Dap
             }
             catch (Exception ex)
             {
-                _trace.Warning($"Error stopping listener during shutdown ({ex.GetType().Name})");
+                Trace.Warning($"Error stopping listener during shutdown ({ex.GetType().Name})");
             }
 
             if (_acceptLoopTask != null)
@@ -115,8 +119,8 @@ namespace GitHub.Runner.Worker.Dap
                 catch (Exception ex)
                 {
                     client?.Dispose();
-                    _trace.Error($"WebSocket DAP bridge connection error");
-                    _trace.Error(ex);
+                    Trace.Error($"WebSocket DAP bridge connection error");
+                    Trace.Error(ex);
                 }
                 finally
                 {
@@ -124,14 +128,14 @@ namespace GitHub.Runner.Worker.Dap
                 }
             }
 
-            _trace.Info("WebSocket DAP bridge accept loop ended");
+            Trace.Info("WebSocket DAP bridge accept loop ended");
         }
 
         private async Task HandleClientAsync(TcpClient incomingClient, CancellationToken cancellationToken)
         {
             using (var incomingStream = incomingClient.GetStream())
             {
-                _trace.Info($"WebSocket DAP bridge accepted client {incomingClient.Client.RemoteEndPoint}");
+                Trace.Info($"WebSocket DAP bridge accepted client {incomingClient.Client.RemoteEndPoint}");
 
                 WebSocket webSocket;
                 using (var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
@@ -143,7 +147,7 @@ namespace GitHub.Runner.Worker.Dap
                     }
                     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                     {
-                        _trace.Warning("WebSocket handshake timed out");
+                        Trace.Warning("WebSocket handshake timed out");
                         return;
                     }
                 }
@@ -211,7 +215,7 @@ namespace GitHub.Runner.Worker.Dap
             var prefixKind = ClassifyIncomingStreamPrefix(initialBytes);
             if (prefixKind == IncomingStreamPrefixKind.PreUpgradedWebSocket)
             {
-                _trace.Info($"Treating incoming tunnel stream as an already-upgraded websocket connection ({DescribeInitialBytes(initialBytes)})");
+                Trace.Info($"Treating incoming tunnel stream as an already-upgraded websocket connection ({DescribeInitialBytes(initialBytes)})");
                 return WebSocket.CreateFromStream(
                     new ReplayableStream(stream, initialBytes),
                     isServer: true,
@@ -221,7 +225,7 @@ namespace GitHub.Runner.Worker.Dap
 
             if (prefixKind != IncomingStreamPrefixKind.HttpWebSocketUpgrade)
             {
-                _trace.Warning($"Unsupported debugger tunnel stream prefix ({prefixKind}): {DescribeInitialBytes(initialBytes)}");
+                Trace.Warning($"Unsupported debugger tunnel stream prefix ({prefixKind}): {DescribeInitialBytes(initialBytes)}");
                 return null;
             }
 
@@ -269,7 +273,7 @@ namespace GitHub.Runner.Worker.Dap
             if (!IsValidWebSocketRequest(requestLine, headers))
             {
                 var method = requestLine.Split(' ')[0];
-                _trace.Info($"Rejected non-websocket request (method={method})");
+                Trace.Info($"Rejected non-websocket request (method={method})");
                 await WriteHttpErrorAsync(stream, HttpStatusCode.BadRequest, "Expected a websocket upgrade request.", cancellationToken);
                 return null;
             }
@@ -277,7 +281,7 @@ namespace GitHub.Runner.Worker.Dap
             if (!headers.TryGetValue("Sec-WebSocket-Version", out var webSocketVersion) ||
                 !string.Equals(webSocketVersion.Trim(), "13", StringComparison.Ordinal))
             {
-                _trace.Warning("Rejected WebSocket request with unsupported version");
+                Trace.Warning("Rejected WebSocket request with unsupported version");
                 await WriteHttpErrorAsync(stream, (HttpStatusCode)426, "Unsupported WebSocket version. Expected: 13.", cancellationToken);
                 return null;
             }
@@ -294,7 +298,7 @@ namespace GitHub.Runner.Worker.Dap
             await handshakeStream.WriteAsync(responseBytes, 0, responseBytes.Length, cancellationToken);
             await handshakeStream.FlushAsync(cancellationToken);
 
-            _trace.Info("WebSocket DAP bridge completed websocket handshake");
+            Trace.Info("WebSocket DAP bridge completed websocket handshake");
             return WebSocket.CreateFromStream(handshakeStream, isServer: true, subProtocol: null, keepAliveInterval: _keepAliveInterval);
         }
 
@@ -325,7 +329,7 @@ namespace GitHub.Runner.Worker.Dap
                         {
                             if (messageStream.Length + result.Count > MaxInboundMessageSize)
                             {
-                                _trace.Warning($"WebSocket message exceeds maximum allowed size of {MaxInboundMessageSize} bytes, closing connection");
+                                Trace.Warning($"WebSocket message exceeds maximum allowed size of {MaxInboundMessageSize} bytes, closing connection");
                                 await source.CloseAsync(
                                     WebSocketCloseStatus.MessageTooBig,
                                     $"Message exceeds {MaxInboundMessageSize} byte limit",

@@ -65,9 +65,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             var targetPort = ((IPEndPoint)targetListener.LocalEndpoint).Port;
             var bridgePort = GetFreePort();
 
-            await using var bridge = new WebSocketDapBridge(hc.GetTrace("DapWebSocketBridge"), bridgePort, targetPort);
+            var bridge = new WebSocketDapBridge();
+            bridge.Initialize(hc);
+            bridge.Configure(bridgePort, targetPort);
             bridge.Start();
 
+            try
+            {
             var echoTask = Task.Run(async () =>
             {
                 using var targetClient = await targetListener.AcceptTcpClientAsync();
@@ -124,6 +128,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(payload, echoed);
 
             await echoTask;
+            }
+            finally
+            {
+                await bridge.ShutdownAsync();
+            }
         }
 
         [Fact]
@@ -134,9 +143,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var hc = CreateTestContext();
             var bridgePort = GetFreePort();
 
-            await using var bridge = new WebSocketDapBridge(hc.GetTrace("DapWebSocketBridge"), bridgePort, GetFreePort());
+            var bridge = new WebSocketDapBridge();
+            bridge.Initialize(hc);
+            bridge.Configure(bridgePort, GetFreePort());
             bridge.Start();
 
+            try
+            {
             using var client = new TcpClient();
             await client.ConnectAsync(IPAddress.Loopback, bridgePort);
             using var stream = client.GetStream();
@@ -162,6 +175,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             Assert.Contains("400 BadRequest", response);
             Assert.Contains("Expected a websocket upgrade request.", response);
+            }
+            finally
+            {
+                await bridge.ShutdownAsync();
+            }
         }
 
         [Theory]
@@ -191,10 +209,14 @@ namespace GitHub.Runner.Common.Tests.Worker
             var targetPort = ((IPEndPoint)targetListener.LocalEndpoint).Port;
             var bridgePort = GetFreePort();
 
-            await using var bridge = new WebSocketDapBridge(hc.GetTrace("DapWebSocketBridge"), bridgePort, targetPort);
+            var bridge = new WebSocketDapBridge();
+            bridge.Initialize(hc);
+            bridge.Configure(bridgePort, targetPort);
             bridge.MaxInboundMessageSize = 64; // artificially small limit for testing
             bridge.Start();
 
+            try
+            {
             using var client = new ClientWebSocket();
             await client.ConnectAsync(new Uri($"ws://127.0.0.1:{bridgePort}/"), CancellationToken.None);
 
@@ -216,12 +238,17 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             Assert.Equal(WebSocketMessageType.Close, result.MessageType);
             Assert.Equal(WebSocketCloseStatus.MessageTooBig, client.CloseStatus);
+            }
+            finally
+            {
+                await bridge.ShutdownAsync();
+            }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task BridgeDisposeCompletesWhenPeerDoesNotCloseGracefully()
+        public async Task BridgeShutdownCompletesWhenPeerDoesNotCloseGracefully()
         {
             using var hc = CreateTestContext();
             using var targetListener = new TcpListener(IPAddress.Loopback, 0);
@@ -230,17 +257,19 @@ namespace GitHub.Runner.Common.Tests.Worker
             var targetPort = ((IPEndPoint)targetListener.LocalEndpoint).Port;
             var bridgePort = GetFreePort();
 
-            var bridge = new WebSocketDapBridge(hc.GetTrace("DapWebSocketBridge"), bridgePort, targetPort);
+            var bridge = new WebSocketDapBridge();
+            bridge.Initialize(hc);
+            bridge.Configure(bridgePort, targetPort);
             bridge.Start();
 
             // Connect a raw TCP client but never perform WebSocket close handshake
             using var rawClient = new TcpClient();
             await rawClient.ConnectAsync(IPAddress.Loopback, bridgePort);
 
-            // Dispose should complete within a bounded time, not hang
-            var disposeTask = bridge.DisposeAsync().AsTask();
-            var completed = await Task.WhenAny(disposeTask, Task.Delay(TimeSpan.FromSeconds(15)));
-            Assert.True(completed == disposeTask, "Bridge dispose should complete within the timeout, not hang on a non-cooperative peer");
+            // Shutdown should complete within a bounded time, not hang
+            var shutdownTask = bridge.ShutdownAsync();
+            var completed = await Task.WhenAny(shutdownTask, Task.Delay(TimeSpan.FromSeconds(15)));
+            Assert.True(completed == shutdownTask, "Bridge shutdown should complete within the timeout, not hang on a non-cooperative peer");
         }
     }
 }
