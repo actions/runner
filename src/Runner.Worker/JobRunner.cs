@@ -182,7 +182,7 @@ namespace GitHub.Runner.Worker
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
 
                 // Setup the debugger
-                if (jobContext.Global.EnableDebugger)
+                if (jobContext.Global.Debugger?.Enabled == true)
                 {
                     Trace.Info("Debugger enabled for this job run");
 

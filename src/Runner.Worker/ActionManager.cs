@@ -79,6 +79,13 @@ namespace GitHub.Runner.Worker
                 PreStepTracker = new Dictionary<Guid, IActionRunner>()
             };
             var containerSetupSteps = new List<JobExtensionRunner>();
+            var batchActionResolution = (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.BatchActionResolution) ?? false)
+                || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION"));
+            // Stack-local cache: same action (owner/repo@ref) is resolved only once,
+            // even if it appears at multiple depths in a composite tree.
+            var resolvedDownloadInfos = batchActionResolution
+                ? new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.Ordinal)
+                : null;
             var depth = 0;
             // We are running at the start of a job
             if (rootStepId == default(Guid))
@@ -105,7 +112,9 @@ namespace GitHub.Runner.Worker
             PrepareActionsState result = new PrepareActionsState();
             try
             {
-                result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, rootStepId);
+                result = batchActionResolution
+                    ? await PrepareActionsRecursiveAsync(executionContext, state, actions, resolvedDownloadInfos, depth, rootStepId)
+                    : await PrepareActionsRecursiveLegacyAsync(executionContext, state, actions, depth, rootStepId);
             }
             catch (FailedToResolveActionDownloadInfoException ex)
             {
@@ -169,7 +178,192 @@ namespace GitHub.Runner.Worker
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
-        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
+        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos, Int32 depth = 0, Guid parentStepId = default(Guid))
+        {
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            if (depth > Constants.CompositeActionsMaxDepth)
+            {
+                throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
+            }
+
+            var repositoryActions = new List<Pipelines.ActionStep>();
+
+            foreach (var action in actions)
+            {
+                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+                {
+                    ArgUtil.NotNull(action, nameof(action));
+                    var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
+                    ArgUtil.NotNull(containerReference, nameof(containerReference));
+                    ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
+
+                    if (!state.ImagesToPull.ContainsKey(containerReference.Image))
+                    {
+                        state.ImagesToPull[containerReference.Image] = new List<Guid>();
+                    }
+
+                    Trace.Info($"Action {action.Name} ({action.Id}) needs to pull image '{containerReference.Image}'");
+                    state.ImagesToPull[containerReference.Image].Add(action.Id);
+                }
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    repositoryActions.Add(action);
+                }
+            }
+
+            if (repositoryActions.Count > 0)
+            {
+                // Resolve download info, skipping any actions already cached.
+                await ResolveNewActionsAsync(executionContext, repositoryActions, resolvedDownloadInfos);
+
+                // Download each action.
+                foreach (var action in repositoryActions)
+                {
+                    var lookupKey = GetDownloadInfoLookupKey(action);
+                    if (string.IsNullOrEmpty(lookupKey))
+                    {
+                        continue;
+                    }
+                    if (!resolvedDownloadInfos.TryGetValue(lookupKey, out var downloadInfo))
+                    {
+                        throw new Exception($"Missing download info for {lookupKey}");
+                    }
+                    await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                }
+
+                // Parse action.yml and collect composite sub-actions for batched
+                // resolution below. Pre/post step registration is deferred until
+                // after recursion so that HasPre/HasPost reflect the full subtree.
+                var nextLevel = new List<(Pipelines.ActionStep action, Guid parentId)>();
+
+                foreach (var action in repositoryActions)
+                {
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
+                    if (setupInfo != null && setupInfo.Container != null)
+                    {
+                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
+                        {
+                            if (!state.ImagesToPull.ContainsKey(setupInfo.Container.Image))
+                            {
+                                state.ImagesToPull[setupInfo.Container.Image] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
+                            state.ImagesToPull[setupInfo.Container.Image].Add(action.Id);
+                        }
+                        else
+                        {
+                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
+
+                            if (!state.ImagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
+                            {
+                                state.ImagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
+                            state.ImagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
+                            state.ImagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
+                        }
+                    }
+                    else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
+                    {
+                        foreach (var step in setupInfo.Steps)
+                        {
+                            nextLevel.Add((step, action.Id));
+                        }
+                    }
+                }
+
+                // Resolve all next-level sub-actions in one batch API call,
+                // then recurse per parent (which hits the cache, not the API).
+                if (nextLevel.Count > 0)
+                {
+                    var nextLevelRepoActions = nextLevel
+                        .Where(x => x.action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                        .Select(x => x.action)
+                        .ToList();
+                    await ResolveNewActionsAsync(executionContext, nextLevelRepoActions, resolvedDownloadInfos);
+
+                    foreach (var group in nextLevel.GroupBy(x => x.parentId))
+                    {
+                        var groupActions = group.Select(x => x.action).ToList();
+                        state = await PrepareActionsRecursiveAsync(executionContext, state, groupActions, resolvedDownloadInfos, depth + 1, group.Key);
+                    }
+                }
+
+                // Register pre/post steps after recursion so that HasPre/HasPost
+                // are correct (they depend on _cachedEmbeddedPreSteps/PostSteps
+                // being populated by the recursive calls above).
+                foreach (var action in repositoryActions)
+                {
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    {
+                        var definition = LoadAction(executionContext, action);
+                        if (definition.Data.Execution.HasPre)
+                        {
+                            Trace.Info($"Add 'pre' execution for {action.Id}");
+                            // Root Step
+                            if (depth < 1)
+                            {
+                                var actionRunner = HostContext.CreateService<IActionRunner>();
+                                actionRunner.Action = action;
+                                actionRunner.Stage = ActionRunStage.Pre;
+                                actionRunner.Condition = definition.Data.Execution.InitCondition;
+                                state.PreStepTracker[action.Id] = actionRunner;
+                            }
+                            // Embedded Step
+                            else
+                            {
+                                if (!_cachedEmbeddedPreSteps.ContainsKey(parentStepId))
+                                {
+                                    _cachedEmbeddedPreSteps[parentStepId] = new List<Pipelines.ActionStep>();
+                                }
+                                // Clone action so we can modify the condition without affecting the original
+                                var clonedAction = action.Clone() as Pipelines.ActionStep;
+                                clonedAction.Condition = definition.Data.Execution.InitCondition;
+                                _cachedEmbeddedPreSteps[parentStepId].Add(clonedAction);
+                            }
+                        }
+
+                        if (definition.Data.Execution.HasPost && depth > 0)
+                        {
+                            if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
+                            {
+                                // If we haven't done so already, add the parent to the post steps
+                                _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
+                            }
+                            // Clone action so we can modify the condition without affecting the original
+                            var clonedAction = action.Clone() as Pipelines.ActionStep;
+                            clonedAction.Condition = definition.Data.Execution.CleanupCondition;
+                            _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
+                        }
+                    }
+                    else if (depth > 0)
+                    {
+                        // if we're in a composite action and haven't loaded the local action yet
+                        // we assume it has a post step
+                        if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
+                        {
+                            // If we haven't done so already, add the parent to the post steps
+                            _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
+                        }
+                        // Clone action so we can modify the condition without affecting the original
+                        var clonedAction = action.Clone() as Pipelines.ActionStep;
+                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
+                    }
+                }
+            }
+
+            return state;
+        }
+
+        /// <summary>
+        /// Legacy (non-batched) action resolution. Each composite resolves its
+        /// sub-actions individually, with no cross-depth deduplication.
+        /// Used when the BatchActionResolution feature flag is disabled.
+        /// </summary>
+        private async Task<PrepareActionsState> PrepareActionsRecursiveLegacyAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
@@ -255,7 +449,7 @@ namespace GitHub.Runner.Worker
                     }
                     else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, action.Id);
+                        state = await PrepareActionsRecursiveLegacyAsync(executionContext, state, setupInfo.Steps, depth + 1, action.Id);
                     }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
@@ -762,6 +956,33 @@ namespace GitHub.Runner.Worker
             return actionDownloadInfos.Actions;
         }
 
+        /// <summary>
+        /// Only resolves actions not already in resolvedDownloadInfos.
+        /// Results are cached for reuse at deeper recursion levels.
+        /// </summary>
+        private async Task ResolveNewActionsAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos)
+        {
+            var actionsToResolve = new List<Pipelines.ActionStep>();
+            var pendingKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var action in actions)
+            {
+                var lookupKey = GetDownloadInfoLookupKey(action);
+                if (!string.IsNullOrEmpty(lookupKey) && !resolvedDownloadInfos.ContainsKey(lookupKey) && pendingKeys.Add(lookupKey))
+                {
+                    actionsToResolve.Add(action);
+                }
+            }
+
+            if (actionsToResolve.Count > 0)
+            {
+                var downloadInfos = await GetDownloadInfoAsync(executionContext, actionsToResolve);
+                foreach (var kvp in downloadInfos)
+                {
+                    resolvedDownloadInfos[kvp.Key] = kvp.Value;
+                }
+            }
+        }
+
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo)
         {
             Trace.Entering();
@@ -1146,16 +1367,29 @@ namespace GitHub.Runner.Worker
             return $"{repositoryReference.Name}@{repositoryReference.Ref}";
         }
 
-        private AuthenticationHeaderValue CreateAuthHeader(string token)
+        private AuthenticationHeaderValue CreateAuthHeader(IExecutionContext executionContext, string downloadUrl, string token)
         {
             if (string.IsNullOrEmpty(token))
             {
                 return null;
             }
 
-            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
-            HostContext.SecretMasker.AddValue(base64EncodingToken);
-            return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseBearerTokenForCodeload) == true &&
+                Uri.TryCreate(downloadUrl, UriKind.Absolute, out var parsedUrl) &&
+                !string.IsNullOrEmpty(parsedUrl?.Host) &&
+                !string.IsNullOrEmpty(parsedUrl?.PathAndQuery) &&
+                (parsedUrl.Host.StartsWith("codeload.", StringComparison.OrdinalIgnoreCase) || parsedUrl.PathAndQuery.StartsWith("/_codeload/", StringComparison.OrdinalIgnoreCase)))
+            {
+                Trace.Info("Using Bearer token for action archive download directly to codeload.");
+                return new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                Trace.Info("Using Basic token for action archive download.");
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
+                HostContext.SecretMasker.AddValue(base64EncodingToken);
+                return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            }
         }
 
         private async Task DownloadRepositoryArchive(IExecutionContext executionContext, string downloadUrl, string downloadAuthToken, string archiveFile)
@@ -1180,7 +1414,7 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadAuthToken);
+                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(executionContext, downloadUrl, downloadAuthToken);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(downloadUrl))
