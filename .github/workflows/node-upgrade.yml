@@ -159,18 +159,36 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "<41898282+github-actions[bot]@users.noreply.github.com>"
 
+          # Build version summary for commit message and PR body (only include changed versions)
+          COMMIT_VERSIONS=""
+          PR_VERSION_LINES=""
+
+          if [ "${{ steps.node-versions.outputs.needs_update20 }}" == "true" ]; then
+            COMMIT_VERSIONS="20: $NODE20_VERSION"
+            PR_VERSION_LINES="- Node 20: ${{ steps.node-versions.outputs.current_node20 }} → $NODE20_VERSION"
+          fi
+
+          if [ "${{ steps.node-versions.outputs.needs_update24 }}" == "true" ]; then
+            if [ -n "$COMMIT_VERSIONS" ]; then
+              COMMIT_VERSIONS="$COMMIT_VERSIONS, 24: $NODE24_VERSION"
+            else
+              COMMIT_VERSIONS="24: $NODE24_VERSION"
+            fi
+            PR_VERSION_LINES="${PR_VERSION_LINES:+$PR_VERSION_LINES
+          }- Node 24: ${{ steps.node-versions.outputs.current_node24 }} → $NODE24_VERSION"
+          fi
+
           # Create branch and commit changes
           branch_name="chore/update-node"
           git checkout -b "$branch_name"
-          git commit -a -m "chore: update Node versions (20: $NODE20_VERSION, 24: $NODE24_VERSION)"
+          git commit -a -m "chore: update Node versions ($COMMIT_VERSIONS)"
           git push --force origin "$branch_name"
 
           # Create PR body using here-doc for proper formatting
           cat > pr_body.txt << EOF
           Automated Node.js version update:
 
-          - Node 20: ${{ steps.node-versions.outputs.current_node20 }} → $NODE20_VERSION
-          - Node 24: ${{ steps.node-versions.outputs.current_node24 }} → $NODE24_VERSION
+          $PR_VERSION_LINES
 
           This update ensures we're using the latest stable Node.js versions for security and performance improvements.
 
