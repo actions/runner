@@ -299,6 +299,9 @@ namespace GitHub.Runner.Worker.Dap
                     if (await Task.WhenAny(shutdownTask, Task.Delay(5_000)) != shutdownTask)
                     {
                         Trace.Warning("WebSocket DAP bridge shutdown timed out after 5s");
+                        _ = shutdownTask.ContinueWith(
+                            t => Trace.Error($"WebSocket DAP bridge shutdown faulted: {t.Exception?.GetBaseException().Message}"),
+                            TaskContinuationOptions.OnlyOnFaulted);
                     }
                     else
                     {

@@ -32,6 +32,8 @@ namespace GitHub.Runner.Worker.Dap
         private static readonly TimeSpan _closeTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan _handshakeTimeout = TimeSpan.FromSeconds(10);
         private const string _webSocketAcceptMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+        private const int _maxHeaderCount = 64;
+        private static readonly byte[] _headerEndMarker = new byte[] { (byte)'\r', (byte)'\n', (byte)'\r', (byte)'\n' };
 
         private int _listenPort;
         private int _targetPort;
@@ -190,6 +192,10 @@ namespace GitHub.Runner.Worker.Dap
                         {
                             // peer disconnected while unwinding
                         }
+                        catch (InvalidOperationException ex)
+                        {
+                            Trace.Warning($"DAP protocol error: {ex.Message}");
+                        }
                     }
                 }
             }
@@ -230,6 +236,13 @@ namespace GitHub.Runner.Worker.Dap
             var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             while (true)
             {
+                if (headers.Count >= _maxHeaderCount)
+                {
+                    Trace.Warning($"Rejected WebSocket request with too many headers (>{_maxHeaderCount})");
+                    await WriteHttpErrorAsync(stream, HttpStatusCode.BadRequest, "Too many headers.", cancellationToken);
+                    return null;
+                }
+
                 var line = await ReadLineAsync(handshakeStream, cancellationToken);
                 if (line == null)
                 {
@@ -278,6 +291,13 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             var webSocketKey = headers["Sec-WebSocket-Key"];
+            if (!IsValidWebSocketKey(webSocketKey))
+            {
+                Trace.Warning("Rejected WebSocket request with invalid Sec-WebSocket-Key");
+                await WriteHttpErrorAsync(stream, HttpStatusCode.BadRequest, "Invalid Sec-WebSocket-Key.", cancellationToken);
+                return null;
+            }
+
             var acceptValue = ComputeAcceptValue(webSocketKey);
             var responseBytes = Encoding.ASCII.GetBytes(
                 "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -383,8 +403,7 @@ namespace GitHub.Runner.Worker.Dap
         {
             messageBody = null;
 
-            var headerEndMarker = new byte[] { (byte)'\r', (byte)'\n', (byte)'\r', (byte)'\n' };
-            var headerEndIndex = FindSequence(buffer, headerEndMarker);
+            var headerEndIndex = FindSequence(buffer, _headerEndMarker);
             if (headerEndIndex == -1)
             {
                 return false;
@@ -409,8 +428,7 @@ namespace GitHub.Runner.Worker.Dap
 
             if (contentLength < 0)
             {
-                buffer.RemoveRange(0, headerEndIndex + 4);
-                return false;
+                throw new InvalidOperationException("DAP message missing or unparseable Content-Length header; tearing down session.");
             }
 
             var messageStart = headerEndIndex + 4;
@@ -492,6 +510,24 @@ namespace GitHub.Runner.Worker.Dap
                 var inputBytes = Encoding.ASCII.GetBytes($"{webSocketKey}{_webSocketAcceptMagic}");
                 var hashBytes = sha1.ComputeHash(inputBytes);
                 return Convert.ToBase64String(hashBytes);
+            }
+        }
+
+        private static bool IsValidWebSocketKey(string key)
+        {
+            if (string.IsNullOrEmpty(key) || key.IndexOfAny(new[] { '\r', '\n' }) >= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                var decoded = Convert.FromBase64String(key);
+                return decoded.Length == 16;
+            }
+            catch (FormatException)
+            {
+                return false;
             }
         }
 
