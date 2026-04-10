@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -315,7 +315,6 @@ namespace GitHub.Runner.Worker
                     maxBytes: 10 * 1024 * 1024),
                 Schema = _actionManifestSchema,
                 TraceWriter = executionContext.ToTemplateTraceWriter(),
-                AllowCaseFunction = false,
             };
 
             // Expression values from execution context

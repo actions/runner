@@ -504,7 +504,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-         [Fact]
+        [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public void Load_Node24Action()
@@ -1004,6 +1004,45 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.ExpressionFunctions).Returns(expressionFunctions);
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>())).Callback((Issue issue, ExecutionContextLogOptions logOptions) => { _hc.GetTrace().Info($"[{issue.Type}]{logOptions.LogMessageOverride ?? issue.Message}"); });
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Evaluate_Default_Input_Case_Function()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                _ec.Object.ExpressionValues["github"] = new LegacyContextData.DictionaryContextData
+                {
+                    { "ref", new LegacyContextData.StringContextData("refs/heads/main") },
+                };
+                _ec.Object.ExpressionValues["strategy"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["matrix"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["steps"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["job"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["runner"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionValues["env"] = new LegacyContextData.DictionaryContextData();
+                _ec.Object.ExpressionFunctions.Add(new LegacyExpressions.FunctionInfo<GitHub.Runner.Worker.Expressions.HashFilesFunction>("hashFiles", 1, 255));
+
+                // Act — evaluate a case() expression as a default input value.
+                // The feature flag is set, so this should succeed.
+                var token = new BasicExpressionToken(null, null, null, "case(true, 'matched', 'default')");
+                var result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", token);
+
+                // Assert — case() should evaluate successfully
+                Assert.Equal("matched", result);
+            }
+            finally
+            {
+                Teardown();
+            }
         }
 
         private void Teardown()
