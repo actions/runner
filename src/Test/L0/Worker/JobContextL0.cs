@@ -219,5 +219,39 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("my-org/my-repo", ctx.WorkflowRepository);
             Assert.Equal(".github/workflows/deploy.yml", ctx.WorkflowFilePath);
         }
+
+        [Fact]
+        public void DeriveWorkflowRefComponents_HandlesPRMergeRef()
+        {
+            var ctx = new JobContext();
+            ctx.WorkflowRef = "my-org/my-repo/.github/workflows/ci.yml@refs/pull/42/merge";
+            ctx.DeriveWorkflowRefComponents();
+
+            Assert.Equal("my-org/my-repo", ctx.WorkflowRepository);
+            Assert.Equal(".github/workflows/ci.yml", ctx.WorkflowFilePath);
+        }
+
+        [Fact]
+        public void DeriveWorkflowRefComponents_HandlesTagRef()
+        {
+            var ctx = new JobContext();
+            ctx.WorkflowRef = "my-org/my-repo/.github/workflows/release.yml@refs/tags/v1.0.0";
+            ctx.DeriveWorkflowRefComponents();
+
+            Assert.Equal("my-org/my-repo", ctx.WorkflowRepository);
+            Assert.Equal(".github/workflows/release.yml", ctx.WorkflowFilePath);
+        }
+
+        [Fact]
+        public void DeriveWorkflowRefComponents_RejectsInvalidRepoFormat()
+        {
+            // No owner/repo slash — should no-op
+            var ctx = new JobContext();
+            ctx.WorkflowRef = "noslash.github/workflows/ci.yml@refs/heads/main";
+            ctx.DeriveWorkflowRefComponents();
+
+            Assert.Null(ctx.WorkflowRepository);
+            Assert.Null(ctx.WorkflowFilePath);
+        }
     }
 }

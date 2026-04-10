@@ -892,21 +892,18 @@ namespace GitHub.Runner.Worker
 
             Trace.Info("Initializing Job context");
             var jobContext = new JobContext();
-            if (Global.Variables.GetBoolean(Constants.Runner.Features.AddCheckRunIdToJobContext) ?? false)
+            ExpressionValues.TryGetValue("job", out var jobDictionary);
+            if (jobDictionary != null)
             {
-                ExpressionValues.TryGetValue("job", out var jobDictionary);
-                if (jobDictionary != null)
+                foreach (var pair in jobDictionary.AssertDictionary("job"))
                 {
-                    foreach (var pair in jobDictionary.AssertDictionary("job"))
-                    {
-                        jobContext[pair.Key] = pair.Value;
-                    }
+                    jobContext[pair.Key] = pair.Value;
                 }
-
-                // Derive workflow_repository and workflow_file_path from workflow_ref
-                // if the server sent workflow_ref but not the decomposed fields
-                jobContext.DeriveWorkflowRefComponents();
             }
+
+            // Derive workflow_repository and workflow_file_path from workflow_ref
+            // if the server sent workflow_ref but not the decomposed fields
+            jobContext.DeriveWorkflowRefComponents();
             ExpressionValues["job"] = jobContext;
 
             Trace.Info("Initialize GitHub context");

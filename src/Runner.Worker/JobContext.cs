@@ -172,14 +172,24 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
+            var repo = pathPart.Substring(0, markerIndex);
+            var filePath = pathPart.Substring(markerIndex + 1); // skip leading '/'
+
+            // Validate repo is owner/repo format (must have at least one slash with non-empty segments)
+            var slashIndex = repo.IndexOf('/');
+            if (slashIndex <= 0 || slashIndex >= repo.Length - 1)
+            {
+                return;
+            }
+
             if (WorkflowRepository == null || WorkflowRepository == "")
             {
-                WorkflowRepository = pathPart.Substring(0, markerIndex);
+                WorkflowRepository = repo;
             }
 
             if (WorkflowFilePath == null || WorkflowFilePath == "")
             {
-                WorkflowFilePath = pathPart.Substring(markerIndex + 1); // skip leading '/'
+                WorkflowFilePath = filePath;
             }
         }
     }

@@ -1203,19 +1203,19 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        // TODO: this test can be deleted when `AddCheckRunIdToJobContext` is fully rolled out
+        // AddCheckRunIdToJobContext is now permanently enabled server-side (hardcoded to "true"
+        // in acquirejobhandler.go). The runner always copies ContextData["job"] entries, so the
+        // flag-disabled test is no longer applicable. Replaced with a test that verifies
+        // check_run_id is always hydrated regardless of the flag value.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void InitializeJob_HydratesJobContextWithCheckRunId_FeatureFlagDisabled()
+        public void InitializeJob_HydratesJobContextWithCheckRunId_AlwaysCopied()
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                // Arrange: Create a job request message and make sure the feature flag is disabled
-                var variables = new Dictionary<string, VariableValue>()
-                {
-                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("false"),
-                };
+                // Arrange: No feature flag set at all
+                var variables = new Dictionary<string, VariableValue>();
                 var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 var pagingLogger = new Moq.Mock<IPagingLogger>();
                 var jobServerQueue = new Moq.Mock<IJobServerQueue>();
@@ -1233,9 +1233,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
-                // Assert
+                // Assert: check_run_id is always copied regardless of flag
                 Assert.NotNull(ec.JobContext);
-                Assert.Null(ec.JobContext.CheckRunId); // with the feature flag disabled we should not have added a CheckRunId to the JobContext
+                Assert.Equal(123456, ec.JobContext.CheckRunId);
             }
         }
 
@@ -1246,11 +1246,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                // Arrange: Create a job request message with the feature flag enabled
-                var variables = new Dictionary<string, VariableValue>()
-                {
-                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("true"),
-                };
+                // Arrange
+                var variables = new Dictionary<string, VariableValue>();
                 var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 var pagingLogger = new Moq.Mock<IPagingLogger>();
                 var jobServerQueue = new Moq.Mock<IJobServerQueue>();
@@ -1283,15 +1280,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void InitializeJob_WorkflowIdentityNotSet_WhenFeatureFlagDisabled()
+        public void InitializeJob_WorkflowIdentityNotSet_WhenServerSendsNoData()
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                // Arrange: Create a job request message with the feature flag disabled
-                var variables = new Dictionary<string, VariableValue>()
-                {
-                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("false"),
-                };
+                // Arrange: Server sends no workflow identity in job context
+                var variables = new Dictionary<string, VariableValue>();
                 var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 var pagingLogger = new Moq.Mock<IPagingLogger>();
                 var jobServerQueue = new Moq.Mock<IJobServerQueue>();
@@ -1300,17 +1294,14 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var ec = new Runner.Worker.ExecutionContext();
                 ec.Initialize(hc);
 
-                // Arrange: Add workflow identity to the job context
-                var jobContext = new Pipelines.ContextData.DictionaryContextData();
-                jobContext["workflow_ref"] = new StringContextData("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main");
-                jobContext["workflow_sha"] = new StringContextData("abc123def456");
-                jobRequest.ContextData["job"] = jobContext;
+                // Arrange: empty job context
+                jobRequest.ContextData["job"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
                 // Act
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
-                // Assert: properties should not be populated when flag is off
+                // Assert: no workflow identity
                 Assert.NotNull(ec.JobContext);
                 Assert.Null(ec.JobContext.WorkflowRef);
                 Assert.Null(ec.JobContext.WorkflowSha);
@@ -1327,10 +1318,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange: Server sends all 4 fields explicitly
-                var variables = new Dictionary<string, VariableValue>()
-                {
-                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("true"),
-                };
+                var variables = new Dictionary<string, VariableValue>();
                 var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 var pagingLogger = new Moq.Mock<IPagingLogger>();
                 var jobServerQueue = new Moq.Mock<IJobServerQueue>();
