@@ -38,7 +38,7 @@ Otherwise, contact GitHub customer support or log an issue at https://github.com
 If you are having trouble connecting, try these steps:
 
 1. Validate you can reach our endpoints from your web browser. If not, double check your local network connection
-    - For hosted Github:
+    - For hosted GitHub:
       - https://api.github.com/
       - https://vstoken.actions.githubusercontent.com/_apis/health
       - https://pipelines.actions.githubusercontent.com/_apis/health
