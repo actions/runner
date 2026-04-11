@@ -1877,7 +1877,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         permissionsStr.AssertUnexpectedValue(permissionsStr.Value);
                         break;
                 }
-                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission);
+                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission, includeWorkflows: context.GetFeatures().AllowWorkflowsPermission);
             }
 
             var mapping = token.AssertMapping("permissions");

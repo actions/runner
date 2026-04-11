@@ -32,7 +32,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                 return;
             }
 
-            var effectiveMax = explicitMax ?? CreatePermissionsFromPolicy(context, permissionsPolicy, includeIdToken: isTrusted, includeModels: context.GetFeatures().AllowModelsPermission);
+            var effectiveMax = explicitMax ?? CreatePermissionsFromPolicy(context, permissionsPolicy, includeIdToken: isTrusted, includeModels: context.GetFeatures().AllowModelsPermission, includeWorkflows: context.GetFeatures().AllowWorkflowsPermission);
             
             if (requested.ViolatesMaxPermissions(effectiveMax, out var permissionLevelViolations))
             {
@@ -59,7 +59,8 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             TemplateContext context,
             string permissionsPolicy,
             bool includeIdToken,
-            bool includeModels)
+            bool includeModels,
+            bool includeWorkflows)
         {
             switch (permissionsPolicy)
             {
@@ -70,7 +71,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         Packages = PermissionLevel.Read,
                     };
                 case WorkflowConstants.PermissionsPolicy.Write:
-                    return new Permissions(PermissionLevel.Write, includeIdToken: includeIdToken, includeAttestations: true, includeModels: includeModels);
+                    return new Permissions(PermissionLevel.Write, includeIdToken: includeIdToken, includeAttestations: true, includeModels: includeModels, includeWorkflows: includeWorkflows);
                 default:
                     throw new ArgumentException($"Unexpected permission policy: '{permissionsPolicy}'");
             }

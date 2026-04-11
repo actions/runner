@@ -39,7 +39,8 @@ namespace GitHub.Actions.WorkflowParser
             PermissionLevel permissionLevel,
             bool includeIdToken,
             bool includeAttestations,
-            bool includeModels)
+            bool includeModels,
+            bool includeWorkflows = false)
         {
             Actions = permissionLevel;
             ArtifactMetadata = permissionLevel;
@@ -60,8 +61,10 @@ namespace GitHub.Actions.WorkflowParser
             Models = includeModels
                 ? (permissionLevel == PermissionLevel.Write ? PermissionLevel.Read : permissionLevel)
                 : PermissionLevel.NoAccess;
-            // Workflows is excluded from write-all / read-all; must be explicitly requested
-            Workflows = PermissionLevel.NoAccess;
+            // Workflows is write-only, so only grant it when permissionLevel is Write
+            Workflows = includeWorkflows && permissionLevel == PermissionLevel.Write
+                ? PermissionLevel.Write
+                : PermissionLevel.NoAccess;
         }
 
         private static KeyValuePair<string, (PermissionLevel, PermissionLevel)>[] ComparisonKeyMapping(Permissions left, Permissions right)
