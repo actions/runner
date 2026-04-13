@@ -44,7 +44,7 @@ namespace GitHub.Runner.Worker.Dap
 
         public int MaxInboundMessageSize { get; set; } = _defaultMaxInboundMessageSize;
 
-        public int ListenPort => (_listener?.LocalEndpoint as IPEndPoint)?.Port ?? 0;
+        internal int ListenPort => (_listener?.LocalEndpoint as IPEndPoint)?.Port ?? 0;
 
         public void Start(int listenPort, int targetPort)
         {

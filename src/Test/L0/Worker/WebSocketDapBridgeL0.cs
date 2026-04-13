@@ -110,6 +110,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             });
 
             using var client = new ClientWebSocket();
+            client.Options.Proxy = null;
             await client.ConnectAsync(new Uri($"ws://127.0.0.1:{bridgePort}/"), CancellationToken.None);
 
             var dapMessage = "{\"type\":\"request\",\"seq\":1,\"command\":\"initialize\"}";
@@ -208,6 +209,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             try
             {
             using var client = new ClientWebSocket();
+            client.Options.Proxy = null;
             await client.ConnectAsync(new Uri($"ws://127.0.0.1:{bridgePort}/"), CancellationToken.None);
 
             // Send a message that exceeds the 64-byte limit

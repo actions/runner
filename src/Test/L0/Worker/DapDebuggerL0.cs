@@ -20,19 +20,43 @@ namespace GitHub.Runner.Common.Tests.Worker
         private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
         private const string TunnelConnectTimeoutVariable = "ACTIONS_RUNNER_DAP_TUNNEL_CONNECT_TIMEOUT_SECONDS";
         private DapDebugger _debugger;
+        private TestWebSocketDapBridge _testWebSocketBridge;
+
+        private sealed class TestWebSocketDapBridge : RunnerService, IWebSocketDapBridge
+        {
+            private readonly WebSocketDapBridge _inner = new WebSocketDapBridge();
+
+            public int ListenPort => _inner.ListenPort;
+
+            public override void Initialize(IHostContext hostContext)
+            {
+                base.Initialize(hostContext);
+                _inner.Initialize(hostContext);
+            }
+
+            public void Start(int listenPort, int targetPort)
+            {
+                _inner.Start(0, targetPort);
+            }
+
+            public Task ShutdownAsync()
+            {
+                return _inner.ShutdownAsync();
+            }
+        }
 
         private TestHostContext CreateTestContext(bool enableWebSocketBridge = false, [CallerMemberName] string testName = "")
         {
             var hc = new TestHostContext(this, testName);
             _debugger = new DapDebugger();
+            _testWebSocketBridge = null;
             _debugger.Initialize(hc);
             _debugger.SkipTunnelRelay = true;
             _debugger.SkipWebSocketBridge = !enableWebSocketBridge;
             if (enableWebSocketBridge)
             {
-                var bridge = new WebSocketDapBridge();
-                bridge.Initialize(hc);
-                hc.EnqueueInstance<IWebSocketDapBridge>(bridge);
+                _testWebSocketBridge = new TestWebSocketDapBridge();
+                hc.EnqueueInstance<IWebSocketDapBridge>(_testWebSocketBridge);
             }
 
             return hc;
@@ -83,6 +107,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private static async Task<ClientWebSocket> ConnectWebSocketClientAsync(int port)
         {
             var client = new ClientWebSocket();
+            client.Options.Proxy = null;
             await client.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/"), CancellationToken.None);
             return client;
         }
@@ -289,7 +314,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateJobContextWithTunnel(cts.Token, GetFreePort());
                 await _debugger.StartAsync(jobContext.Object);
 
-                var bridgePort = _debugger.BridgeListenPort;
+                var bridgePort = _testWebSocketBridge.ListenPort;
                 Assert.NotEqual(0, _debugger.InternalDapPort);
                 Assert.NotEqual(0, bridgePort);
                 Assert.NotEqual(bridgePort, _debugger.InternalDapPort);
@@ -325,7 +350,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobContext = CreateJobContextWithTunnel(cts.Token, GetFreePort());
                 await _debugger.StartAsync(jobContext.Object);
 
-                var bridgePort = _debugger.BridgeListenPort;
+                var bridgePort = _testWebSocketBridge.ListenPort;
                 Assert.NotEqual(0, _debugger.InternalDapPort);
                 Assert.NotEqual(0, bridgePort);
                 Assert.NotEqual(bridgePort, _debugger.InternalDapPort);
