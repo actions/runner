@@ -285,15 +285,16 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (CreateTestContext(enableWebSocketBridge: true))
             {
-                var port = GetFreePort();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                var jobContext = CreateJobContextWithTunnel(cts.Token, GetFreePort());
                 await _debugger.StartAsync(jobContext.Object);
 
+                var bridgePort = _debugger.BridgeListenPort;
                 Assert.NotEqual(0, _debugger.InternalDapPort);
-                Assert.NotEqual(port, _debugger.InternalDapPort);
+                Assert.NotEqual(0, bridgePort);
+                Assert.NotEqual(bridgePort, _debugger.InternalDapPort);
 
-                using var client = await ConnectWebSocketClientAsync(port);
+                using var client = await ConnectWebSocketClientAsync(bridgePort);
                 await SendRequestAsync(client, new Request
                 {
                     Seq = 1,
@@ -320,15 +321,16 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (CreateTestContext(enableWebSocketBridge: true))
             {
-                var port = GetFreePort();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                var jobContext = CreateJobContextWithTunnel(cts.Token, GetFreePort());
                 await _debugger.StartAsync(jobContext.Object);
 
+                var bridgePort = _debugger.BridgeListenPort;
                 Assert.NotEqual(0, _debugger.InternalDapPort);
-                Assert.NotEqual(port, _debugger.InternalDapPort);
+                Assert.NotEqual(0, bridgePort);
+                Assert.NotEqual(bridgePort, _debugger.InternalDapPort);
 
-                using var tcpClient = await ConnectClientAsync(port);
+                using var tcpClient = await ConnectClientAsync(bridgePort);
                 using var webSocket = WebSocket.CreateFromStream(
                     tcpClient.GetStream(),
                     isServer: false,

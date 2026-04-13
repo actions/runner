@@ -20,13 +20,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             return new TestHostContext(this, testName);
         }
 
-        private static ushort GetFreePort()
-        {
-            using var listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            return (ushort)((IPEndPoint)listener.LocalEndpoint).Port;
-        }
-
         private static async Task<byte[]> ReadWebSocketMessageAsync(ClientWebSocket client, TimeSpan timeout)
         {
             using var cts = new CancellationTokenSource(timeout);
@@ -63,11 +56,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             targetListener.Start();
 
             var targetPort = ((IPEndPoint)targetListener.LocalEndpoint).Port;
-            var bridgePort = GetFreePort();
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Start(bridgePort, targetPort);
+            bridge.Start(0, targetPort);
+            var bridgePort = bridge.ListenPort;
 
             try
             {
@@ -140,11 +133,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         public async Task BridgeRejectsNonWebSocketRequests()
         {
             using var hc = CreateTestContext();
-            var bridgePort = GetFreePort();
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Start(bridgePort, GetFreePort());
+            bridge.Start(0, 0);
+            var bridgePort = bridge.ListenPort;
 
             try
             {
@@ -205,12 +198,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             targetListener.Start();
 
             var targetPort = ((IPEndPoint)targetListener.LocalEndpoint).Port;
-            var bridgePort = GetFreePort();
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
             bridge.MaxInboundMessageSize = 64; // artificially small limit for testing
-            bridge.Start(bridgePort, targetPort);
+            bridge.Start(0, targetPort);
+            var bridgePort = bridge.ListenPort;
 
             try
             {
@@ -252,11 +245,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             targetListener.Start();
 
             var targetPort = ((IPEndPoint)targetListener.LocalEndpoint).Port;
-            var bridgePort = GetFreePort();
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Start(bridgePort, targetPort);
+            bridge.Start(0, targetPort);
+            var bridgePort = bridge.ListenPort;
 
             // Connect a raw TCP client but never perform WebSocket close handshake
             using var rawClient = new TcpClient();

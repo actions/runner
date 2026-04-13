@@ -114,6 +114,7 @@ namespace GitHub.Runner.Worker.Dap
 
         internal DapSessionState State => _state;
         internal int InternalDapPort => (_listener?.LocalEndpoint as IPEndPoint)?.Port ?? 0;
+        internal int BridgeListenPort => _webSocketBridge?.ListenPort ?? 0;
 
         public override void Initialize(IHostContext hostContext)
         {
