@@ -184,17 +184,9 @@ namespace GitHub.Runner.Worker.Dap
                         {
                             // expected during shutdown
                         }
-                        catch (IOException)
+                        catch (Exception ex)
                         {
-                            // peer disconnected while unwinding
-                        }
-                        catch (WebSocketException)
-                        {
-                            // peer disconnected while unwinding
-                        }
-                        catch (InvalidOperationException ex)
-                        {
-                            Trace.Warning($"DAP protocol error: {ex.Message}");
+                            Trace.Warning($"DAP protocol error: {ex}");
                         }
                     }
                 }
