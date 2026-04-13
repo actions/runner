@@ -28,6 +28,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             _debugger.Initialize(hc);
             _debugger.SkipTunnelRelay = true;
             _debugger.SkipWebSocketBridge = !enableWebSocketBridge;
+            if (enableWebSocketBridge)
+            {
+                var bridge = new WebSocketDapBridge();
+                bridge.Initialize(hc);
+                hc.EnqueueInstance<IWebSocketDapBridge>(bridge);
+            }
+
             return hc;
         }
 

@@ -67,8 +67,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Configure(bridgePort, targetPort);
-            bridge.Start();
+            bridge.Start(bridgePort, targetPort);
 
             try
             {
@@ -145,8 +144,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Configure(bridgePort, GetFreePort());
-            bridge.Start();
+            bridge.Start(bridgePort, GetFreePort());
 
             try
             {
@@ -211,9 +209,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Configure(bridgePort, targetPort);
             bridge.MaxInboundMessageSize = 64; // artificially small limit for testing
-            bridge.Start();
+            bridge.Start(bridgePort, targetPort);
 
             try
             {
@@ -259,8 +256,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var bridge = new WebSocketDapBridge();
             bridge.Initialize(hc);
-            bridge.Configure(bridgePort, targetPort);
-            bridge.Start();
+            bridge.Start(bridgePort, targetPort);
 
             // Connect a raw TCP client but never perform WebSocket close handshake
             using var rawClient = new TcpClient();

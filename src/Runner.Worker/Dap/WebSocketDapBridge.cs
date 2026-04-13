@@ -13,7 +13,7 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
 {
-    internal sealed class WebSocketDapBridge : RunnerService
+    internal sealed class WebSocketDapBridge : RunnerService, IWebSocketDapBridge
     {
         internal enum IncomingStreamPrefixKind
         {
@@ -37,7 +37,6 @@ namespace GitHub.Runner.Worker.Dap
 
         private int _listenPort;
         private int _targetPort;
-        private bool _configured;
 
         private TcpListener _listener;
         private CancellationTokenSource _loopCts;
@@ -45,24 +44,15 @@ namespace GitHub.Runner.Worker.Dap
 
         public int MaxInboundMessageSize { get; set; } = _defaultMaxInboundMessageSize;
 
-        public void Configure(int listenPort, int targetPort)
+        public void Start(int listenPort, int targetPort)
         {
-            _listenPort = listenPort;
-            _targetPort = targetPort;
-            _configured = true;
-        }
-
-        public void Start()
-        {
-            if (!_configured)
-            {
-                throw new InvalidOperationException("Configure must be called before Start.");
-            }
-
             if (_listener != null)
             {
                 throw new InvalidOperationException("WebSocket DAP bridge already started.");
             }
+
+            _listenPort = listenPort;
+            _targetPort = targetPort;
 
             _listener = new TcpListener(IPAddress.Loopback, _listenPort);
             _listener.Start();

@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker.Dap
 
         // Dev Tunnel relay host for remote debugging
         private TunnelRelayTunnelHost _tunnelRelayHost;
-        private WebSocketDapBridge _webSocketBridge;
+        private IWebSocketDapBridge _webSocketBridge;
 
         // Cancellation source for the connection loop, cancelled in StopAsync
         // so AcceptTcpClientAsync unblocks cleanly without relying on listener disposal.
@@ -149,10 +149,8 @@ namespace GitHub.Runner.Worker.Dap
             else
             {
                 Trace.Info($"Internal DAP debugger listening on {_listener.LocalEndpoint}");
-                _webSocketBridge = new WebSocketDapBridge();
-                _webSocketBridge.Initialize(HostContext);
-                _webSocketBridge.Configure(debuggerConfig.Tunnel.Port, InternalDapPort);
-                _webSocketBridge.Start();
+                _webSocketBridge = HostContext.CreateService<IWebSocketDapBridge>();
+                _webSocketBridge.Start(debuggerConfig.Tunnel.Port, InternalDapPort);
             }
 
             // Start Dev Tunnel relay so remote clients reach the local DAP port.
