@@ -892,15 +892,12 @@ namespace GitHub.Runner.Worker
 
             Trace.Info("Initializing Job context");
             var jobContext = new JobContext();
-            if (Global.Variables.GetBoolean(Constants.Runner.Features.AddCheckRunIdToJobContext) ?? false)
+            ExpressionValues.TryGetValue("job", out var jobDictionary);
+            if (jobDictionary != null)
             {
-                ExpressionValues.TryGetValue("job", out var jobDictionary);
-                if (jobDictionary != null)
+                foreach (var pair in jobDictionary.AssertDictionary("job"))
                 {
-                    foreach (var pair in jobDictionary.AssertDictionary("job"))
-                    {
-                        jobContext[pair.Key] = pair.Value;
-                    }
+                    jobContext[pair.Key] = pair.Value;
                 }
             }
             ExpressionValues["job"] = jobContext;
