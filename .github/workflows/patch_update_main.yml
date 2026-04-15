@@ -9,6 +9,10 @@ on:
       - 'patches/runner-main-sdk8-*.patch'
       - 'patches/last_processed_commit.txt'
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   update-patches:
     runs-on: ubuntu-latest

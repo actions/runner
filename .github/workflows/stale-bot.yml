@@ -3,6 +3,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 1' # every monday at midnight
+
+permissions:
+  issues: write
+
 jobs:
   stale:
     runs-on: ubuntu-latest

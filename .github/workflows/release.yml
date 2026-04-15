@@ -8,6 +8,9 @@ on:
     paths:
     - releaseVersion
 
+permissions:
+  contents: write
+
 jobs:
   check:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
