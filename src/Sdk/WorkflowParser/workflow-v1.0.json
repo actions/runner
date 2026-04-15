@@ -496,8 +496,8 @@
     "check-suite-activity": {
       "description": "The types of check suite activity that trigger the workflow. Supported activity types: `completed`.",
       "one-of": [
-         "check-suite-activity-type",
-         "check-suite-activity-types"
+        "check-suite-activity-type",
+        "check-suite-activity-types"
       ]
     },
     "check-suite-activity-types": {
@@ -1865,11 +1865,15 @@
           },
           "security-events": {
             "type": "permission-level-any",
-            "description": "Code scanning and Dependabot alerts."
+            "description": "Code scanning alerts."
           },
           "statuses": {
             "type": "permission-level-any",
             "description": "Commit statuses."
+          },
+          "vulnerability-alerts": {
+            "type": "permission-level-read-or-no-access",
+            "description": "Dependabot alerts."
           }
         }
       }
