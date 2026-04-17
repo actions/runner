@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -19,13 +20,45 @@ namespace GitHub.Runner.Common.Tests.Worker
         private const string TimeoutEnvironmentVariable = "ACTIONS_RUNNER_DAP_CONNECTION_TIMEOUT";
         private const string TunnelConnectTimeoutVariable = "ACTIONS_RUNNER_DAP_TUNNEL_CONNECT_TIMEOUT_SECONDS";
         private DapDebugger _debugger;
+        private TestWebSocketDapBridge _testWebSocketBridge;
 
-        private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
+        private sealed class TestWebSocketDapBridge : RunnerService, IWebSocketDapBridge
+        {
+            private readonly WebSocketDapBridge _inner = new WebSocketDapBridge();
+
+            public int ListenPort => _inner.ListenPort;
+
+            public override void Initialize(IHostContext hostContext)
+            {
+                base.Initialize(hostContext);
+                _inner.Initialize(hostContext);
+            }
+
+            public void Start(int listenPort, int targetPort)
+            {
+                _inner.Start(0, targetPort);
+            }
+
+            public Task ShutdownAsync()
+            {
+                return _inner.ShutdownAsync();
+            }
+        }
+
+        private TestHostContext CreateTestContext(bool enableWebSocketBridge = false, [CallerMemberName] string testName = "")
         {
             var hc = new TestHostContext(this, testName);
             _debugger = new DapDebugger();
+            _testWebSocketBridge = null;
             _debugger.Initialize(hc);
             _debugger.SkipTunnelRelay = true;
+            _debugger.SkipWebSocketBridge = !enableWebSocketBridge;
+            if (enableWebSocketBridge)
+            {
+                _testWebSocketBridge = new TestWebSocketDapBridge();
+                hc.EnqueueInstance<IWebSocketDapBridge>(_testWebSocketBridge);
+            }
+
             return hc;
         }
 
@@ -71,6 +104,14 @@ namespace GitHub.Runner.Common.Tests.Worker
             return client;
         }
 
+        private static async Task<ClientWebSocket> ConnectWebSocketClientAsync(int port)
+        {
+            var client = new ClientWebSocket();
+            client.Options.Proxy = null;
+            await client.ConnectAsync(new Uri($"ws://127.0.0.1:{port}/"), CancellationToken.None);
+            return client;
+        }
+
         private static async Task SendRequestAsync(NetworkStream stream, Request request)
         {
             var json = JsonConvert.SerializeObject(request);
@@ -81,6 +122,14 @@ namespace GitHub.Runner.Common.Tests.Worker
             await stream.WriteAsync(headerBytes, 0, headerBytes.Length);
             await stream.WriteAsync(body, 0, body.Length);
             await stream.FlushAsync();
+        }
+
+        private static async Task SendRequestAsync(WebSocket client, Request request)
+        {
+            var json = JsonConvert.SerializeObject(request);
+            var body = Encoding.UTF8.GetBytes(json);
+
+            await client.SendAsync(new ArraySegment<byte>(body), WebSocketMessageType.Text, endOfMessage: true, CancellationToken.None);
         }
 
         /// <summary>
@@ -139,6 +188,52 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
 
             return Encoding.UTF8.GetString(body);
+        }
+
+        private static async Task<string> ReadWebSocketDataUntilAsync(WebSocket client, TimeSpan timeout, params string[] expectedFragments)
+        {
+            using var cts = new CancellationTokenSource(timeout);
+            var buffer = new byte[4096];
+            var allMessages = new StringBuilder();
+
+            while (true)
+            {
+                using var messageStream = new MemoryStream();
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await client.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        throw new EndOfStreamException("WebSocket closed before expected DAP messages were received.");
+                    }
+
+                    if (result.Count > 0)
+                    {
+                        messageStream.Write(buffer, 0, result.Count);
+                    }
+                }
+                while (!result.EndOfMessage);
+
+                var messageText = Encoding.UTF8.GetString(messageStream.ToArray());
+                allMessages.Append(messageText);
+
+                var text = allMessages.ToString();
+                var containsAllFragments = true;
+                foreach (var fragment in expectedFragments)
+                {
+                    if (!text.Contains(fragment, StringComparison.Ordinal))
+                    {
+                        containsAllFragments = false;
+                        break;
+                    }
+                }
+
+                if (containsAllFragments)
+                {
+                    return text;
+                }
+            }
         }
 
         private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null)
@@ -204,6 +299,84 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _debugger.StartAsync(jobContext.Object);
                 using var client = await ConnectClientAsync(port);
                 Assert.True(client.Connected);
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StartAsyncWithWebSocketBridgeAcceptsInitializeOverWebSocket()
+        {
+            using (CreateTestContext(enableWebSocketBridge: true))
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, GetFreePort());
+                await _debugger.StartAsync(jobContext.Object);
+
+                var bridgePort = _testWebSocketBridge.ListenPort;
+                Assert.NotEqual(0, _debugger.InternalDapPort);
+                Assert.NotEqual(0, bridgePort);
+                Assert.NotEqual(bridgePort, _debugger.InternalDapPort);
+
+                using var client = await ConnectWebSocketClientAsync(bridgePort);
+                await SendRequestAsync(client, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "initialize"
+                });
+
+                var response = await ReadWebSocketDataUntilAsync(
+                    client,
+                    TimeSpan.FromSeconds(5),
+                    "\"type\":\"response\"",
+                    "\"command\":\"initialize\"",
+                    "\"event\":\"initialized\"");
+
+                Assert.Contains("\"success\":true", response);
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StartAsyncWithWebSocketBridgeAcceptsPreUpgradedWebSocketStream()
+        {
+            using (CreateTestContext(enableWebSocketBridge: true))
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, GetFreePort());
+                await _debugger.StartAsync(jobContext.Object);
+
+                var bridgePort = _testWebSocketBridge.ListenPort;
+                Assert.NotEqual(0, _debugger.InternalDapPort);
+                Assert.NotEqual(0, bridgePort);
+                Assert.NotEqual(bridgePort, _debugger.InternalDapPort);
+
+                using var tcpClient = await ConnectClientAsync(bridgePort);
+                using var webSocket = WebSocket.CreateFromStream(
+                    tcpClient.GetStream(),
+                    isServer: false,
+                    subProtocol: null,
+                    keepAliveInterval: TimeSpan.FromSeconds(30));
+
+                await SendRequestAsync(webSocket, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "initialize"
+                });
+
+                var response = await ReadWebSocketDataUntilAsync(
+                    webSocket,
+                    TimeSpan.FromSeconds(5),
+                    "\"type\":\"response\"",
+                    "\"command\":\"initialize\"",
+                    "\"event\":\"initialized\"");
+
+                Assert.Contains("\"success\":true", response);
                 await _debugger.StopAsync();
             }
         }
