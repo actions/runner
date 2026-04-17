@@ -218,7 +218,7 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 if (headers.Count >= _maxHeaderCount)
                 {
@@ -335,7 +335,7 @@ namespace GitHub.Runner.Worker.Dap
                             messageStream.Write(buffer, 0, result.Count);
                         }
                     }
-                    while (!result.EndOfMessage);
+                    while (!result.EndOfMessage && !cancellationToken.IsCancellationRequested);
 
                     if (result.MessageType != WebSocketMessageType.Binary &&
                         result.MessageType != WebSocketMessageType.Text)
