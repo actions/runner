@@ -1877,7 +1877,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         permissionsStr.AssertUnexpectedValue(permissionsStr.Value);
                         break;
                 }
-                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission);
+                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission, includeWorkflows: context.GetFeatures().AllowWorkflowsPermission);
             }
 
             var mapping = token.AssertMapping("permissions");
@@ -1955,6 +1955,24 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         else
                         {
                             context.Error(key, $"The permission 'models' is not allowed");
+                        }
+                        break;
+                    case "workflows":
+                        if (context.GetFeatures().AllowWorkflowsPermission)
+                        {
+                            // Workflows only supports write; downgrade read to none
+                            if (permissionLevel == PermissionLevel.Read)
+                            {
+                                permissions.Workflows = PermissionLevel.NoAccess;
+                            }
+                            else
+                            {
+                                permissions.Workflows = permissionLevel;
+                            }
+                        }
+                        else
+                        {
+                            context.Error(key, $"The permission 'workflows' is not allowed");
                         }
                         break;
                     default:

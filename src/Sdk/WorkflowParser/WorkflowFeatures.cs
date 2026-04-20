@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -42,6 +42,13 @@ namespace GitHub.Actions.WorkflowParser
         public bool AllowModelsPermission { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether users may use the "workflows" permission.
+        /// Used during parsing only.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool AllowWorkflowsPermission { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether the expression function fromJson performs strict JSON parsing.
         /// Used during evaluation only.
         /// </summary>
@@ -67,6 +74,7 @@ namespace GitHub.Actions.WorkflowParser
                 Snapshot = false,           // Default to false since this feature is still in an experimental phase
                 StrictJsonParsing = false,  // Default to false since this is temporary for telemetry purposes only
                 AllowModelsPermission = false, // Default to false since we want this to be disabled for all non-production environments
+                AllowWorkflowsPermission = false, // Default to false; gated by feature flag for controlled rollout
                 AllowServiceContainerCommand = false, // Default to false since this feature is gated by actions_service_container_command
             };
         }
