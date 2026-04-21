@@ -32,7 +32,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                 return;
             }
 
-            var effectiveMax = explicitMax ?? CreatePermissionsFromPolicy(context, permissionsPolicy, includeIdToken: isTrusted, includeModels: context.GetFeatures().AllowModelsPermission);
+            var effectiveMax = explicitMax ?? CreatePermissionsFromPolicy(context, permissionsPolicy, includeIdToken: isTrusted, includeModels: context.GetFeatures().AllowModelsPermission, includeVulnerabilityAlerts: context.GetFeatures().AllowVulnerabilityAlertsPermission);
             
             if (requested.ViolatesMaxPermissions(effectiveMax, out var permissionLevelViolations))
             {
@@ -59,18 +59,19 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             TemplateContext context,
             string permissionsPolicy,
             bool includeIdToken,
-            bool includeModels)
+            bool includeModels,
+            bool includeVulnerabilityAlerts)
         {
             switch (permissionsPolicy)
             {
                 case WorkflowConstants.PermissionsPolicy.LimitedRead:
-                    return new Permissions(PermissionLevel.NoAccess, includeIdToken: false, includeAttestations: false, includeModels: false)
+                    return new Permissions(PermissionLevel.NoAccess, includeIdToken: false, includeAttestations: false, includeModels: false, includeVulnerabilityAlerts: false)
                     {
                         Contents = PermissionLevel.Read,
                         Packages = PermissionLevel.Read,
                     };
                 case WorkflowConstants.PermissionsPolicy.Write:
-                    return new Permissions(PermissionLevel.Write, includeIdToken: includeIdToken, includeAttestations: true, includeModels: includeModels);
+                    return new Permissions(PermissionLevel.Write, includeIdToken: includeIdToken, includeAttestations: true, includeModels: includeModels, includeVulnerabilityAlerts: includeVulnerabilityAlerts);
                 default:
                     throw new ArgumentException($"Unexpected permission policy: '{permissionsPolicy}'");
             }
