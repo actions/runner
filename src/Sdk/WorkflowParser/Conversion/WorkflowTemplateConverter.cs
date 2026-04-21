@@ -1877,7 +1877,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         permissionsStr.AssertUnexpectedValue(permissionsStr.Value);
                         break;
                 }
-                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission);
+                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission, includeVulnerabilityAlerts: context.GetFeatures().AllowVulnerabilityAlertsPermission);
             }
 
             var mapping = token.AssertMapping("permissions");
@@ -1955,6 +1955,23 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         else
                         {
                             context.Error(key, $"The permission 'models' is not allowed");
+                        }
+                        break;
+                    case "vulnerability-alerts":
+                        if (context.GetFeatures().AllowVulnerabilityAlertsPermission)
+                        {
+                            if (permissionLevel == PermissionLevel.Write)
+                            {
+                                permissions.VulnerabilityAlerts = PermissionLevel.Read;
+                            }
+                            else
+                            {
+                                permissions.VulnerabilityAlerts = permissionLevel;
+                            }
+                        }
+                        else
+                        {
+                            context.Error(key, $"The permission 'vulnerability-alerts' is not allowed");
                         }
                         break;
                     default:
