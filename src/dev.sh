@@ -190,7 +190,7 @@ function package ()
         tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
         slim_tar_name="${runner_slim_pkg_name}.tar.zst"
         echo "Creating $slim_tar_name in ${LAYOUT_DIR}"
-        tar -cf - -C "${LAYOUT_DIR}" --exclude="externals" . | zstd -19 > "${slim_tar_name}"
+        tar -cf "${slim_tar_name}" -C "${LAYOUT_DIR}" --zstd --options zstd:compression-level=19 --exclude="externals" .
     elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
         zip_name="${runner_pkg_name}.zip"
         echo "Convert ${LAYOUT_DIR} to Windows style path"
@@ -198,9 +198,9 @@ function package ()
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
         $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
-        slim_zip_name="${runner_slim_pkg_name}.zip"
-        echo "Creating $slim_zip_name in ${window_path}"
-        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Get-ChildItem -Path \"${window_path}\" -Exclude \"externals\" | Compress-Archive -DestinationPath \"${slim_zip_name}\""
+        slim_tar_name="${runner_slim_pkg_name}.tar.zst"
+        echo "Creating $slim_tar_name in ${window_path}"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "tar -cf \"${slim_tar_name}\" -C \"${window_path}\" --zstd --options zstd:compression-level=19 --exclude=\"externals\" ."
     fi
 
     popd > /dev/null
