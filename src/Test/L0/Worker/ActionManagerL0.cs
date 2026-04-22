@@ -3283,5 +3283,141 @@ runs:
                 Directory.Delete(_workFolder, recursive: true);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task GetDownloadInfoAsync_PropagatesDependencies_WhenPresent()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+
+                // Set RunServiceJob so we hit the Launch path
+                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, "RunnerJobRequest");
+
+                // Populate lockfile dependencies
+                _ec.Object.Global.ActionsDependencies = new List<string>
+                {
+                    "github.com/actions/checkout@v4:sha256-abc123",
+                    "github.com/actions/setup-node@v4:sha256-def456"
+                };
+
+                // Capture the ActionReferenceList passed to Launch
+                ActionReferenceList capturedList = null;
+                _launchServer
+                    .Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+                    .Callback<Guid, Guid, ActionReferenceList, CancellationToken, bool>((planId, jobId, list, ct, display) => capturedList = list)
+                    .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken ct, bool display) =>
+                    {
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actionStep = new Pipelines.ActionStep()
+                {
+                    Name = "action",
+                    Id = Guid.NewGuid(),
+                    Reference = new Pipelines.RepositoryPathReference()
+                    {
+                        Name = "actions/checkout",
+                        Ref = "v4",
+                        RepositoryType = "GitHub"
+                    }
+                };
+
+                // Act
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
+
+                // Assert
+                Assert.NotNull(capturedList);
+                Assert.NotNull(capturedList.Dependencies);
+                Assert.Equal(2, capturedList.Dependencies.Count);
+                Assert.Equal("github.com/actions/checkout@v4:sha256-abc123", capturedList.Dependencies[0]);
+                Assert.Equal("github.com/actions/setup-node@v4:sha256-def456", capturedList.Dependencies[1]);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task GetDownloadInfoAsync_OmitsDependencies_WhenEmpty()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+
+                // Set RunServiceJob so we hit the Launch path
+                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, "RunnerJobRequest");
+
+                // No dependencies set (default empty list from GlobalContext)
+
+                // Capture the ActionReferenceList passed to Launch
+                ActionReferenceList capturedList = null;
+                _launchServer
+                    .Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+                    .Callback<Guid, Guid, ActionReferenceList, CancellationToken, bool>((planId, jobId, list, ct, display) => capturedList = list)
+                    .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken ct, bool display) =>
+                    {
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actionStep = new Pipelines.ActionStep()
+                {
+                    Name = "action",
+                    Id = Guid.NewGuid(),
+                    Reference = new Pipelines.RepositoryPathReference()
+                    {
+                        Name = "actions/checkout",
+                        Ref = "v4",
+                        RepositoryType = "GitHub"
+                    }
+                };
+
+                // Act
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
+
+                // Assert
+                Assert.NotNull(capturedList);
+                Assert.Null(capturedList.Dependencies);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
     }
 }
