@@ -291,8 +291,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-slim-win-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-slim-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-slim-win-x64-${{ steps.releaseNote.outputs.version }}.tar.zst
+        asset_name: actions-runner-slim-win-x64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (win-arm64)
@@ -301,8 +301,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-slim-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-slim-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-slim-win-arm64-${{ steps.releaseNote.outputs.version }}.tar.zst
+        asset_name: actions-runner-slim-win-arm64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-x64)
