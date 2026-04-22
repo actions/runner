@@ -880,16 +880,10 @@ namespace GitHub.Runner.Worker
                 return new Dictionary<string, WebApi.ActionDownloadInfo>();
             }
 
-            var propagateDeps = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.PropagateDependencyPins) ?? false;
-            IList<string> dependencies = null;
-            if (propagateDeps)
-            {
-                var deps = executionContext.Global.ActionsDependencies;
-                if (deps != null && deps.Count > 0)
-                {
-                    dependencies = deps;
-                }
-            }
+            // Pass lockfile dependencies to Launch when present, so it can
+            // perform ref-scoped policy matching with the original refs.
+            var deps = executionContext.Global.ActionsDependencies;
+            IList<string> dependencies = (deps != null && deps.Count > 0) ? deps : null;
 
             // Resolve download info
             var launchServer = HostContext.GetService<ILaunchServer>();
