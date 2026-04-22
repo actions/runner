@@ -200,7 +200,7 @@ function package ()
         $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
         slim_zip_name="${runner_slim_pkg_name}.zip"
         echo "Creating $slim_zip_name in ${window_path}"
-        Get-ChildItem -Path "${window_path}" -Exclude "externals" | Compress-Archive -DestinationPath "${slim_zip_name}"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Get-ChildItem -Path \"${window_path}\" -Exclude \"externals\" | Compress-Archive -DestinationPath \"${slim_zip_name}\""
     fi
 
     popd > /dev/null
