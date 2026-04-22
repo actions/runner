@@ -525,6 +525,17 @@ namespace GitHub.Runner.Worker
                 });
 
                 Global.StepsResult.Add(stepResult);
+
+                OTelStepTracer.RecordStepCompletion(
+                    stepName: _record.Name,
+                    stepNumber: _record.Order,
+                    startTime: _record.StartTime,
+                    endTime: _record.FinishTime,
+                    conclusion: _record.Result,
+                    stepType: StepTelemetry?.Type,
+                    actionName: StepTelemetry?.Action,
+                    actionRef: StepTelemetry?.Ref,
+                    context: this);
             }
 
             if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
