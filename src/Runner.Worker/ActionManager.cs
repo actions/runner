@@ -880,6 +880,17 @@ namespace GitHub.Runner.Worker
                 return new Dictionary<string, WebApi.ActionDownloadInfo>();
             }
 
+            var propagateDeps = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.PropagateDependencyPins) ?? false;
+            IList<string> dependencies = null;
+            if (propagateDeps)
+            {
+                var deps = executionContext.Global.ActionsDependencies;
+                if (deps != null && deps.Count > 0)
+                {
+                    dependencies = deps;
+                }
+            }
+
             // Resolve download info
             var launchServer = HostContext.GetService<ILaunchServer>();
             var jobServer = HostContext.GetService<IJobServer>();
@@ -891,7 +902,7 @@ namespace GitHub.Runner.Worker
                     if (MessageUtil.IsRunServiceJob(executionContext.Global.Variables.Get(Constants.Variables.System.JobRequestType)))
                     {
                         var displayHelpfulActionsDownloadErrors = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DisplayHelpfulActionsDownloadErrors) ?? false;
-                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken, displayHelpfulActionsDownloadErrors);
+                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences, Dependencies = dependencies }, executionContext.CancellationToken, displayHelpfulActionsDownloadErrors);
                     }
                     else
                     {
