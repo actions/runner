@@ -3164,7 +3164,7 @@ runs:
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
-            var variables = new Dictionary<string, VariableValue>() {};
+            var variables = new Dictionary<string, VariableValue>();
             _ec.Object.Global.Variables = new Variables(_hc, variables);
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
