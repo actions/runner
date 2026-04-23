@@ -1452,6 +1452,113 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_DeduplicatesCaseInsensitiveActionReferences()
+        {
+            // Verifies that action references differing only by owner/repo casing
+            // are deduplicated and resolved only once.
+            // Regression test for https://github.com/actions/runner/issues/3731
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
+            try
+            {
+                //Arrange
+                Setup();
+                // Each action step with pre+post needs 2 IActionRunner instances (pre + post)
+                for (int i = 0; i < 6; i++)
+                {
+                    _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                }
+
+                var allResolvedKeys = new List<string>();
+                _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                    .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                    {
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            allResolvedKeys.Add(key);
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action1",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "RepositoryActionWithWrapperActionfile_Node",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action2",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "tingluohuang/RUNNER_L0",
+                            Ref = "RepositoryActionWithWrapperActionfile_Node",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action3",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TINGLUOHUANG/Runner_L0",
+                            Ref = "RepositoryActionWithWrapperActionfile_Node",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                // All three references should deduplicate to a single resolve call
+                Assert.Equal(1, allResolvedKeys.Count);
+
+                // Verify all actions are usable: the download went to one directory and
+                // reference normalization ensures all three steps find the action there.
+                // The completed watermark proves the download + prepare succeeded.
+                Assert.True(File.Exists(Path.Combine(
+                    _hc.GetDirectory(WellKnownDirectory.Actions),
+                    "TingluoHuang/runner_L0",
+                    "RepositoryActionWithWrapperActionfile_Node.completed")));
+
+                // Verify the references were normalized to the canonical casing
+                foreach (var action in actions)
+                {
+                    var repoRef = action.Reference as Pipelines.RepositoryPathReference;
+                    Assert.Equal("TingluoHuang/runner_L0", repoRef.Name);
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_MultipleTopLevelActions_BatchesResolution()
         {
             // Verifies that multiple independent actions at depth 0 are

@@ -369,6 +369,9 @@ namespace GitHub.Runner.Worker
                 telemetry = jobContext.Global.JobTelemetry.Select(x => new Telemetry { Type = x.Type.ToString(), Message = x.Message, }).ToList();
             }
 
+            // Flush OTel step spans before reporting job completion
+            await OTelStepTracer.FlushAsync(default);
+
             Trace.Info($"Raising job completed against run service");
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -449,6 +452,9 @@ namespace GitHub.Runner.Worker
 
             // Make sure we don't submit secrets as telemetry
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
+
+            // Flush OTel step spans before reporting job completion
+            await OTelStepTracer.FlushAsync(default);
 
             Trace.Info($"Raising job completed event");
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.Global.StepsTelemetry, jobContext.Global.JobTelemetry);
