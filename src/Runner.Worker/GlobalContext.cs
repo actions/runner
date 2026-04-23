@@ -38,5 +38,6 @@ namespace GitHub.Runner.Worker
         public HashSet<string> DeprecatedNode20Actions { get; set; }
         public HashSet<string> UpgradedToNode24Actions { get; set; }
         public HashSet<string> Arm32Node20Actions { get; set; }
+        public IList<String> ActionsDependencies { get; set; }
     }
 }
