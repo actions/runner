@@ -246,61 +246,17 @@ namespace GitHub.Runner.Listener
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
                     // wait for worker process exit then return.
                     await jobDispatch.WorkerDispatch;
-
-                    return;
                 }
-
-                if (this._isRunServiceJob)
+                else if (this._isRunServiceJob)
                 {
                     Trace.Error($"We are not yet checking the state of jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    return;
-                }
 
-                // based on the current design, server will only send one job for a given runner at a time.
-                // if the runner received a new job request while a previous job request is still running, this typically indicates two situations
-                // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the jobrequest
-                //    properly but thinks it still owns the job reqest, however the server has already abandoned the jobrequest.
-                // 2. a server bug or design change that allowed the server to send more than one job request to an given runner that hasn't finished
-                //.   a previous job request.
-                var runnerServer = HostContext.GetService<IRunnerServer>();
-                TaskAgentJobRequest request = null;
-                try
-                {
-                    request = await runnerServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
-                }
-                catch (TaskAgentJobNotFoundException ex)
-                {
-                    Trace.Error($"Catch job-not-found exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
-                    Trace.Error(ex);
-                    jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    // make sure worker process exits before we return, otherwise we might leave an orphan worker process behind.
-                    await jobDispatch.WorkerDispatch;
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    // we can't even query for the jobrequest from server, something totally busted, stop runner/worker.
-                    Trace.Error($"Catch exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
-                    Trace.Error(ex);
-
-                    jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    // make sure the worker process exits before we rethrow, otherwise we might leave orphan worker process behind.
-                    await jobDispatch.WorkerDispatch;
-
-                    // rethrow original exception
-                    throw;
-                }
-
-                if (request.Result != null)
-                {
-                    // job request has been finished, the server already has the result.
-                    // this means the runner is busted since it is still running that request.
-                    // cancel the zombie worker, run next job request.
-                    Trace.Error($"Received job request while previous job {jobDispatch.JobId} still running on worker. Cancel the previous job since the job request have been finished on server side with result: {request.Result.Value}.");
-                    jobDispatch.WorkerCancellationTokenSource.Cancel();
-
-                    // wait 45 sec for worker to finish.
+                    // Wait for the previous worker process to fully exit (including
+                    // TempDirectoryManager cleanup) before letting the new worker
+                    // start. Without this wait the exiting worker's _temp cleanup
+                    // races with the new worker and deletes files such as
+                    // _runner_file_commands/* out from under the active job. (#4357)
                     Task completedTask = await Task.WhenAny(jobDispatch.WorkerDispatch, Task.Delay(TimeSpan.FromSeconds(45)));
                     if (completedTask != jobDispatch.WorkerDispatch)
                     {
@@ -311,9 +267,64 @@ namespace GitHub.Runner.Listener
                 }
                 else
                 {
-                    // something seriously wrong on server side. stop runner from continue running.
-                    // no need to localize the exception string should never happen.
-                    throw new InvalidOperationException($"Server send a new job request while the previous job request {jobDispatch.JobId} haven't finished.");
+                    // based on the current design, server will only send one job for a given runner at a time.
+                    // if the runner received a new job request while a previous job request is still running, this typically indicates two situations
+                    // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the jobrequest
+                    //    properly but thinks it still owns the job reqest, however the server has already abandoned the jobrequest.
+                    // 2. a server bug or design change that allowed the server to send more than one job request to an given runner that hasn't finished
+                    //.   a previous job request.
+                    var runnerServer = HostContext.GetService<IRunnerServer>();
+                    TaskAgentJobRequest request = null;
+                    try
+                    {
+                        request = await runnerServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
+                    }
+                    catch (TaskAgentJobNotFoundException ex)
+                    {
+                        Trace.Error($"Catch job-not-found exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
+                        Trace.Error(ex);
+                        jobDispatch.WorkerCancellationTokenSource.Cancel();
+                        // make sure worker process exits before we return, otherwise we might leave an orphan worker process behind.
+                        await jobDispatch.WorkerDispatch;
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        // we can't even query for the jobrequest from server, something totally busted, stop runner/worker.
+                        Trace.Error($"Catch exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
+                        Trace.Error(ex);
+
+                        jobDispatch.WorkerCancellationTokenSource.Cancel();
+                        // make sure the worker process exits before we rethrow, otherwise we might leave orphan worker process behind.
+                        await jobDispatch.WorkerDispatch;
+
+                        // rethrow original exception
+                        throw;
+                    }
+
+                    if (request.Result != null)
+                    {
+                        // job request has been finished, the server already has the result.
+                        // this means the runner is busted since it is still running that request.
+                        // cancel the zombie worker, run next job request.
+                        Trace.Error($"Received job request while previous job {jobDispatch.JobId} still running on worker. Cancel the previous job since the job request have been finished on server side with result: {request.Result.Value}.");
+                        jobDispatch.WorkerCancellationTokenSource.Cancel();
+
+                        // wait 45 sec for worker to finish.
+                        Task completedTask = await Task.WhenAny(jobDispatch.WorkerDispatch, Task.Delay(TimeSpan.FromSeconds(45)));
+                        if (completedTask != jobDispatch.WorkerDispatch)
+                        {
+                            // at this point, the job execution might encounter some dead lock and even not able to be cancelled.
+                            // no need to localize the exception string should never happen.
+                            throw new InvalidOperationException($"Job dispatch process for {jobDispatch.JobId} has encountered unexpected error, the dispatch task is not able to be cancelled within 45 seconds.");
+                        }
+                    }
+                    else
+                    {
+                        // something seriously wrong on server side. stop runner from continue running.
+                        // no need to localize the exception string should never happen.
+                        throw new InvalidOperationException($"Server send a new job request while the previous job request {jobDispatch.JobId} haven't finished.");
+                    }
                 }
             }
 

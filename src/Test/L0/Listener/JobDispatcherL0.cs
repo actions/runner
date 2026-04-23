@@ -745,6 +745,89 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
+        // Regression test for https://github.com/actions/runner/issues/4357.
+        //
+        // For run-service jobs, the previous EnsureDispatchFinished implementation
+        // cancelled the running worker and immediately returned without awaiting
+        // the worker process exit. This let the new Worker spawn while the old
+        // Worker was still running TempDirectoryManager.CleanupTempDirectory(),
+        // which then wiped _runner_file_commands/* out from under the new job.
+        //
+        // EnsureDispatchFinished must now await the previous WorkerDispatch task
+        // before returning so the new dispatch only proceeds once the previous
+        // worker (and its temp cleanup) has finished.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void EnsureDispatchFinishedAwaitsPreviousWorkerForRunServiceJob()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings { PoolId = 1 });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+                EnableRunServiceJobForJobDispatcher(jobDispatcher);
+
+                // Build a previous-job WorkerDispatcher whose worker process simulates
+                // a slow shutdown (representing TempDirectoryManager.CleanupTempDirectory
+                // running). We control completion via a TaskCompletionSource.
+                var workerDispatcherType = typeof(JobDispatcher).GetNestedType("WorkerDispatcher", BindingFlags.NonPublic);
+                Assert.NotNull(workerDispatcherType);
+                var ctor = workerDispatcherType.GetConstructor(
+                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance,
+                    null,
+                    new[] { typeof(Guid), typeof(long) },
+                    null);
+                Assert.NotNull(ctor);
+                object prev = null;
+                try
+                {
+                    prev = ctor.Invoke(new object[] { Guid.NewGuid(), (long)42 });
+
+                    var workerExitTcs = new TaskCompletionSource<int>();
+                    workerDispatcherType.GetProperty("WorkerDispatch").SetValue(prev, workerExitTcs.Task);
+
+                    var ensureDispatchFinishedMethod = typeof(JobDispatcher).GetMethod(
+                        "EnsureDispatchFinished",
+                        BindingFlags.NonPublic | BindingFlags.Instance);
+                    Assert.NotNull(ensureDispatchFinishedMethod);
+
+                    var ensureTask = (Task)ensureDispatchFinishedMethod.Invoke(jobDispatcher, new object[] { prev, false });
+
+                    // Cancellation should already have been requested on the previous worker.
+                    var cts = (CancellationTokenSource)workerDispatcherType
+                        .GetProperty("WorkerCancellationTokenSource")
+                        .GetValue(prev);
+                    Assert.True(cts.IsCancellationRequested,
+                        "EnsureDispatchFinished should cancel the previous worker for run-service jobs.");
+
+                    // EnsureDispatchFinished MUST NOT complete until the previous worker exits.
+                    // Give the continuation a chance to run, then assert it's still pending.
+                    await Task.Delay(50);
+                    Assert.False(ensureTask.IsCompleted,
+                        "EnsureDispatchFinished must wait for the previous worker process to exit (including temp cleanup) before returning.");
+
+                    // Simulate the previous worker (and its TempDirectoryManager cleanup) finishing.
+                    workerExitTcs.SetResult(0);
+
+                    // Now EnsureDispatchFinished should complete in a timely fashion.
+                    var completed = await Task.WhenAny(ensureTask, Task.Delay(TimeSpan.FromSeconds(10)));
+                    Assert.Same(ensureTask, completed);
+                    await ensureTask;
+                }
+                finally
+                {
+                    if (prev is IDisposable d)
+                    {
+                        d.Dispose();
+                    }
+                }
+            }
+        }
+
         private static void EnableRunServiceJobForJobDispatcher(JobDispatcher jobDispatcher)
         {
             // Set the value of the _isRunServiceJob field to true
