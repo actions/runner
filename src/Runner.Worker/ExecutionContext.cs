@@ -143,6 +143,7 @@ namespace GitHub.Runner.Worker
         private IssueMatcherConfig[] _matchers;
 
         private IPagingLogger _logger;
+        private bool _ownsLogger;
         private IJobServerQueue _jobServerQueue;
 
         private Guid _mainTimelineId;
@@ -411,6 +412,7 @@ namespace GitHub.Runner.Worker
             else
             {
                 child._logger = HostContext.CreateService<IPagingLogger>();
+                child._ownsLogger = true;
                 child._logger.Setup(_mainTimelineId, recordId);
             }
 
@@ -552,7 +554,14 @@ namespace GitHub.Runner.Worker
                 _cancellationTokenSource?.Dispose();
             }
 
-            _logger.End();
+            try
+            {
+                _logger.End();
+            }
+            finally
+            {
+                DisposeOwnedLogger();
+            }
 
             UpdateGlobalStepsContext();
 
@@ -961,6 +970,7 @@ namespace GitHub.Runner.Worker
 
             // Logger (must be initialized before writing warnings).
             _logger = HostContext.CreateService<IPagingLogger>();
+            _ownsLogger = true;
             _logger.Setup(_mainTimelineId, _record.Id);
 
             // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
@@ -1275,6 +1285,17 @@ namespace GitHub.Runner.Worker
 
             var newGuid = Guid.NewGuid();
             return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
+        }
+
+        private void DisposeOwnedLogger()
+        {
+            if (!_ownsLogger)
+            {
+                return;
+            }
+
+            _logger.Dispose();
+            _ownsLogger = false;
         }
 
         // Sets debug using vars context in case debug variables are not present.
