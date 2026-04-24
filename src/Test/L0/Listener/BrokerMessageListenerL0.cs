@@ -7,6 +7,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
+using GitHub.Services.OAuth;
 using Moq;
 using Xunit;
 
@@ -404,6 +405,87 @@ namespace GitHub.Runner.Common.Tests.Listener
                 // Verify LoadSettings was never called
                 _config.Verify(x => x.LoadSettings(), Times.Never());
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task GetNextMessage_ThrowsNonRetryableOnInvalidClientOAuth()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+
+                var expectedSession = new TaskAgentSession();
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedSession));
+
+                // Simulate "Registration was not found" — OAuth invalid_client error
+                _brokerServer
+                    .Setup(x => x.GetRunnerMessageAsync(
+                        It.IsAny<Guid?>(),
+                        It.IsAny<TaskAgentStatus>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new VssOAuthTokenRequestException("Registration abc-123 was not found.") { Error = "invalid_client" });
+
+                // Act.
+                BrokerMessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(CreateSessionResult.Success, result);
+
+                // Assert — should throw NonRetryableException, not retry forever
+                var ex = await Assert.ThrowsAsync<NonRetryableException>(() => listener.GetNextMessageAsync(tokenSource.Token));
+                Assert.Contains("non-retryable", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+                // Should have been called exactly once (no retries)
+                _brokerServer.Verify(x => x.GetRunnerMessageAsync(
+                    It.IsAny<Guid?>(),
+                    It.IsAny<TaskAgentStatus>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public void ShouldRetryException_ReturnsFalseForInvalidClientOAuth()
+        {
+            // Arrange
+            var brokerServer = new BrokerServer();
+            var oauthEx = new VssOAuthTokenRequestException("Registration abc-123 was not found.") { Error = "invalid_client" };
+
+            // Act & Assert — invalid_client should not be retried
+            Assert.False(brokerServer.ShouldRetryException(oauthEx));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public void ShouldRetryException_ReturnsTrueForOtherOAuthErrors()
+        {
+            // Arrange
+            var brokerServer = new BrokerServer();
+            var oauthEx = new VssOAuthTokenRequestException("Temporary failure") { Error = "server_error" };
+
+            // Act & Assert — other OAuth errors should still be retried
+            Assert.True(brokerServer.ShouldRetryException(oauthEx));
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")

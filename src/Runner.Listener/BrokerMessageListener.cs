@@ -444,11 +444,18 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Non-retriable exception: {ex.Message}");
                 return false;
             }
-            else
+
+            // "invalid_client" means the runner registration has been deleted from the server.
+            // This is permanent — retrying will never succeed.
+            if (ex is VssOAuthTokenRequestException oAuthEx &&
+                string.Equals(oAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
             {
-                Trace.Info($"Retriable exception: {ex.Message}");
-                return true;
+                Trace.Info($"Non-retriable exception: runner registration deleted. {ex.Message}");
+                return false;
             }
+
+            Trace.Info($"Retriable exception: {ex.Message}");
+            return true;
         }
 
         private bool IsSessionCreationExceptionRetriable(Exception ex)
