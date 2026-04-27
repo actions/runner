@@ -875,6 +875,9 @@ namespace GitHub.Runner.Worker
             // File table
             Global.FileTable = new List<String>(message.FileTable ?? new string[0]);
 
+            // Workflow dependencies (lockfile pins)
+            Global.ActionsDependencies = message.ActionsDependencies;
+
             // What type of job request is running (i.e. Run Service vs. pipelines)
             Global.Variables.Set(Constants.Variables.System.JobRequestType, message.MessageType);
 
