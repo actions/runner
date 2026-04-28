@@ -184,7 +184,14 @@ function package ()
 
     pushd "$PACKAGE_DIR" > /dev/null
 
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+    if [[ ("$CURRENT_PLATFORM" == "linux") ]]; then
+        tar_name="${runner_pkg_name}.tar.gz"
+        echo "Creating $tar_name in ${LAYOUT_DIR}"
+        tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
+        slim_tar_name="${runner_slim_pkg_name}.tar.zst"
+        echo "Creating $slim_tar_name in ${LAYOUT_DIR}"
+        tar -cf "${slim_tar_name}" -C "${LAYOUT_DIR}" --use-compress-program="zstd -19" --exclude="externals" .
+    elif [[ ("$CURRENT_PLATFORM" == "darwin") ]]; then
         tar_name="${runner_pkg_name}.tar.gz"
         echo "Creating $tar_name in ${LAYOUT_DIR}"
         tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
@@ -200,7 +207,7 @@ function package ()
         $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
         slim_tar_name="${runner_slim_pkg_name}.tar.zst"
         echo "Creating $slim_tar_name in ${window_path}"
-        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "tar -cf \"${slim_tar_name}\" -C \"${window_path}\" --zstd --options zstd:compression-level=19 --exclude=\"externals\" ."
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "\$env:ZSTD_CLEVEL=\"19\"; tar -cf \"${slim_tar_name}\" -C \"${window_path}\" --zstd --exclude=\"externals\" ."
     fi
 
     popd > /dev/null
