@@ -285,7 +285,7 @@ jobs:
         asset_content_type: application/octet-stream
 
     # Upload release assets (slim runner packages)
-    - name: Upload Release Asset (win-x64)
+    - name: Upload Release Asset (slim win-x64)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -295,7 +295,7 @@ jobs:
         asset_name: actions-runner-slim-win-x64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (win-arm64)
+    - name: Upload Release Asset (slim win-arm64)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -305,7 +305,7 @@ jobs:
         asset_name: actions-runner-slim-win-arm64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (linux-x64)
+    - name: Upload Release Asset (slim linux-x64)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -315,7 +315,7 @@ jobs:
         asset_name: actions-runner-slim-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (osx-x64)
+    - name: Upload Release Asset (slim osx-x64)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -325,7 +325,7 @@ jobs:
         asset_name: actions-runner-slim-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (osx-arm64)
+    - name: Upload Release Asset (slim osx-arm64)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -335,7 +335,7 @@ jobs:
         asset_name: actions-runner-slim-osx-arm64-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (linux-arm)
+    - name: Upload Release Asset (slim linux-arm)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -345,7 +345,7 @@ jobs:
         asset_name: actions-runner-slim-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.zst
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (linux-arm64)
+    - name: Upload Release Asset (slim linux-arm64)
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
