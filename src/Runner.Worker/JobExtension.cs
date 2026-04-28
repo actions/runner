@@ -76,27 +76,26 @@ namespace GitHub.Runner.Worker
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
 
                     var setting = HostContext.GetService<IConfigurationStore>().GetSettings();
-                    // print runner info for lhr and self-hosted runners, standard uses PoolId 0
-                    if (setting.PoolId > 0)
+                    var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
+                    var credData = File.Exists(credFile) ? IOUtil.LoadObject<CredentialData>(credFile) : null;
+                    // self-hosted runner is the only runner type using OAuth, can be identified via clientId
+                    if (credData != null &&
+                        credData.Data.TryGetValue("clientId", out _))
                     {
                         context.Output($"Runner name: '{setting.AgentName}'");
-                        if (!string.IsNullOrEmpty(setting.PoolName))
+                        // use system variable for group name since self-hosted runners can be renamed
+                        if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
                         {
-                            context.Output($"Runner group name: '{setting.PoolName}'");
+                            context.Output($"Runner group name: '{runnerGroupName.Value}'");
                         }
+                        // print out machine name for self-hosted runner
+                        context.Output($"Machine name: '{Environment.MachineName}'");
                     }
-
-                    var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
-                    if (File.Exists(credFile))
+                    // print runner info for lhr runners, skips standard runners (PoolId = 0)
+                    else if (setting.PoolId > 0 && !string.IsNullOrEmpty(setting.PoolName) && !string.IsNullOrEmpty(setting.AgentName))
                     {
-                        var credData = IOUtil.LoadObject<CredentialData>(credFile);
-                        // self-hosted runner is the only runner type using OAuth, can be identified via clientId
-                        if (credData != null &&
-                            credData.Data.TryGetValue("clientId", out _))
-                        {
-                            // print out machine name for self-hosted runner
-                            context.Output($"Machine name: '{Environment.MachineName}'");
-                        }
+                        context.Output($"Runner name: '{setting.AgentName}'");
+                        context.Output($"Runner group name: '{setting.PoolName}'");
                     }
 
                     var setupInfoFile = HostContext.GetConfigFile(WellKnownConfigFile.SetupInfo);
