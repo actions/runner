@@ -96,7 +96,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             {
                 sourceBranch = refInput;
                 sourceVersion = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Version);  // version get removed when checkout move to repo in the graph
-                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.SHA1))
+                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.CommitHash))
                 {
                     sourceVersion = sourceBranch;
                     // If Ref is a SHA and the repo is self, we need to use github.ref as source branch since it might be refs/pull/*

@@ -14,7 +14,7 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
-    public sealed class RunnerL0
+    public sealed class RunnerL0 : IDisposable
     {
         private Mock<IConfigurationManager> _configurationManager;
         private Mock<IJobNotification> _jobNotification;
@@ -29,6 +29,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ICredentialManager> _credentialManager;
         private Mock<IActionsRunServer> _actionsRunServer;
         private Mock<IRunServer> _runServer;
+        private readonly string _returnJobResultForHosted;
 
         public RunnerL0()
         {
@@ -45,6 +46,14 @@ namespace GitHub.Runner.Common.Tests.Listener
             _credentialManager = new Mock<ICredentialManager>();
             _actionsRunServer = new Mock<IActionsRunServer>();
             _runServer = new Mock<IRunServer>();
+
+            _returnJobResultForHosted = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
+        }
+
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", _returnJobResultForHosted);
         }
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
