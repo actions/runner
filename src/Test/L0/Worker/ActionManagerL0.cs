@@ -25,6 +25,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class ActionManagerL0
     {
         private const string TestDataFolderName = "TestData";
+        private const string Sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         private CancellationTokenSource _ecTokenSource;
         private Mock<IConfigurationStore> _configurationStore;
         private Mock<IDockerCommandManager> _dockerManager;
@@ -334,7 +335,7 @@ runs:
                 await File.WriteAllTextAsync(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact", "action.yml"), Content);
 
 #if OS_WINDOWS
-                ZipFile.CreateFromDirectory(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"), Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact", "master-sha.zip"), CompressionLevel.Fastest, true);
+                ZipFile.CreateFromDirectory(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"), Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact", $"{Sha256}.zip"), CompressionLevel.Fastest, true);
 #else
                 string tar = WhichUtil.Which("tar", require: true, trace: _hc.GetTrace());
 
@@ -360,7 +361,7 @@ runs:
 
                     string cwd = Path.GetDirectoryName(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"));
                     string inputDirectory = Path.GetFileName(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions-download-artifact"));
-                    string archiveFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact", "master-sha.tar.gz");
+                    string archiveFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "action_cache", "actions_download-artifact", $"{Sha256}.tar.gz");
                     int exitCode = await processInvoker.ExecuteAsync(_hc.GetDirectory(WellKnownDirectory.Bin), tar, $"-czf \"{archiveFile}\" -C \"{cwd}\" \"{inputDirectory}\"", null, CancellationToken.None);
                     if (exitCode != 0)
                     {
@@ -368,6 +369,8 @@ runs:
                     }
                 }
 #endif
+                MockResolvedSha("actions/download-artifact", "master", Sha256);
+
                 var actionId = Guid.NewGuid();
                 var actions = new List<Pipelines.ActionStep>
                 {
@@ -516,9 +519,10 @@ runs:
 
                 string actionsArchive = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "actions_archive", "action_checkout");
                 Directory.CreateDirectory(actionsArchive);
-                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", "master-sha"));
-                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", "master-sha", "content"));
-                await File.WriteAllTextAsync(Path.Combine(actionsArchive, "actions_checkout", "master-sha", "content", "action.yml"), Content);
+                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", Sha256));
+                Directory.CreateDirectory(Path.Combine(actionsArchive, "actions_checkout", Sha256, "content"));
+                await File.WriteAllTextAsync(Path.Combine(actionsArchive, "actions_checkout", Sha256, "content", "action.yml"), Content);
+                MockResolvedSha("actions/checkout", "master", Sha256);
                 Environment.SetEnvironmentVariable(Constants.Variables.Agent.ActionArchiveCacheDirectory, actionsArchive);
 
                 //Act
@@ -3147,6 +3151,51 @@ runs:
 #else
             return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
 #endif
+        }
+
+        private void MockResolvedSha(string nameWithOwner, string reference, string resolvedSha)
+        {
+            _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.Is<ActionReferenceList>(actions => actions.Actions.Any(action => action.NameWithOwner == nameWithOwner && action.Ref == reference)), It.IsAny<CancellationToken>()))
+                .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+                {
+                    var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                    foreach (var action in actions.Actions)
+                    {
+                        var key = $"{action.NameWithOwner}@{action.Ref}";
+                        result.Actions[key] = new ActionDownloadInfo
+                        {
+                            NameWithOwner = action.NameWithOwner,
+                            Ref = action.Ref,
+                            ResolvedNameWithOwner = action.NameWithOwner,
+                            ResolvedSha = resolvedSha,
+                            TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                            ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                        };
+                    }
+
+                    return Task.FromResult(result);
+                });
+
+            _launchServer.Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.Is<ActionReferenceList>(actions => actions.Actions.Any(action => action.NameWithOwner == nameWithOwner && action.Ref == reference)), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+                .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken, bool displayHelpfulActionsDownloadErrors) =>
+                {
+                    var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                    foreach (var action in actions.Actions)
+                    {
+                        var key = $"{action.NameWithOwner}@{action.Ref}";
+                        result.Actions[key] = new ActionDownloadInfo
+                        {
+                            NameWithOwner = action.NameWithOwner,
+                            Ref = action.Ref,
+                            ResolvedNameWithOwner = action.NameWithOwner,
+                            ResolvedSha = resolvedSha,
+                            TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                            ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                        };
+                    }
+
+                    return Task.FromResult(result);
+                });
         }
 
         private void Setup([CallerMemberName] string name = "", bool enableComposite = true)
