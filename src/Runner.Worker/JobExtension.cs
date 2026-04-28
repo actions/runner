@@ -76,10 +76,10 @@ namespace GitHub.Runner.Worker
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
 
                     var setting = HostContext.GetService<IConfigurationStore>().GetSettings();
-                    context.Output($"Runner name: '{setting.AgentName}'");
-                    // print runner group for lhr and self-hosted runners, standard uses PoolId 0
+                    // print runner info for lhr and self-hosted runners, standard uses PoolId 0
                     if (setting.PoolId > 0)
                     {
+                        context.Output($"Runner name: '{setting.AgentName}'");
                         context.Output($"Runner group name: '{setting.PoolName}'");
                     }
 
