@@ -43,7 +43,7 @@ namespace GitHub.Runner.Common.Tests.Sdk
         {
             var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
 
-            Assert.Matches(regex.Value, new string((char)97, 40));
+            Assert.Matches(regex.Value, new string('a', 40));
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Common.Tests.Sdk
         {
             var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
 
-            Assert.Matches(regex.Value, new string((char)97, 64));
+            Assert.Matches(regex.Value, new string('a', 64));
         }
 
         [Fact]
@@ -63,7 +63,7 @@ namespace GitHub.Runner.Common.Tests.Sdk
         {
             var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
 
-            Assert.DoesNotMatch(regex.Value, new string((char)97, 63));
+            Assert.DoesNotMatch(regex.Value, new string('a', 63));
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace GitHub.Runner.Common.Tests.Sdk
         {
             var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
 
-            Assert.DoesNotMatch(regex.Value, new string((char)97, 65));
+            Assert.DoesNotMatch(regex.Value, new string('a', 65));
         }
 
         [Fact]
@@ -82,9 +82,20 @@ namespace GitHub.Runner.Common.Tests.Sdk
         public void Matches_Mixed_Case_64_Char()
         {
             var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
-            var value = new string((char)65, 32) + new string((char)98, 32);
+            var value = new string('A', 32) + new string('b', 32);
 
             Assert.Matches(regex.Value, value);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Sdk")]
+        public void Does_Not_Match_Hash_Substring_In_Ref()
+        {
+            var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
+            var value = $"refs/heads/{new string('a', 64)}";
+
+            Assert.DoesNotMatch(regex.Value, value);
         }
 
         [Fact]
