@@ -76,19 +76,22 @@ namespace GitHub.Runner.Worker
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
 
                     var setting = HostContext.GetService<IConfigurationStore>().GetSettings();
+                    context.Output($"Runner name: '{setting.AgentName}'");
+                    // print runner group for lhr and self-hosted runners, standard uses PoolId 0
+                    if (setting.PoolId > 0)
+                    {
+                        context.Output($"Runner group name: '{setting.PoolName}'");
+                    }
+
                     var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
                     if (File.Exists(credFile))
                     {
                         var credData = IOUtil.LoadObject<CredentialData>(credFile);
+                        // self-hosted runner is the only runner type using OAuth, can be identified via clientId  
                         if (credData != null &&
                             credData.Data.TryGetValue("clientId", out var clientId))
                         {
                             // print out HostName for self-hosted runner
-                            context.Output($"Runner name: '{setting.AgentName}'");
-                            if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
-                            {
-                                context.Output($"Runner group name: '{runnerGroupName.Value}'");
-                            }
                             context.Output($"Machine name: '{Environment.MachineName}'");
                         }
                     }
