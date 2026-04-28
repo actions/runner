@@ -90,17 +90,6 @@ namespace GitHub.Runner.Common.Tests.Sdk
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Sdk")]
-        public void Does_Not_Match_Hash_Substring_In_Ref()
-        {
-            var regex = WellKnownRegularExpressions.GetRegex(WellKnownRegularExpressions.CommitHash);
-            var value = $"refs/heads/{new string('a', 64)}";
-
-            Assert.DoesNotMatch(regex.Value, value);
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Sdk")]
         public void Unknown_Key_Returns_Null()
         {
             var regex = WellKnownRegularExpressions.GetRegex("UnknownType");

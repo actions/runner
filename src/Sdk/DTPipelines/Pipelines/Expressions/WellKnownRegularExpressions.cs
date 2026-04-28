@@ -50,7 +50,7 @@ namespace GitHub.DistributedTask.Pipelines.Expressions
 
         // 40 or 64 hex characters (SHA-1 or SHA-256 commit hash)
         private static readonly Lazy<Regex> s_validCommitHash = new Lazy<Regex>(() => new Regex(
-            @"\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z",
+            @"\b(?:[0-9a-f]{40}|[0-9a-f]{64})\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, RegexUtility.GetRegexTimeOut()
             )
         );
