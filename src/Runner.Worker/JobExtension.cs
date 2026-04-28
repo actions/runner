@@ -80,18 +80,21 @@ namespace GitHub.Runner.Worker
                     if (setting.PoolId > 0)
                     {
                         context.Output($"Runner name: '{setting.AgentName}'");
-                        context.Output($"Runner group name: '{setting.PoolName}'");
+                        if (!string.IsNullOrEmpty(setting.PoolName))
+                        {
+                            context.Output($"Runner group name: '{setting.PoolName}'");
+                        }
                     }
 
                     var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
                     if (File.Exists(credFile))
                     {
                         var credData = IOUtil.LoadObject<CredentialData>(credFile);
-                        // self-hosted runner is the only runner type using OAuth, can be identified via clientId  
+                        // self-hosted runner is the only runner type using OAuth, can be identified via clientId
                         if (credData != null &&
-                            credData.Data.TryGetValue("clientId", out var clientId))
+                            credData.Data.TryGetValue("clientId", out _))
                         {
-                            // print out HostName for self-hosted runner
+                            // print out machine name for self-hosted runner
                             context.Output($"Machine name: '{Environment.MachineName}'");
                         }
                     }
