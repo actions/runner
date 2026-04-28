@@ -97,7 +97,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
             {
                 sourceBranch = refInput;
                 sourceVersion = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Version);  // version get removed when checkout move to repo in the graph
-                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.SHA1))
+                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.CommitHash))
                 {
                     sourceVersion = sourceBranch;
 
