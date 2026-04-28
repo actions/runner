@@ -385,9 +385,14 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.Externals:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        Constants.Path.ExternalsDirectory);
+                    path = Environment.GetEnvironmentVariable("RUNNER_EXTERNALSDIRECTORY");
+                    
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        path = Path.Combine(
+                            GetDirectory(WellKnownDirectory.Root),
+                            Constants.Path.ExternalsDirectory);
+                    }
                     break;
 
                 case WellKnownDirectory.Root:
