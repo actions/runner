@@ -121,6 +121,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                             {
                                 signalWorkerComplete.Release();
                                 await Task.Delay(2000, hc.RunnerShutdownToken);
+                                return null;
                             }
 
                             return messages.Dequeue();
