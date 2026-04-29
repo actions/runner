@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
@@ -15,7 +14,7 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
-    public sealed class RunnerL0
+    public sealed class RunnerL0 : IDisposable
     {
         private Mock<IConfigurationManager> _configurationManager;
         private Mock<IJobNotification> _jobNotification;
@@ -31,8 +30,17 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IActionsRunServer> _actionsRunServer;
         private Mock<IRunServer> _runServer;
 
+        // ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED is set on GitHub-hosted runners and
+        // silently forces runOnce=true, which breaks tests that expect non-ephemeral behaviour
+        // or assert a specific return code. Clear it for the entire test class and restore on
+        // Dispose so individual tests remain environment-independent.
+        private readonly string _savedJobResultEnvVar;
+
         public RunnerL0()
         {
+            _savedJobResultEnvVar = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
+
             _configurationManager = new Mock<IConfigurationManager>();
             _jobNotification = new Mock<IJobNotification>();
             _messageListener = new Mock<IMessageListener>();
@@ -46,6 +54,11 @@ namespace GitHub.Runner.Common.Tests.Listener
             _credentialManager = new Mock<ICredentialManager>();
             _actionsRunServer = new Mock<IActionsRunServer>();
             _runServer = new Mock<IRunServer>();
+        }
+
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", _savedJobResultEnvVar);
         }
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
@@ -68,114 +81,102 @@ namespace GitHub.Runner.Common.Tests.Listener
         //process 2 new job messages, and one cancel message
         public async Task TestRunAsync()
         {
-            // Clear the hosted-runner env var so that this non-ephemeral test runs with runOnce=false
-            // regardless of the environment (e.g. ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED is set on
-            // GitHub-hosted runners which would otherwise force runOnce=true).
-            var savedEnvVar = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
-            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
-            try
+            using (var hc = new TestHostContext(this))
             {
-                using (var hc = new TestHostContext(this))
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+                runner.Initialize(hc);
+                var settings = new RunnerSettings
                 {
-                    //Arrange
-                    var runner = new Runner.Listener.Runner();
-                    hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
-                    hc.SetSingleton<IJobNotification>(_jobNotification.Object);
-                    hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                    hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                    hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
-                    runner.Initialize(hc);
-                    var settings = new RunnerSettings
-                    {
-                        PoolId = 43242
-                    };
+                    PoolId = 43242
+                };
 
-                    var message = new TaskAgentMessage()
-                    {
-                        Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
-                        MessageId = 4234,
-                        MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
-                    };
+                var message = new TaskAgentMessage()
+                {
+                    Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
+                    MessageId = 4234,
+                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
+                };
 
-                    var messages = new Queue<TaskAgentMessage>();
-                    messages.Enqueue(message);
-                    var signalWorkerComplete = new SemaphoreSlim(0, 1);
-                    _configurationManager.Setup(x => x.LoadSettings())
-                        .Returns(settings);
-                    _configurationManager.Setup(x => x.IsConfigured())
-                        .Returns(true);
-                    _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                        .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
-                    _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
-                        .Returns(async () =>
+                var messages = new Queue<TaskAgentMessage>();
+                messages.Enqueue(message);
+                var signalWorkerComplete = new SemaphoreSlim(0, 1);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                    .Returns(async () =>
+                        {
+                            if (0 == messages.Count)
                             {
-                                if (0 == messages.Count)
-                                {
-                                    signalWorkerComplete.Release();
-                                    await Task.Delay(2000, hc.RunnerShutdownToken);
-                                }
+                                signalWorkerComplete.Release();
+                                await Task.Delay(2000, hc.RunnerShutdownToken);
+                            }
 
-                                return messages.Dequeue();
-                            });
-                    _messageListener.Setup(x => x.DeleteSessionAsync())
-                        .Returns(Task.CompletedTask);
-                    _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
-                        .Returns(Task.CompletedTask);
-                    _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()))
-                        .Callback(() =>
-                        {
-
+                            return messages.Dequeue();
                         });
-                    _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
-                        .Callback(() =>
-                        {
+                _messageListener.Setup(x => x.DeleteSessionAsync())
+                    .Returns(Task.CompletedTask);
+                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                    .Returns(Task.CompletedTask);
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()))
+                    .Callback(() =>
+                    {
 
-                        });
+                    });
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                    .Callback(() =>
+                    {
 
-                    hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+                    });
 
-                    _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                Task runnerTask = runner.ExecuteCommand(command);
+
+                //Assert
+                //wait for the runner to run one job
+                if (!await signalWorkerComplete.WaitAsync(2000))
+                {
+                    Assert.Fail($"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
+                }
+                else
+                {
                     //Act
-                    var command = new CommandSettings(hc, new string[] { "run" });
-                    Task runnerTask = runner.ExecuteCommand(command);
+                    hc.ShutdownRunner(ShutdownReason.UserCancelled); //stop Runner
 
                     //Assert
-                    //wait for the runner to run one job
-                    if (!await signalWorkerComplete.WaitAsync(2000))
-                    {
-                        Assert.Fail($"{nameof(_messageListener.Object.GetNextMessageAsync)} was not invoked.");
-                    }
-                    else
-                    {
-                        //Act
-                        hc.ShutdownRunner(ShutdownReason.UserCancelled); //stop Runner
+                    Task[] taskToWait2 = { runnerTask, Task.Delay(2000) };
+                    //wait for the runner to exit
+                    await Task.WhenAny(taskToWait2);
 
-                        //Assert
-                        Task[] taskToWait2 = { runnerTask, Task.Delay(2000) };
-                        //wait for the runner to exit
-                        await Task.WhenAny(taskToWait2);
+                    Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
+                    Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
+                    Assert.True(runnerTask.IsCanceled);
 
-                        Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
-                        Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                        Assert.True(runnerTask.IsCanceled);
+                    _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Once(),
+                         $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
+                    _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+                    _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                    _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
+                    _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeastOnce());
 
-                        _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Once(),
-                             $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
-                        _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
-                        _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
-                        _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
-                        _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeastOnce());
-
-                        // verify that we didn't try to delete local settings file (since we're not ephemeral)
-                        _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
-                    }
+                    // verify that we didn't try to delete local settings file (since we're not ephemeral)
+                    _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
                 }
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", savedEnvVar);
             }
         }
 
@@ -337,12 +338,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.False(runnerTask.IsFaulted, runnerTask.Exception?.ToString());
                 if (runnerTask.IsCompleted)
                 {
-                    int returnCode = await runnerTask;
-                    // Accept Success (0) or TaskResult.Succeeded offset (100) - the latter occurs when
-                    // ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED is set in the hosted runner environment.
-                    Assert.True(
-                        returnCode == Constants.Runner.ReturnCode.Success || returnCode == TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded),
-                        $"Expected return code {Constants.Runner.ReturnCode.Success} or {TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded)}, but got {returnCode}");
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
@@ -446,10 +442,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
                 if (runnerTask.IsCompleted)
                 {
-                    int returnCode = await runnerTask;
-                    Assert.True(
-                        returnCode == Constants.Runner.ReturnCode.Success || returnCode == TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded),
-                        $"Expected return code {Constants.Runner.ReturnCode.Success} or {TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded)}, but got {returnCode}");
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
@@ -770,10 +763,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
                 if (runnerTask.IsCompleted)
                 {
-                    int returnCode = await runnerTask;
-                    Assert.True(
-                        returnCode == Constants.Runner.ReturnCode.Success || returnCode == TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded),
-                        $"Expected return code {Constants.Runner.ReturnCode.Success} or {TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded)}, but got {returnCode}");
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once());
@@ -874,10 +864,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
                 if (runnerTask.IsCompleted)
                 {
-                    int returnCode = await runnerTask;
-                    Assert.True(
-                        returnCode == Constants.Runner.ReturnCode.Success || returnCode == TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded),
-                        $"Expected return code {Constants.Runner.ReturnCode.Success} or {TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded)}, but got {returnCode}");
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once());
@@ -997,10 +984,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
                 if (runnerTask.IsCompleted)
                 {
-                    int returnCode = await runnerTask;
-                    Assert.True(
-                        returnCode == Constants.Runner.ReturnCode.Success || returnCode == TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded),
-                        $"Expected return code {Constants.Runner.ReturnCode.Success} or {TaskResultUtil.TranslateToReturnCode(TaskResult.Succeeded)}, but got {returnCode}");
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once());
