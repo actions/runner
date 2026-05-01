@@ -20,7 +20,7 @@ namespace GitHub.DistributedTask.Logging
 
         // Base64 is 6 bits -> char
         // A byte is 8 bits
-        // When end user doing somthing like base64(user:password)
+        // When end user doing something like base64(user:password)
         // The length of the leading content will cause different base64 encoding result on the password
         // So we add base64(value shifted 1 and two bytes) as secret as well. 
         //    B1         B2      B3                    B4      B5     B6     B7
