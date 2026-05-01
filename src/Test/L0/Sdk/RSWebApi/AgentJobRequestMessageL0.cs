@@ -119,6 +119,48 @@ public sealed class AgentJobRequestMessageL0
         Assert.Null(recoveredMessage.DebuggerTunnel);
     }
 
+    [Fact]
+    [Trait("Level", "L0")]
+    [Trait("Category", "Common")]
+    public void VerifyActionsDependenciesDeserialization_WithDependencies()
+    {
+        // Arrange
+        var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage));
+        string json = DoubleQuotify("{'dependencies': ['actions/checkout@v4:sha256-abc123', 'actions/setup-node@v4:sha256-def456']}");
+
+        // Act
+        using var stream = new MemoryStream();
+        stream.Write(Encoding.UTF8.GetBytes(json));
+        stream.Position = 0;
+        var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
+
+        // Assert
+        Assert.NotNull(recoveredMessage);
+        Assert.Equal(2, recoveredMessage.ActionsDependencies.Count);
+        Assert.Equal("actions/checkout@v4:sha256-abc123", recoveredMessage.ActionsDependencies[0]);
+        Assert.Equal("actions/setup-node@v4:sha256-def456", recoveredMessage.ActionsDependencies[1]);
+    }
+
+    [Fact]
+    [Trait("Level", "L0")]
+    [Trait("Category", "Common")]
+    public void VerifyActionsDependenciesDeserialization_DefaultsToEmpty()
+    {
+        // Arrange
+        var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage));
+        string json = DoubleQuotify("{'messageType': 'PipelineAgentJobRequest'}");
+
+        // Act
+        using var stream = new MemoryStream();
+        stream.Write(Encoding.UTF8.GetBytes(json));
+        stream.Position = 0;
+        var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
+
+        // Assert
+        Assert.NotNull(recoveredMessage);
+        Assert.Empty(recoveredMessage.ActionsDependencies);
+    }
+
     private static string DoubleQuotify(string text)
     {
         return text.Replace('\'', '"');

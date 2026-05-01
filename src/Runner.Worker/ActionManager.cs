@@ -886,6 +886,11 @@ namespace GitHub.Runner.Worker
                 return new Dictionary<string, WebApi.ActionDownloadInfo>(ActionLookupKeyComparer.Instance);
             }
 
+            // Pass lockfile dependencies to Launch when present, so it can
+            // perform ref-scoped policy matching with the original refs.
+            var deps = executionContext.Global.ActionsDependencies;
+            IList<string> dependencies = (deps != null && deps.Count > 0) ? deps : null;
+
             // Resolve download info
             var launchServer = HostContext.GetService<ILaunchServer>();
             var jobServer = HostContext.GetService<IJobServer>();
@@ -897,7 +902,7 @@ namespace GitHub.Runner.Worker
                     if (MessageUtil.IsRunServiceJob(executionContext.Global.Variables.Get(Constants.Variables.System.JobRequestType)))
                     {
                         var displayHelpfulActionsDownloadErrors = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DisplayHelpfulActionsDownloadErrors) ?? false;
-                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken, displayHelpfulActionsDownloadErrors);
+                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences, Dependencies = dependencies }, executionContext.CancellationToken, displayHelpfulActionsDownloadErrors);
                     }
                     else
                     {
@@ -1498,6 +1503,11 @@ namespace GitHub.Runner.Worker
                                         // It doesn't make sense to retry in this case, so just stop
                                         throw new ActionNotFoundException(new Uri(downloadUrl), requestId);
                                     }
+                                    else if (response.StatusCode == HttpStatusCode.Forbidden)
+                                    {
+                                        // It doesn't make sense to retry in this case, so just stop
+                                        throw new AccessDeniedException($"Access denied to '{downloadUrl}' ({requestId})");
+                                    }
                                     else
                                     {
                                         // Something else bad happened, let's go to our retry logic
@@ -1519,6 +1529,11 @@ namespace GitHub.Runner.Worker
                         catch (ActionNotFoundException)
                         {
                             Trace.Info($"The action at '{downloadUrl}' does not exist");
+                            throw;
+                        }
+                        catch (AccessDeniedException)
+                        {
+                            Trace.Info($"Access denied to '{downloadUrl}'");
                             throw;
                         }
                         catch (Exception ex) when (retryCount < 2)
@@ -1546,7 +1561,7 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException) && !executionContext.CancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (!(ex is AccessDeniedException) && !(ex is OperationCanceledException) && !executionContext.CancellationToken.IsCancellationRequested)
             {
                 Trace.Error($"Failed to download archive '{downloadUrl}' after {retryCount + 1} attempts.");
                 Trace.Error(ex);
