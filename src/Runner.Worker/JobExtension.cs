@@ -77,20 +77,25 @@ namespace GitHub.Runner.Worker
 
                     var setting = HostContext.GetService<IConfigurationStore>().GetSettings();
                     var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
-                    if (File.Exists(credFile))
+                    var credData = File.Exists(credFile) ? IOUtil.LoadObject<CredentialData>(credFile) : null;
+                    // self-hosted runner is the only runner type using OAuth, can be identified via clientId
+                    if (credData != null &&
+                        credData.Data.TryGetValue("clientId", out _))
                     {
-                        var credData = IOUtil.LoadObject<CredentialData>(credFile);
-                        if (credData != null &&
-                            credData.Data.TryGetValue("clientId", out var clientId))
+                        context.Output($"Runner name: '{setting.AgentName}'");
+                        // use system variable for group name since self-hosted runners can be renamed
+                        if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
                         {
-                            // print out HostName for self-hosted runner
-                            context.Output($"Runner name: '{setting.AgentName}'");
-                            if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
-                            {
-                                context.Output($"Runner group name: '{runnerGroupName.Value}'");
-                            }
-                            context.Output($"Machine name: '{Environment.MachineName}'");
+                            context.Output($"Runner group name: '{runnerGroupName.Value}'");
                         }
+                        // print out machine name for self-hosted runner
+                        context.Output($"Machine name: '{Environment.MachineName}'");
+                    }
+                    // print runner info for lhr runners, skips standard runners (PoolId = 0)
+                    else if (setting.PoolId > 0 && !string.IsNullOrEmpty(setting.PoolName) && !string.IsNullOrEmpty(setting.AgentName))
+                    {
+                        context.Output($"Runner name: '{setting.AgentName}'");
+                        context.Output($"Runner group name: '{setting.PoolName}'");
                     }
 
                     var setupInfoFile = HostContext.GetConfigFile(WellKnownConfigFile.SetupInfo);
