@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker
             // Stack-local cache: same action (owner/repo@ref) is resolved only once,
             // even if it appears at multiple depths in a composite tree.
             var resolvedDownloadInfos = batchActionResolution
-                ? new Dictionary<string, WebApi.ActionDownloadInfo>(StringComparer.Ordinal)
+                ? new Dictionary<string, WebApi.ActionDownloadInfo>(ActionLookupKeyComparer.Instance)
                 : null;
             var depth = 0;
             // We are running at the start of a job
@@ -228,6 +228,9 @@ namespace GitHub.Runner.Worker
                     {
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
+                    // Normalize the reference name to match the resolved download info so that
+                    // directory paths are consistent on case-sensitive filesystems (Linux).
+                    NormalizeRepositoryReference(action, downloadInfo);
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
                 }
 
@@ -414,6 +417,9 @@ namespace GitHub.Runner.Worker
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
 
+                    // Normalize the reference name to match the resolved download info so that
+                    // directory paths are consistent on case-sensitive filesystems (Linux).
+                    NormalizeRepositoryReference(action, downloadInfo);
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
                 }
 
@@ -858,7 +864,7 @@ namespace GitHub.Runner.Worker
 
             // Convert to action reference
             var actionReferences = actions
-                .GroupBy(x => GetDownloadInfoLookupKey(x))
+                .GroupBy(x => GetDownloadInfoLookupKey(x), ActionLookupKeyComparer.Instance)
                 .Where(x => !string.IsNullOrEmpty(x.Key))
                 .Select(x =>
                 {
@@ -877,7 +883,7 @@ namespace GitHub.Runner.Worker
             // Nothing to resolve?
             if (actionReferences.Count == 0)
             {
-                return new Dictionary<string, WebApi.ActionDownloadInfo>();
+                return new Dictionary<string, WebApi.ActionDownloadInfo>(ActionLookupKeyComparer.Instance);
             }
 
             // Pass lockfile dependencies to Launch when present, so it can
@@ -958,7 +964,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            return actionDownloadInfos.Actions;
+            return new Dictionary<string, WebApi.ActionDownloadInfo>(actionDownloadInfos.Actions, ActionLookupKeyComparer.Instance);
         }
 
         /// <summary>
@@ -968,7 +974,7 @@ namespace GitHub.Runner.Worker
         private async Task ResolveNewActionsAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos)
         {
             var actionsToResolve = new List<Pipelines.ActionStep>();
-            var pendingKeys = new HashSet<string>(StringComparer.Ordinal);
+            var pendingKeys = new HashSet<string>(ActionLookupKeyComparer.Instance);
             foreach (var action in actions)
             {
                 var lookupKey = GetDownloadInfoLookupKey(action);
@@ -1347,6 +1353,22 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        /// <summary>
+        /// After case-insensitive deduplication, the resolved download info may use
+        /// a different casing than the action step's reference. Normalize the reference
+        /// so that directory paths (used by DownloadRepositoryActionAsync,
+        /// PrepareRepositoryActionAsync, and LoadAction) are consistent on
+        /// case-sensitive filesystems.
+        /// </summary>
+        private static void NormalizeRepositoryReference(Pipelines.ActionStep action, WebApi.ActionDownloadInfo downloadInfo)
+        {
+            if (action.Reference is Pipelines.RepositoryPathReference repoRef &&
+                !string.Equals(repoRef.Name, downloadInfo.NameWithOwner, StringComparison.Ordinal))
+            {
+                repoRef.Name = downloadInfo.NameWithOwner;
+            }
+        }
+
         private static string GetDownloadInfoLookupKey(Pipelines.ActionStep action)
         {
             if (action.Reference.Type != Pipelines.ActionSourceType.Repository)
@@ -1370,6 +1392,41 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
             return $"{repositoryReference.Name}@{repositoryReference.Ref}";
+        }
+
+        /// <summary>
+        /// Compares action lookup keys ("{owner/repo}@{ref}") with case-insensitive
+        /// owner/repo (GitHub names are case-insensitive) and case-sensitive ref
+        /// (git refs are case-sensitive).
+        /// </summary>
+        private sealed class ActionLookupKeyComparer : IEqualityComparer<string>
+        {
+            public static readonly ActionLookupKeyComparer Instance = new();
+
+            public bool Equals(string x, string y)
+            {
+                if (ReferenceEquals(x, y)) return true;
+                if (x is null || y is null) return false;
+
+                var xAt = x.LastIndexOf('@');
+                var yAt = y.LastIndexOf('@');
+                if (xAt < 0 || yAt < 0) return StringComparer.OrdinalIgnoreCase.Equals(x, y);
+
+                // Name (owner/repo) is case-insensitive; @ref is case-sensitive
+                return x.AsSpan(0, xAt).Equals(y.AsSpan(0, yAt), StringComparison.OrdinalIgnoreCase)
+                    && x.AsSpan(xAt).Equals(y.AsSpan(yAt), StringComparison.Ordinal);
+            }
+
+            public int GetHashCode(string obj)
+            {
+                if (obj is null) return 0;
+                var at = obj.LastIndexOf('@');
+                if (at < 0) return StringComparer.OrdinalIgnoreCase.GetHashCode(obj);
+
+                return HashCode.Combine(
+                    StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Substring(0, at)),
+                    StringComparer.Ordinal.GetHashCode(obj.Substring(at)));
+            }
         }
 
         private AuthenticationHeaderValue CreateAuthHeader(IExecutionContext executionContext, string downloadUrl, string token)
