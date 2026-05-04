@@ -32,13 +32,13 @@
   "author": "GitHub Actions",
   "license": "MIT",
   "dependencies": {
-    "@actions/glob": "^0.6.1"
+    "@actions/glob": "^0.7.0"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.58.1",
-    "@typescript-eslint/parser": "^8.58.1",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
     "@vercel/ncc": "^0.38.3",
     "eslint": "^8.47.0",
     "eslint-plugin-github": "^4.10.2",
@@ -46,6 +46,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.0.3",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }

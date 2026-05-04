@@ -1,33 +1,36 @@
 ## What's Changed
-* Log inner exception message. by @TingluoHuang in https://github.com/actions/runner/pull/4265
-* Fix composite post-step marker display names by @ericsciple in https://github.com/actions/runner/pull/4267
-* Bump actions/download-artifact from 7 to 8 by @dependabot[bot] in https://github.com/actions/runner/pull/4269
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4272
-* Avoid throw in SelfUpdaters. by @TingluoHuang in https://github.com/actions/runner/pull/4274
-* Fix parser comparison mismatches by @ericsciple in https://github.com/actions/runner/pull/4273
-* Devcontainer: bump base image Ubuntu version by @MaxHorstmann in https://github.com/actions/runner/pull/4277
-* Support `entrypoint` and `command` for service containers by @ericsciple in https://github.com/actions/runner/pull/4276
-* Bump actions/upload-artifact from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4270
-* Bump docker/login-action from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4278
-* Fix positional arg bug in ExpressionParser.CreateTree by @ericsciple in https://github.com/actions/runner/pull/4279
-* Bump docker/build-push-action from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4283
-* Bump docker/setup-buildx-action from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4282
-* Bump actions/attest-build-provenance from 3 to 4 by @dependabot[bot] in https://github.com/actions/runner/pull/4266
-* Bump @stylistic/eslint-plugin from 5.9.0 to 5.10.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4281
-* Update Docker to v29.3.0 and Buildx to v0.32.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4286
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4287
-* Fix cancellation token race during parser comparison by @ericsciple in https://github.com/actions/runner/pull/4280
-* Bump @typescript-eslint/eslint-plugin from 8.47.0 to 8.54.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4230
-* Exit with specified exit code when runner is outdated by @nikola-jokic in https://github.com/actions/runner/pull/4285
-* Report infra_error for action download failures. by @TingluoHuang in https://github.com/actions/runner/pull/4294
-* Update dotnet sdk to latest version @8.0.419 by @github-actions[bot] in https://github.com/actions/runner/pull/4301
-* Node 24 enforcement + Linux ARM32 deprecation support by @salmanmkc in https://github.com/actions/runner/pull/4303
-* Bump @typescript-eslint/eslint-plugin from 8.54.0 to 8.57.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4304
+* Bump flatted from 3.2.7 to 3.4.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4307
+* Add DAP server by @rentziass in https://github.com/actions/runner/pull/4298
+* Bump @typescript-eslint/eslint-plugin from 8.57.1 to 8.57.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4310
+* Remove AllowCaseFunction feature flag by @ericsciple in https://github.com/actions/runner/pull/4316
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4319
+* Batch and deduplicate action resolution across composite depths by @stefanpenner in https://github.com/actions/runner/pull/4296
+* Add support for Bearer token in action archive downloads by @TingluoHuang in https://github.com/actions/runner/pull/4321
+* Bump brace-expansion in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4318
+* Add devtunnel connection for debugger jobs by @rentziass in https://github.com/actions/runner/pull/4317
+* Update Docker to v29.3.1 and Buildx to v0.33.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4324
+* Bump @typescript-eslint/eslint-plugin from 8.57.2 to 8.58.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4327
+* Bump actions/github-script from 8 to 9 by @dependabot[bot] in https://github.com/actions/runner/pull/4331
+* Bump typescript from 5.9.3 to 6.0.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4329
+* fix: only show changed versions in node upgrade PR description by @salmanmkc in https://github.com/actions/runner/pull/4332
+* Bump System.Formats.Asn1, Cryptography.Pkcs, ProtectedData, ServiceController, CodePages, Threading.Channels, @actions/glob, @typescript-eslint/parser, lint-staged, picomatch by @Copilot in https://github.com/actions/runner/pull/4333
+* feat: add `job.workflow_*` typed accessors to JobContext by @salmanmkc in https://github.com/actions/runner/pull/4335
+* Add WS bridge over DAP TCP server by @rentziass in https://github.com/actions/runner/pull/4328
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4355
+* Bump Docker version to 29.4.0 by @Copilot in https://github.com/actions/runner/pull/4352
+* Update dotnet sdk to latest version @8.0.420 by @github-actions[bot] in https://github.com/actions/runner/pull/4356
+* Bump @typescript-eslint/parser from 8.58.1 to 8.59.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4360
+* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4362
+* Add vulnerability-alerts permission by @salmanmkc in https://github.com/actions/runner/pull/4350
+* Bump @typescript-eslint/eslint-plugin from 8.58.1 to 8.59.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4359
+* Bump System.ServiceProcess.ServiceController from 10.0.3 to 10.0.6 by @dependabot[bot] in https://github.com/actions/runner/pull/4358
+* Bump typescript from 6.0.2 to 6.0.3 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4353
+* Bump Microsoft.DevTunnels.Connections from 1.3.16 to 1.3.39 by @dependabot[bot] in https://github.com/actions/runner/pull/4339
 
 ## New Contributors
-* @MaxHorstmann made their first contribution in https://github.com/actions/runner/pull/4277
+* @stefanpenner made their first contribution in https://github.com/actions/runner/pull/4296
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.332.0...v2.333.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.333.1...v2.334.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

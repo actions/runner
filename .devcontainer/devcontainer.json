@@ -4,7 +4,7 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/dotnet": {
-      "version": "8.0.419"
+      "version": "8.0.420"
     },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20"

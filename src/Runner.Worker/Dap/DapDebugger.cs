@@ -66,6 +66,7 @@ namespace GitHub.Runner.Worker.Dap
 
         // Dev Tunnel relay host for remote debugging
         private TunnelRelayTunnelHost _tunnelRelayHost;
+        private IWebSocketDapBridge _webSocketBridge;
 
         // Cancellation source for the connection loop, cancelled in StopAsync
         // so AcceptTcpClientAsync unblocks cleanly without relying on listener disposal.
@@ -73,6 +74,10 @@ namespace GitHub.Runner.Worker.Dap
 
         // When true, skip tunnel relay startup (unit tests only)
         internal bool SkipTunnelRelay { get; set; }
+
+        // When true, skip the public websocket bridge and expose the raw DAP
+        // listener directly on the configured tunnel port (unit tests only).
+        internal bool SkipWebSocketBridge { get; set; }
 
         // Synchronization for step execution
         private TaskCompletionSource<DapCommand> _commandTcs;
@@ -108,6 +113,7 @@ namespace GitHub.Runner.Worker.Dap
             _state == DapSessionState.Running;
 
         internal DapSessionState State => _state;
+        internal int InternalDapPort => (_listener?.LocalEndpoint as IPEndPoint)?.Port ?? 0;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -133,9 +139,19 @@ namespace GitHub.Runner.Worker.Dap
             _jobContext = jobContext;
             _readyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            _listener = new TcpListener(IPAddress.Loopback, debuggerConfig.Tunnel.Port);
+            var dapPort = SkipWebSocketBridge ? debuggerConfig.Tunnel.Port : 0;
+            _listener = new TcpListener(IPAddress.Loopback, dapPort);
             _listener.Start();
-            Trace.Info($"DAP debugger listening on {_listener.LocalEndpoint}");
+            if (SkipWebSocketBridge)
+            {
+                Trace.Info($"DAP debugger listening on {_listener.LocalEndpoint}");
+            }
+            else
+            {
+                Trace.Info($"Internal DAP debugger listening on {_listener.LocalEndpoint}");
+                _webSocketBridge = HostContext.CreateService<IWebSocketDapBridge>();
+                _webSocketBridge.Start(debuggerConfig.Tunnel.Port, InternalDapPort);
+            }
 
             // Start Dev Tunnel relay so remote clients reach the local DAP port.
             // The relay is torn down explicitly in StopAsync (after the DAP session
@@ -274,6 +290,25 @@ namespace GitHub.Runner.Worker.Dap
                     _tunnelRelayHost = null;
                 }
 
+                if (_webSocketBridge != null)
+                {
+                    Trace.Info("Stopping WebSocket DAP bridge");
+                    var shutdownTask = _webSocketBridge.ShutdownAsync();
+                    if (await Task.WhenAny(shutdownTask, Task.Delay(5_000)) != shutdownTask)
+                    {
+                        Trace.Warning("WebSocket DAP bridge shutdown timed out after 5s");
+                        _ = shutdownTask.ContinueWith(
+                            t => Trace.Error($"WebSocket DAP bridge shutdown faulted: {t.Exception?.GetBaseException().Message}"),
+                            TaskContinuationOptions.OnlyOnFaulted);
+                    }
+                    else
+                    {
+                        Trace.Info("WebSocket DAP bridge stopped");
+                    }
+
+                    _webSocketBridge = null;
+                }
+
                 CleanupConnection();
 
                 // Cancel the connection loop first so AcceptTcpClientAsync unblocks
@@ -315,6 +350,7 @@ namespace GitHub.Runner.Worker.Dap
             _connectionLoopTask = null;
             _loopCts?.Dispose();
             _loopCts = null;
+            _webSocketBridge = null;
         }
 
         public async Task OnStepStartingAsync(IStep step)
