@@ -31,8 +31,17 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IRunServer> _runServer;
         private readonly string _returnJobResultForHosted;
 
+        // ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED is set on GitHub-hosted runners and
+        // silently forces runOnce=true, which breaks tests that expect non-ephemeral behaviour
+        // or assert a specific return code. Clear it for the entire test class and restore on
+        // Dispose so individual tests remain environment-independent.
+        private readonly string _savedJobResultEnvVar;
+
         public RunnerL0()
         {
+            _savedJobResultEnvVar = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
+
             _configurationManager = new Mock<IConfigurationManager>();
             _jobNotification = new Mock<IJobNotification>();
             _messageListener = new Mock<IMessageListener>();
@@ -54,6 +63,11 @@ namespace GitHub.Runner.Common.Tests.Listener
         public void Dispose()
         {
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", _returnJobResultForHosted);
+        }
+
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", _savedJobResultEnvVar);
         }
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
@@ -116,6 +130,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                             {
                                 signalWorkerComplete.Release();
                                 await Task.Delay(2000, hc.RunnerShutdownToken);
+                                return null;
                             }
 
                             return messages.Dequeue();
