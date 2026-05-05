@@ -243,6 +243,24 @@ namespace GitHub.Runner.Worker.Dap
         {
             if (_state != DapSessionState.NotStarted)
             {
+                // Pause so the user can inspect final job state before we tear down.
+                if (IsActive && _pauseOnNextStep)
+                {
+                    try
+                    {
+                        var cancellationToken = _jobContext?.CancellationToken ?? CancellationToken.None;
+
+                        Trace.Info("Job completed — pausing for inspection");
+                        SendStoppedEvent("completed", "Job completed — inspect variables before the session ends.");
+
+                        await WaitForCommandAsync(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"DAP job-completed pause error: {ex.Message}");
+                    }
+                }
+
                 try
                 {
                     OnJobCompleted();

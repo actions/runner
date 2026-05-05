@@ -16,6 +16,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -50,6 +51,7 @@ namespace GitHub.Runner.Worker
         private Task _diskSpaceCheckTask = null;
         private CancellationTokenSource _serviceConnectivityCheckToken = new();
         private Task _serviceConnectivityCheckTask = null;
+        private IDapDebugger _dapDebugger;
 
         // Download all required actions.
         // Make sure all condition inputs are valid.
@@ -481,6 +483,53 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Start checking service connectivity in background.");
                     _serviceConnectivityCheckTask = CheckServiceConnectivityAsync(context, _serviceConnectivityCheckToken.Token);
 
+                    // Start the DAP debugger and wait for a client connection inside
+                    // "Set up job" so the step stays in-progress while we wait.
+                    if (jobContext.Global.Debugger?.Enabled == true)
+                    {
+                        Trace.Info("Debugger enabled — starting inside Set up job");
+                        context.Output("Starting debugger…");
+
+                        try
+                        {
+                            _dapDebugger = HostContext.GetService<IDapDebugger>();
+                            await _dapDebugger.StartAsync(jobContext);
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Failed to start DAP debugger: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.Message}");
+                            context.Error("Failed to start debugger.");
+                            context.Result = TaskResult.Failed;
+                            throw;
+                        }
+
+                        context.Output("Waiting for debugger client to connect…");
+
+                        try
+                        {
+                            await _dapDebugger.WaitUntilReadyAsync();
+                            context.Output("Debugger connected.");
+                            AddDebuggerConnectionTelemetry(jobContext, "Connected");
+                        }
+                        catch (OperationCanceledException) when (jobContext.CancellationToken.IsCancellationRequested)
+                        {
+                            Trace.Info("Job was cancelled before debugger client connected.");
+                            AddDebuggerConnectionTelemetry(jobContext, "Canceled");
+                            context.Error("Job was cancelled before debugger client connected.");
+                            context.Result = TaskResult.Canceled;
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"DAP debugger failed to become ready: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.Message}");
+                            context.Error("The debugger failed to start or no debugger client connected in time.");
+                            context.Result = TaskResult.Failed;
+                            throw;
+                        }
+                    }
+
                     return steps;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
@@ -505,6 +554,15 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
+        }
+
+        private static void AddDebuggerConnectionTelemetry(IExecutionContext jobContext, string result)
+        {
+            jobContext.Global.JobTelemetry.Add(new JobTelemetry
+            {
+                Type = JobTelemetryType.General,
+                Message = $"DebuggerConnectionResult: {result}"
+            });
         }
 
         private string GetWorkflowReference(IDictionary<string, VariableValue> variables)
@@ -782,6 +840,22 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
+                    // Pause for debugger inspection, then tear down the DAP session.
+                    // OnJobCompletedAsync pauses first, then sends terminated/exited
+                    // events and stops the transport.
+                    if (_dapDebugger != null)
+                    {
+                        context.Output("Job completed — pausing for debugger inspection. Press continue to finish.");
+                        try
+                        {
+                            await _dapDebugger.OnJobCompletedAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Warning($"DAP debugger cleanup error: {ex.Message}");
+                        }
+                    }
+
                     context.Debug("Finishing: Complete job");
                     context.Complete();
                 }
