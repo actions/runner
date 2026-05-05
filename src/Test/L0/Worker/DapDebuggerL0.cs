@@ -744,14 +744,32 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
                 await waitTask;
 
-                // Complete the job — events are sent via OnJobCompletedAsync
-                await _debugger.OnJobCompletedAsync();
+                // Complete the job — OnJobCompletedAsync pauses when stepping,
+                // so run it in the background and send continue to unblock.
+                var completedTask = _debugger.OnJobCompletedAsync();
 
-                var msg1 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                var msg2 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                // Read the stopped event from the pause
+                var stoppedMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedMsg);
 
-                // Both events should arrive (order may vary)
-                var combined = msg1 + msg2;
+                // Send continue to unblock the pause
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "continue"
+                });
+
+                await completedTask;
+
+                // Read remaining messages — continue response + continued event + terminated + exited
+                var allMessages = new System.Text.StringBuilder();
+                for (int i = 0; i < 4; i++)
+                {
+                    allMessages.Append(await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5)));
+                }
+
+                var combined = allMessages.ToString();
                 Assert.Contains("\"event\":\"terminated\"", combined);
                 Assert.Contains("\"event\":\"exited\"", combined);
             }

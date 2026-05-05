@@ -1320,6 +1320,13 @@ namespace GitHub.Runner.Worker.Dap
                 _commandTcs = new TaskCompletionSource<DapCommand>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
 
+            // If cancellation already fired before we created the new TCS,
+            // the registration callback targeted the old one. Unblock now.
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _commandTcs.TrySetResult(DapCommand.Disconnect);
+            }
+
             Trace.Info("Waiting for debugger command...");
 
             var command = await _commandTcs.Task;

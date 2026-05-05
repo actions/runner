@@ -550,6 +550,21 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
+                    // If InitializeJob failed after the debugger was started,
+                    // clean it up here since FinalizeJob won't run.
+                    if (context.Result != null && _dapDebugger != null)
+                    {
+                        try
+                        {
+                            await _dapDebugger.OnJobCompletedAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Warning($"DAP debugger cleanup during failed init: {ex.Message}");
+                        }
+                        _dapDebugger = null;
+                    }
+
                     context.Debug("Finishing: Set up job");
                     context.Complete();
                 }
