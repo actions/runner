@@ -411,12 +411,15 @@ namespace GitHub.Runner.Worker
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
-            TaskResult result = jobContext.Complete(taskResult);
 
             if (_runnerSettings.DisableUpdate == true)
             {
-                await WarningOutdatedRunnerAsync(jobContext, message, result);
+                // Emit warning before Complete() closes paging logger.
+                TaskResult warningResult = taskResult ?? jobContext.Result ?? TaskResult.Succeeded;
+                await WarningOutdatedRunnerAsync(jobContext, message, warningResult);
             }
+
+            TaskResult result = jobContext.Complete(taskResult);
 
             try
             {

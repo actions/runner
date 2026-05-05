@@ -1310,6 +1310,121 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Complete_DisposesOwnedJobLogger()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobRequest = CreateJobRequestMessage();
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                ec.Complete();
+
+                pagingLogger.Verify(x => x.End(), Times.Once);
+                pagingLogger.Verify(x => x.Dispose(), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Complete_DisposesOwnedChildLogger()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobRequest = CreateJobRequestMessage();
+                var jobLogger = new Mock<IPagingLogger>();
+                var childLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(jobLogger.Object);
+                hc.EnqueueInstance(childLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                var child = ec.CreateChild(Guid.NewGuid(), "step", "step", null, "step", ActionRunStage.Main);
+                child.Complete();
+
+                childLogger.Verify(x => x.End(), Times.Once);
+                childLogger.Verify(x => x.Dispose(), Times.Once);
+                jobLogger.Verify(x => x.Dispose(), Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Complete_DoesNotDisposeSharedEmbeddedLogger()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobRequest = CreateJobRequestMessage();
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                var embedded = ec.CreateEmbeddedChild("scope", "__embedded", Guid.NewGuid(), ActionRunStage.Main);
+                embedded.Complete();
+
+                pagingLogger.Verify(x => x.End(), Times.Once);
+                pagingLogger.Verify(x => x.Dispose(), Times.Never);
+            }
+        }
+
+        private Pipelines.AgentJobRequestMessage CreateJobRequestMessage()
+        {
+            var jobRequest = new Pipelines.AgentJobRequestMessage(
+                new TaskOrchestrationPlanReference(),
+                new TimelineReference(),
+                Guid.NewGuid(),
+                "some job name",
+                "some job name",
+                null,
+                null,
+                null,
+                new Dictionary<string, VariableValue>(),
+                new List<MaskHint>(),
+                new Pipelines.JobResources(),
+                new Pipelines.ContextData.DictionaryContextData(),
+                new Pipelines.WorkspaceOptions(),
+                new List<Pipelines.ActionStep>(),
+                null,
+                null,
+                null,
+                null,
+                null);
+            jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+            {
+                Alias = Pipelines.PipelineConstants.SelfAlias,
+                Id = "github",
+                Version = "sha1"
+            });
+            jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+            return jobRequest;
+        }
+
         private bool ExpressionValuesAssertEqual(DictionaryContextData expect, DictionaryContextData actual)
         {
             foreach (var key in expect.Keys.ToList())
