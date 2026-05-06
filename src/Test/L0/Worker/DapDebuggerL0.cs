@@ -827,5 +827,45 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
             }
         }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WaitForCommandAsyncUnblocksOnCancellationDuringWait()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                await waitTask;
+
+                // Start OnJobCompletedAsync — it will pause because _pauseOnNextStep is true
+                var completedTask = _debugger.OnJobCompletedAsync();
+
+                // Read the stopped event
+                var stoppedMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedMsg);
+
+                // Cancel the job while waiting — should unblock the pause
+                cts.Cancel();
+
+                // OnJobCompletedAsync should complete without hanging
+                var finished = await Task.WhenAny(completedTask, Task.Delay(TimeSpan.FromSeconds(5)));
+                Assert.Equal(completedTask, finished);
+            }
+        }
     }
 }

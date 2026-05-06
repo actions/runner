@@ -243,17 +243,21 @@ namespace GitHub.Runner.Worker.Dap
         {
             if (_state != DapSessionState.NotStarted)
             {
-                // Pause so the user can inspect final job state before we tear down.
+                // Pause so the user can inspect final job state before we tear down,
+                // but only if the user was stepping through (not if they hit continue).
                 if (IsActive && _pauseOnNextStep)
                 {
                     try
                     {
-                        var cancellationToken = _jobContext?.CancellationToken ?? CancellationToken.None;
+                        if (_jobContext != null)
+                        {
+                            var cancellationToken = _jobContext.CancellationToken;
 
-                        Trace.Info("Job completed — pausing for inspection");
-                        SendStoppedEvent("completed", "Job completed — inspect variables before the session ends.");
+                            Trace.Info("Job completed — pausing for inspection");
+                            SendStoppedEvent("completed", "Job completed — inspect variables before the session ends.");
 
-                        await WaitForCommandAsync(cancellationToken);
+                            await WaitForCommandAsync(cancellationToken);
+                        }
                     }
                     catch (Exception ex)
                     {

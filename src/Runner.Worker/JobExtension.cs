@@ -498,7 +498,7 @@ namespace GitHub.Runner.Worker
                         catch (Exception ex)
                         {
                             Trace.Error($"Failed to start DAP debugger: {ex.Message}");
-                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
                             context.Error("Failed to start debugger.");
                             context.Result = TaskResult.Failed;
                             throw;
@@ -523,7 +523,7 @@ namespace GitHub.Runner.Worker
                         catch (Exception ex)
                         {
                             Trace.Error($"DAP debugger failed to become ready: {ex.Message}");
-                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
                             context.Error("The debugger failed to start or no debugger client connected in time.");
                             context.Result = TaskResult.Failed;
                             throw;
@@ -869,6 +869,7 @@ namespace GitHub.Runner.Worker
                         {
                             Trace.Warning($"DAP debugger cleanup error: {ex.Message}");
                         }
+                        _dapDebugger = null;
                     }
 
                     context.Debug("Finishing: Complete job");
