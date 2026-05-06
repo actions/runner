@@ -744,14 +744,32 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
                 await waitTask;
 
-                // Complete the job — events are sent via OnJobCompletedAsync
-                await _debugger.OnJobCompletedAsync();
+                // Complete the job — OnJobCompletedAsync pauses when stepping,
+                // so run it in the background and send continue to unblock.
+                var completedTask = _debugger.OnJobCompletedAsync();
 
-                var msg1 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                var msg2 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                // Read the stopped event from the pause
+                var stoppedMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedMsg);
 
-                // Both events should arrive (order may vary)
-                var combined = msg1 + msg2;
+                // Send continue to unblock the pause
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "continue"
+                });
+
+                await completedTask;
+
+                // Read remaining messages — continue response + continued event + terminated + exited
+                var allMessages = new System.Text.StringBuilder();
+                for (int i = 0; i < 4; i++)
+                {
+                    allMessages.Append(await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5)));
+                }
+
+                var combined = allMessages.ToString();
                 Assert.Contains("\"event\":\"terminated\"", combined);
                 Assert.Contains("\"event\":\"exited\"", combined);
             }
@@ -807,6 +825,46 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
                 });
+            }
+        }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WaitForCommandAsyncUnblocksOnCancellationDuringWait()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                await waitTask;
+
+                // Start OnJobCompletedAsync — it will pause because _pauseOnNextStep is true
+                var completedTask = _debugger.OnJobCompletedAsync();
+
+                // Read the stopped event
+                var stoppedMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedMsg);
+
+                // Cancel the job while waiting — should unblock the pause
+                cts.Cancel();
+
+                // OnJobCompletedAsync should complete without hanging
+                var finished = await Task.WhenAny(completedTask, Task.Delay(TimeSpan.FromSeconds(5)));
+                Assert.Equal(completedTask, finished);
             }
         }
     }

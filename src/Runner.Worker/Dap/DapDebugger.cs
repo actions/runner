@@ -243,6 +243,26 @@ namespace GitHub.Runner.Worker.Dap
         {
             if (_state != DapSessionState.NotStarted)
             {
+                // Pause so the user can inspect final job state before we tear down,
+                // but only if the user was stepping through (not if they hit continue).
+                if (IsActive && _pauseOnNextStep)
+                {
+                    try
+                    {
+                        if (_jobContext != null)
+                        {
+                            Trace.Info("Job completed — pausing for inspection");
+                            SendStoppedEvent("completed", "Job completed — inspect variables before the session ends.");
+
+                            await WaitForCommandAsync(_jobContext.CancellationToken);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Warning($"DAP job-completed pause error: {ex.Message}");
+                    }
+                }
+
                 try
                 {
                     OnJobCompleted();
@@ -252,8 +272,6 @@ namespace GitHub.Runner.Worker.Dap
                     Trace.Warning($"DAP OnJobCompleted error: {ex.Message}");
                 }
             }
-
-            await StopAsync();
         }
 
         public async Task StopAsync()
@@ -1300,6 +1318,13 @@ namespace GitHub.Runner.Worker.Dap
                 }
                 _state = DapSessionState.Paused;
                 _commandTcs = new TaskCompletionSource<DapCommand>(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+
+            // If cancellation already fired before we created the new TCS,
+            // the registration callback targeted the old one. Unblock now.
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _commandTcs.TrySetResult(DapCommand.Disconnect);
             }
 
             Trace.Info("Waiting for debugger command...");
