@@ -251,12 +251,10 @@ namespace GitHub.Runner.Worker.Dap
                     {
                         if (_jobContext != null)
                         {
-                            var cancellationToken = _jobContext.CancellationToken;
-
                             Trace.Info("Job completed — pausing for inspection");
                             SendStoppedEvent("completed", "Job completed — inspect variables before the session ends.");
 
-                            await WaitForCommandAsync(cancellationToken);
+                            await WaitForCommandAsync(_jobContext.CancellationToken);
                         }
                     }
                     catch (Exception ex)
@@ -274,8 +272,6 @@ namespace GitHub.Runner.Worker.Dap
                     Trace.Warning($"DAP OnJobCompleted error: {ex.Message}");
                 }
             }
-
-            await StopAsync();
         }
 
         public async Task StopAsync()

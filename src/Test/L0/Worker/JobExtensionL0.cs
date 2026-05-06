@@ -911,6 +911,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 mockDebugger.Setup(x => x.StartAsync(It.IsAny<IExecutionContext>())).Returns(Task.CompletedTask);
                 mockDebugger.Setup(x => x.WaitUntilReadyAsync()).Returns(Task.CompletedTask);
                 mockDebugger.Setup(x => x.OnJobCompletedAsync()).ThrowsAsync(new InvalidOperationException("tunnel disposed"));
+                mockDebugger.Setup(x => x.StopAsync()).Returns(Task.CompletedTask);
                 hc.SetSingleton(mockDebugger.Object);
 
                 _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
@@ -922,6 +923,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
                 mockDebugger.Verify(x => x.OnJobCompletedAsync(), Times.Once);
+                mockDebugger.Verify(x => x.StopAsync(), Times.Once);
             }
         }
     }

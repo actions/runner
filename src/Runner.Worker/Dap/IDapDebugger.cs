@@ -22,5 +22,6 @@ namespace GitHub.Runner.Worker.Dap
         Task OnStepStartingAsync(IStep step);
         void OnStepCompleted(IStep step);
         Task OnJobCompletedAsync();
+        Task StopAsync();
     }
 }

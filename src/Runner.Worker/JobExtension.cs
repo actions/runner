@@ -69,6 +69,7 @@ namespace GitHub.Runner.Worker
 
             List<IStep> preJobSteps = new();
             List<IStep> jobSteps = new();
+            var initSucceeded = false;
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
@@ -494,20 +495,9 @@ namespace GitHub.Runner.Worker
                         {
                             _dapDebugger = HostContext.GetService<IDapDebugger>();
                             await _dapDebugger.StartAsync(jobContext);
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Error($"Failed to start DAP debugger: {ex.Message}");
-                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
-                            context.Error("Failed to start debugger.");
-                            context.Result = TaskResult.Failed;
-                            throw;
-                        }
 
-                        context.Output("Waiting for debugger client to connect…");
+                            context.Output("Waiting for debugger client to connect…");
 
-                        try
-                        {
                             await _dapDebugger.WaitUntilReadyAsync();
                             context.Output("Debugger connected.");
                             AddDebuggerConnectionTelemetry(jobContext, "Connected");
@@ -517,19 +507,18 @@ namespace GitHub.Runner.Worker
                             Trace.Info("Job was cancelled before debugger client connected.");
                             AddDebuggerConnectionTelemetry(jobContext, "Canceled");
                             context.Error("Job was cancelled before debugger client connected.");
-                            context.Result = TaskResult.Canceled;
                             throw;
                         }
                         catch (Exception ex)
                         {
-                            Trace.Error($"DAP debugger failed to become ready: {ex.Message}");
+                            Trace.Error($"DAP debugger failed: {ex.Message}");
                             AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
                             context.Error("The debugger failed to start or no debugger client connected in time.");
-                            context.Result = TaskResult.Failed;
                             throw;
                         }
                     }
 
+                    initSucceeded = true;
                     return steps;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
@@ -551,12 +540,12 @@ namespace GitHub.Runner.Worker
                 finally
                 {
                     // If InitializeJob failed after the debugger was started,
-                    // clean it up here since FinalizeJob won't run.
-                    if (context.Result != null && _dapDebugger != null)
+                    // tear down the transport here since FinalizeJob won't run.
+                    if (!initSucceeded && _dapDebugger != null)
                     {
                         try
                         {
-                            await _dapDebugger.OnJobCompletedAsync();
+                            await _dapDebugger.StopAsync();
                         }
                         catch (Exception ex)
                         {
@@ -867,7 +856,18 @@ namespace GitHub.Runner.Worker
                         }
                         catch (Exception ex)
                         {
-                            Trace.Warning($"DAP debugger cleanup error: {ex.Message}");
+                            Trace.Warning($"DAP debugger completion error: {ex.Message}");
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                await _dapDebugger.StopAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Warning($"DAP debugger stop error: {ex.Message}");
+                            }
                         }
                         _dapDebugger = null;
                     }
