@@ -514,6 +514,7 @@ namespace GitHub.Runner.Worker.Dap
         internal void HandleClientConnected()
         {
             _isClientConnected = true;
+            _welcomeMessageSent = false;
             Trace.Info("Client connected to debug session");
 
             // If we're paused, re-send the stopped event so the new client
