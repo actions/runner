@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Tests;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
@@ -301,6 +302,36 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = _executor.CreateStepHost(context.Object, isActionStep: true);
 
                 Assert.IsType<DefaultStepHost>(result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateStepHost_ContainerWithoutId_HooksEnabled_ReturnsContainerStepHost()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.EnqueueInstance<IContainerStepHost>(new ContainerStepHost());
+                // Container hooks need both the feature flag and the env var
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_CONTAINER_HOOKS", "/some/hook/path");
+                try
+                {
+                    var container = new ContainerInfo();
+                    var context = CreateMockContext(container: container);
+                    context.Object.Global.Variables = new Variables(
+                        hc,
+                        new Dictionary<string, VariableValue>
+                        {
+                            { Constants.Runner.Features.AllowRunnerContainerHooks, new VariableValue("true") }
+                        });
+                    var result = _executor.CreateStepHost(context.Object, isActionStep: true);
+                    Assert.IsAssignableFrom<IContainerStepHost>(result);
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_CONTAINER_HOOKS", null);
+                }
             }
         }
     }

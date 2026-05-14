@@ -75,7 +75,7 @@ namespace GitHub.Runner.Worker.Dap
             //    container.  Infrastructure steps (Set up job, Initialize
             //    containers, Complete job, etc.) always run on the host.
             var stepHost = CreateStepHost(context, isActionStep);
-            var isContainerStepHost = stepHost is ContainerStepHost;
+            var isContainerStepHost = stepHost is IContainerStepHost;
 
             // 2. Resolve shell — same logic as ScriptHandler
             string shellCommand;
@@ -145,7 +145,7 @@ namespace GitHub.Runner.Worker.Dap
                 // 7. Handle PrependPath — mirrors Handler.AddPrependPathToEnvironment
                 if (context.Global.PrependPath.Count > 0)
                 {
-                    if (stepHost is ContainerStepHost containerHost)
+                    if (stepHost is IContainerStepHost containerHost)
                     {
                         containerHost.PrependPath = prependPath;
                     }
@@ -176,6 +176,15 @@ namespace GitHub.Runner.Worker.Dap
 
                 // Stream execution info to debugger
                 SendOutput("console", $"$ {shellCommand} {command.Script.Substring(0, Math.Min(command.Script.Length, 80))}{(command.Script.Length > 80 ? "..." : "")}\n");
+
+                // NOTE: When container hooks are enabled, ContainerStepHost routes
+                // execution through IContainerHookManager which does not raise
+                // OutputDataReceived/ErrorDataReceived events. Output will not be
+                // streamed to the debug console in that mode.
+                if (isContainerStepHost && FeatureManager.IsContainerHooksEnabled(context.Global?.Variables))
+                {
+                    _trace.Warning("Container hooks are enabled -- REPL output will not be streamed to the debug console");
+                }
 
                 // 9. Execute via IStepHost — handles docker exec for containers,
                 //    direct process execution for host, and container hooks
