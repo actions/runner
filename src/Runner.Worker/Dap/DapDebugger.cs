@@ -860,6 +860,9 @@ namespace GitHub.Runner.Worker.Dap
             // Send stopped event to debugger (only if client is connected)
             SendStoppedEvent(reason, description);
 
+            // Emit a banner so the user knows where REPL commands will execute
+            SendExecutionContextBanner(step);
+
             // Wait for debugger command
             await WaitForCommandAsync(cancellationToken);
         }
@@ -1410,6 +1413,40 @@ namespace GitHub.Runner.Worker.Dap
                     AllThreadsStopped = true
                 }
             });
+        }
+
+        /// <summary>
+        /// Emits a console output banner telling the user whether REPL
+        /// commands will execute on the host or inside the job container.
+        /// </summary>
+        private void SendExecutionContextBanner(IStep step)
+        {
+            if (!_isClientConnected)
+            {
+                return;
+            }
+
+            bool isActionStep = step is IActionRunner;
+            var container = _jobContext?.Global?.Container;
+
+            string target;
+            if (isActionStep && container != null &&
+                (!string.IsNullOrEmpty(container.ContainerId) ||
+                 FeatureManager.IsContainerHooksEnabled(_jobContext?.Global?.Variables)))
+            {
+                var image = container.ContainerImage ?? "container";
+                var shortId = !string.IsNullOrEmpty(container.ContainerId) && container.ContainerId.Length >= 12
+                    ? container.ContainerId.Substring(0, 12)
+                    : container.ContainerId ?? "";
+                var idSuffix = !string.IsNullOrEmpty(shortId) ? $" ({shortId})" : "";
+                target = $"job container: {image}{idSuffix}";
+            }
+            else
+            {
+                target = "runner host";
+            }
+
+            SendOutput("console", $"\nCommands will run on {target}\n");
         }
 
         private string MaskUserVisibleText(string value)
