@@ -1195,7 +1195,12 @@ namespace GitHub.Runner.Worker.Dap
 
                 case RunCommand run:
                     var context = GetExecutionContextForFrame(frameId);
-                    return await _replExecutor.ExecuteRunCommandAsync(run, context, cancellationToken);
+                    bool isActionStep;
+                    lock (_stateLock)
+                    {
+                        isActionStep = _currentStep is IActionRunner;
+                    }
+                    return await _replExecutor.ExecuteRunCommandAsync(run, context, isActionStep, cancellationToken);
 
                 default:
                     return new EvaluateResponseBody

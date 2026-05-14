@@ -7,7 +7,9 @@ using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common.Tests;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Dap;
+using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
 
@@ -40,7 +42,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private Mock<IExecutionContext> CreateMockContext(
             DictionaryContextData exprValues = null,
-            IDictionary<string, IDictionary<string, string>> jobDefaults = null)
+            IDictionary<string, IDictionary<string, string>> jobDefaults = null,
+            ContainerInfo container = null)
         {
             var mock = new Mock<IExecutionContext>();
             mock.Setup(x => x.ExpressionValues).Returns(exprValues ?? new DictionaryContextData());
@@ -51,6 +54,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 PrependPath = new List<string>(),
                 JobDefaults = jobDefaults
                     ?? new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase),
+                Container = container,
             };
             mock.Setup(x => x.Global).Returns(global);
 
@@ -65,7 +69,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (CreateTestContext())
             {
                 var command = new RunCommand { Script = "echo hello" };
-                var result = await _executor.ExecuteRunCommandAsync(command, null, CancellationToken.None);
+                var result = await _executor.ExecuteRunCommandAsync(command, null, false, CancellationToken.None);
 
                 Assert.Equal("error", result.Type);
                 Assert.Contains("No execution context available", result.Result);
@@ -231,6 +235,72 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal("bar", result["FOO"]);
                 Assert.False(result.ContainsKey("BAZ"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateStepHost_NoContainer_ReturnsDefaultStepHost()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.EnqueueInstance<IDefaultStepHost>(new DefaultStepHost());
+                var context = CreateMockContext();
+                var result = _executor.CreateStepHost(context.Object, isActionStep: true);
+
+                Assert.IsType<DefaultStepHost>(result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateStepHost_WithContainer_ActionStep_ReturnsContainerStepHost()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.EnqueueInstance<IContainerStepHost>(new ContainerStepHost());
+                var container = new ContainerInfo { ContainerId = "abc123" };
+                var context = CreateMockContext(container: container);
+                var result = _executor.CreateStepHost(context.Object, isActionStep: true);
+
+                Assert.IsType<ContainerStepHost>(result);
+                var containerHost = (ContainerStepHost)result;
+                Assert.Same(container, containerHost.Container);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateStepHost_WithContainer_InfrastructureStep_ReturnsDefaultStepHost()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.EnqueueInstance<IDefaultStepHost>(new DefaultStepHost());
+                var container = new ContainerInfo { ContainerId = "abc123" };
+                var context = CreateMockContext(container: container);
+                var result = _executor.CreateStepHost(context.Object, isActionStep: false);
+
+                Assert.IsType<DefaultStepHost>(result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateStepHost_ContainerWithoutId_NoHooks_ReturnsDefaultStepHost()
+        {
+            using (var hc = CreateTestContext())
+            {
+                hc.EnqueueInstance<IDefaultStepHost>(new DefaultStepHost());
+                // Container exists but hasn't been started yet (no ContainerId)
+                var container = new ContainerInfo();
+                var context = CreateMockContext(container: container);
+                var result = _executor.CreateStepHost(context.Object, isActionStep: true);
+
+                Assert.IsType<DefaultStepHost>(result);
             }
         }
     }
