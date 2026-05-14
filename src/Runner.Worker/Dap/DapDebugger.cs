@@ -63,6 +63,7 @@ namespace GitHub.Runner.Worker.Dap
         private volatile DapSessionState _state = DapSessionState.NotStarted;
         private CancellationTokenRegistration? _cancellationRegistration;
         private bool _isFirstStep = true;
+        private bool _welcomeMessageSent;
 
         // Dev Tunnel relay host for remote debugging
         private TunnelRelayTunnelHost _tunnelRelayHost;
@@ -490,6 +491,11 @@ namespace GitHub.Runner.Worker.Dap
                     });
                     Trace.Info("Sent initialized event");
                 }
+
+                if (request.Command == "configurationDone")
+                {
+                    SendWelcomeMessage();
+                }
             }
             catch (Exception ex)
             {
@@ -816,6 +822,35 @@ namespace GitHub.Runner.Worker.Dap
                     Output = text
                 }
             });
+        }
+
+        internal void SendWelcomeMessage()
+        {
+            if (_welcomeMessageSent)
+            {
+                return;
+            }
+            _welcomeMessageSent = true;
+
+            var welcomeMessage = _jobContext?.Global?.Debugger?.WelcomeMessage;
+
+            // null  → default help text
+            // ""    → no message
+            // other → custom message
+            if (welcomeMessage == null)
+            {
+                SendOutput("console", DapReplParser.GetGeneralHelp());
+                Trace.Info("Sent default welcome message");
+            }
+            else if (welcomeMessage.Length > 0)
+            {
+                SendOutput("console", welcomeMessage);
+                Trace.Info("Sent custom welcome message");
+            }
+            else
+            {
+                Trace.Info("Welcome message is empty, skipping");
+            }
         }
 
         internal async Task OnStepStartingAsync(IStep step, bool isFirstStep)
