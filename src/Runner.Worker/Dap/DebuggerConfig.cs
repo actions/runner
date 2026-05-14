@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.Pipelines;
+﻿using GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Dap
 {
@@ -8,10 +8,11 @@ namespace GitHub.Runner.Worker.Dap
     /// </summary>
     public sealed class DebuggerConfig
     {
-        public DebuggerConfig(bool enabled, DebuggerTunnelInfo tunnel)
+        public DebuggerConfig(bool enabled, DebuggerTunnelInfo tunnel, string welcomeMessage = null)
         {
             Enabled = enabled;
             Tunnel = tunnel;
+            WelcomeMessage = welcomeMessage;
         }
 
         /// <summary>Whether the debugger is enabled for this job.</summary>
@@ -22,6 +23,12 @@ namespace GitHub.Runner.Worker.Dap
         /// Required when <see cref="Enabled"/> is true.
         /// </summary>
         public DebuggerTunnelInfo Tunnel { get; }
+
+        /// <summary>
+        /// Optional welcome message for the debugger console.
+        /// Null = show default help, empty = show nothing, non-empty = show as-is.
+        /// </summary>
+        public string WelcomeMessage { get; }
 
         /// <summary>Whether the tunnel configuration is complete and valid.</summary>
         public bool HasValidTunnel => Tunnel != null

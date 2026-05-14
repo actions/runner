@@ -268,6 +268,18 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
+        /// Optional welcome message to show in the debugger console when a
+        /// client connects.  Null means "use the default help text", empty
+        /// string means "show nothing", any other value is displayed as-is.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public string DebuggerWelcomeMessage
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// Gets the workflow-level action dependencies (lockfile entries)
         /// </summary>
         public IList<String> ActionsDependencies

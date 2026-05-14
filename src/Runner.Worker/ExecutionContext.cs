@@ -970,7 +970,7 @@ namespace GitHub.Runner.Worker
             Global.WriteDebug = Global.Variables.Step_Debug ?? false;
 
             // Debugger enabled flag (from acquire response).
-            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel);
+            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel, message.DebuggerWelcomeMessage);
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
