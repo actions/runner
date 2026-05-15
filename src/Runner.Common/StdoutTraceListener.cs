@@ -9,10 +9,18 @@ namespace GitHub.Runner.Common
     public sealed class StdoutTraceListener : ConsoleTraceListener
     {
         private readonly string _hostType;
+        private readonly bool _prefixMultilineLogs = true;
 
         public StdoutTraceListener(string hostType)
         {
             this._hostType = hostType;
+            // The stdout log prefixing behaviour was on before this environment variable,
+            // so only disable it if the env var was set
+            bool multilinePrefixingEnvSetting = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.StdoutMultilineLogPrefixing), defaultValue: true);
+            if (!multilinePrefixingEnvSetting)
+            {
+                this._prefixMultilineLogs = false;
+            }
         }
 
         // Copied and modified slightly from .Net Core source code. Modification was required to make it compile.
@@ -26,11 +34,20 @@ namespace GitHub.Runner.Common
 
             if (!string.IsNullOrEmpty(message))
             {
-                var messageLines = message.Split(Environment.NewLine);
-                foreach (var messageLine in messageLines)
+                if (this._prefixMultilineLogs)
+                {
+                    var messageLines = message.Split(Environment.NewLine);
+                    foreach (var messageLine in messageLines)
+                    {
+                        WriteHeader(source, eventType, id);
+                        WriteLine(messageLine);
+                        WriteFooter(eventCache);
+                    }
+                }
+                else
                 {
                     WriteHeader(source, eventType, id);
-                    WriteLine(messageLine);
+                    WriteLine(message);
                     WriteFooter(eventCache);
                 }
             }
