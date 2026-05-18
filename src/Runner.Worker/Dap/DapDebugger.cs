@@ -833,24 +833,23 @@ namespace GitHub.Runner.Worker.Dap
             }
             _welcomeMessageSent = true;
 
-            var welcomeMessage = _jobContext?.Global?.Debugger?.WelcomeMessage;
-
-            // null  → default help text
-            // ""    → no message
-            // other → custom message
-            if (welcomeMessage == null)
+            var debuggerConfig = _jobContext?.Global?.Debugger;
+            if (debuggerConfig?.OverrideWelcomeMessage == true)
             {
-                SendOutput("console", DapReplParser.GetGeneralHelp());
-                Trace.Info("Sent default welcome message");
-            }
-            else if (welcomeMessage.Length > 0)
-            {
-                SendOutput("console", welcomeMessage);
-                Trace.Info("Sent custom welcome message");
+                if (!string.IsNullOrEmpty(debuggerConfig.WelcomeMessage))
+                {
+                    SendOutput("console", debuggerConfig.WelcomeMessage);
+                    Trace.Info("Sent custom welcome message");
+                }
+                else
+                {
+                    Trace.Info("Welcome message suppressed by override");
+                }
             }
             else
             {
-                Trace.Info("Welcome message is empty, skipping");
+                SendOutput("console", DapReplParser.GetGeneralHelp());
+                Trace.Info("Sent default welcome message");
             }
         }
 

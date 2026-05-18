@@ -268,9 +268,11 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
-        /// Optional welcome message to show in the debugger console when a
-        /// client connects.  Null means "use the default help text", empty
-        /// string means "show nothing", any other value is displayed as-is.
+        /// Optional welcome message content shown in the debugger console when a client
+        /// connects. Only used when the
+        /// <c>actions_runner_override_debugger_welcome_message</c> feature flag is set
+        /// in <see cref="Variables"/>; a null or empty value with the flag set
+        /// suppresses the message entirely.
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
         public string DebuggerWelcomeMessage

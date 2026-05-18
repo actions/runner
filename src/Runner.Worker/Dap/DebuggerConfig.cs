@@ -8,10 +8,11 @@ namespace GitHub.Runner.Worker.Dap
     /// </summary>
     public sealed class DebuggerConfig
     {
-        public DebuggerConfig(bool enabled, DebuggerTunnelInfo tunnel, string welcomeMessage = null)
+        public DebuggerConfig(bool enabled, DebuggerTunnelInfo tunnel, bool overrideWelcomeMessage = false, string welcomeMessage = null)
         {
             Enabled = enabled;
             Tunnel = tunnel;
+            OverrideWelcomeMessage = overrideWelcomeMessage;
             WelcomeMessage = welcomeMessage;
         }
 
@@ -25,8 +26,15 @@ namespace GitHub.Runner.Worker.Dap
         public DebuggerTunnelInfo Tunnel { get; }
 
         /// <summary>
-        /// Optional welcome message for the debugger console.
-        /// Null = show default help, empty = show nothing, non-empty = show as-is.
+        /// When true, the runner overrides the default welcome message with
+        /// <see cref="WelcomeMessage"/>. A null or empty <see cref="WelcomeMessage"/>
+        /// suppresses the message entirely. When false, the default help text is shown.
+        /// </summary>
+        public bool OverrideWelcomeMessage { get; }
+
+        /// <summary>
+        /// Optional welcome message content for the debugger console. Only used when
+        /// <see cref="OverrideWelcomeMessage"/> is true.
         /// </summary>
         public string WelcomeMessage { get; }
 

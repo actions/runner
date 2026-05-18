@@ -179,6 +179,7 @@ namespace GitHub.Runner.Common
                 public static readonly string EmitCompositeMarkers = "actions_runner_emit_composite_markers";
                 public static readonly string BatchActionResolution = "actions_batch_action_resolution";
                 public static readonly string UseBearerTokenForCodeload = "actions_use_bearer_token_for_codeload";
+                public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
             }
 
             // Node version migration related constants
