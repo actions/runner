@@ -861,7 +861,7 @@ namespace GitHub.Runner.Worker.Dap
             SendStoppedEvent(reason, description);
 
             // Emit a banner so the user knows where REPL commands will execute
-            SendExecutionContextBanner(step);
+            SendExecutionContextBanner();
 
             // Wait for debugger command
             await WaitForCommandAsync(cancellationToken);
@@ -1419,14 +1419,14 @@ namespace GitHub.Runner.Worker.Dap
         /// Emits a console output banner telling the user whether REPL
         /// commands will execute on the host or inside the job container.
         /// </summary>
-        private void SendExecutionContextBanner(IStep step)
+        private void SendExecutionContextBanner()
         {
             if (!_isClientConnected)
             {
                 return;
             }
 
-            bool isActionStep = step is IActionRunner;
+            bool isActionStep = _currentStep is IActionRunner;
             var container = _jobContext?.Global?.Container;
 
             string target;

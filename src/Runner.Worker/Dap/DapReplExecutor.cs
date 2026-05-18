@@ -151,10 +151,13 @@ namespace GitHub.Runner.Worker.Dap
                     }
                     else
                     {
-                        string existingPath;
-                        environment.TryGetValue(Constants.PathVariable, out existingPath);
-                        existingPath = existingPath ?? System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? string.Empty;
-                        environment[Constants.PathVariable] = PathUtil.PrependPath(prependPath, existingPath);
+                        string taskEnvPATH;
+                        environment.TryGetValue(Constants.PathVariable, out taskEnvPATH);
+                        string originalPath = context.Global.Variables?.Get(Constants.PathVariable) ?? // Prefer a job variable.
+                            taskEnvPATH ?? // Then a task-environment variable.
+                            System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? // Then an environment variable.
+                            string.Empty;
+                        environment[Constants.PathVariable] = PathUtil.PrependPath(prependPath, originalPath);
                     }
                 }
 
@@ -183,7 +186,9 @@ namespace GitHub.Runner.Worker.Dap
                 // streamed to the debug console in that mode.
                 if (isContainerStepHost && FeatureManager.IsContainerHooksEnabled(context.Global?.Variables))
                 {
-                    _trace.Warning("Container hooks are enabled -- REPL output will not be streamed to the debug console");
+                    const string hookWarning = "Container hooks are enabled. REPL output will not be streamed to the debug console for this command.";
+                    _trace.Warning(hookWarning);
+                    SendOutput("stderr", hookWarning + "\n");
                 }
 
                 // 9. Execute via IStepHost — handles docker exec for containers,
