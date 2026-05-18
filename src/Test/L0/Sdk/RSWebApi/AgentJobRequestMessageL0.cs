@@ -164,47 +164,7 @@ public sealed class AgentJobRequestMessageL0
     [Fact]
     [Trait("Level", "L0")]
     [Trait("Category", "Common")]
-    public void VerifyDebuggerWelcomeMessageDeserialization_WhenAbsent()
-    {
-        // Arrange
-        var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage));
-        string json = DoubleQuotify("{'EnableDebugger': true}");
-
-        // Act
-        using var stream = new MemoryStream();
-        stream.Write(Encoding.UTF8.GetBytes(json));
-        stream.Position = 0;
-        var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
-
-        // Assert — absent key should deserialize as null
-        Assert.NotNull(recoveredMessage);
-        Assert.Null(recoveredMessage.DebuggerWelcomeMessage);
-    }
-
-    [Fact]
-    [Trait("Level", "L0")]
-    [Trait("Category", "Common")]
-    public void VerifyDebuggerWelcomeMessageDeserialization_WhenEmpty()
-    {
-        // Arrange
-        var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage));
-        string json = DoubleQuotify("{'DebuggerWelcomeMessage': ''}");
-
-        // Act
-        using var stream = new MemoryStream();
-        stream.Write(Encoding.UTF8.GetBytes(json));
-        stream.Position = 0;
-        var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
-
-        // Assert — empty string is preserved
-        Assert.NotNull(recoveredMessage);
-        Assert.Equal("", recoveredMessage.DebuggerWelcomeMessage);
-    }
-
-    [Fact]
-    [Trait("Level", "L0")]
-    [Trait("Category", "Common")]
-    public void VerifyDebuggerWelcomeMessageDeserialization_WithCustomMessage()
+    public void VerifyDebuggerWelcomeMessageRoundTrips()
     {
         // Arrange
         var serializer = new DataContractJsonSerializer(typeof(AgentJobRequestMessage));
@@ -216,7 +176,7 @@ public sealed class AgentJobRequestMessageL0
         stream.Position = 0;
         var recoveredMessage = serializer.ReadObject(stream) as AgentJobRequestMessage;
 
-        // Assert — custom message is preserved
+        // Assert
         Assert.NotNull(recoveredMessage);
         Assert.Equal("Welcome to debugging!", recoveredMessage.DebuggerWelcomeMessage);
     }

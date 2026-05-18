@@ -236,7 +236,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null, string welcomeMessage = null)
+        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null, bool overrideWelcomeMessage = false, string welcomeMessage = null)
         {
             var tunnel = new GitHub.DistributedTask.Pipelines.DebuggerTunnelInfo
             {
@@ -245,7 +245,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 HostToken = "test-token",
                 Port = port
             };
-            var debuggerConfig = new DebuggerConfig(true, tunnel, welcomeMessage);
+            var debuggerConfig = new DebuggerConfig(true, tunnel, overrideWelcomeMessage, welcomeMessage);
             var jobContext = new Mock<IExecutionContext>();
             jobContext.Setup(x => x.CancellationToken).Returns(cancellationToken);
             jobContext.Setup(x => x.Global).Returns(new GlobalContext { Debugger = debuggerConfig });
@@ -875,7 +875,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WelcomeMessageSendsDefaultHelpWhenNull()
+        public async Task WelcomeMessageSendsDefaultHelpWhenOverrideDisabled()
         {
             using (CreateTestContext())
             {
@@ -912,13 +912,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WelcomeMessageShowsCustomMessageWhenProvided()
+        public async Task WelcomeMessageShowsCustomMessageWhenOverrideEnabled()
         {
             using (CreateTestContext())
             {
                 var port = GetFreePort();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 var jobContext = CreateJobContextWithTunnel(cts.Token, port,
+                    overrideWelcomeMessage: true,
                     welcomeMessage: "Welcome to debugging!");
                 await _debugger.StartAsync(jobContext.Object);
 
@@ -948,14 +949,59 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task WelcomeMessageSendsNothingWhenEmpty()
+        public async Task WelcomeMessageSuppressedWhenOverrideEnabledWithEmptyMessage()
         {
             using (CreateTestContext())
             {
                 var port = GetFreePort();
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 var jobContext = CreateJobContextWithTunnel(cts.Token, port,
+                    overrideWelcomeMessage: true,
                     welcomeMessage: "");
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                // Read configurationDone response
+                var configDoneResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", configDoneResponse);
+
+                // Send threads request — if welcome message was suppressed, this
+                // should be the next response (no output event in between)
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "threads"
+                });
+
+                var threadsResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"threads\"", threadsResponse);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WelcomeMessageSuppressedWhenOverrideEnabledWithNullMessage()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port,
+                    overrideWelcomeMessage: true,
+                    welcomeMessage: null);
                 await _debugger.StartAsync(jobContext.Object);
 
                 using var client = await ConnectClientAsync(port);
