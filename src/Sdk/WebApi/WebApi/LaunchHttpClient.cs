@@ -98,7 +98,8 @@ namespace GitHub.Services.Launch.Client
             return new ActionReferenceRequestList
             {
                 Actions = actionReferenceList.Actions?.Select(ToGitHubData).ToList(),
-                ActionsDependencies = actionReferenceList.Dependencies
+                ActionsDependencies = actionReferenceList.Dependencies,
+                ActionsDependencyLock = actionReferenceList.DependencyLock
             };
         }
 

@@ -4,6 +4,7 @@ using System.Runtime.Serialization.Json;
 using System.Text;
 using Xunit;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.Services.WebApi;
 
 namespace GitHub.Actions.RunService.WebApi.Tests;
 
@@ -159,6 +160,28 @@ public sealed class AgentJobRequestMessageL0
         // Assert
         Assert.NotNull(recoveredMessage);
         Assert.Empty(recoveredMessage.ActionsDependencies);
+    }
+
+    [Fact]
+    [Trait("Level", "L0")]
+    [Trait("Category", "Common")]
+    public void VerifyActionsDependencyLockDeserialization_WithEntries()
+    {
+        // Arrange
+        string json = DoubleQuotify("{'dependencyLock': [{'workflow': '.github/workflows/ci.yml', 'source': 'github.com/actions/checkout', 'ref': 'v4', 'digest': 'sha256-abc123', 'direct': 'true'}]}");
+
+        // Act
+        var recoveredMessage = JsonUtility.FromString<AgentJobRequestMessage>(json);
+
+        // Assert
+        Assert.NotNull(recoveredMessage);
+        Assert.NotNull(recoveredMessage.ActionsDependencyLock);
+        Assert.Single(recoveredMessage.ActionsDependencyLock);
+        Assert.Equal(".github/workflows/ci.yml", recoveredMessage.ActionsDependencyLock[0]["workflow"]);
+        Assert.Equal("github.com/actions/checkout", recoveredMessage.ActionsDependencyLock[0]["source"]);
+        Assert.Equal("v4", recoveredMessage.ActionsDependencyLock[0]["ref"]);
+        Assert.Equal("sha256-abc123", recoveredMessage.ActionsDependencyLock[0]["digest"]);
+        Assert.Equal("true", recoveredMessage.ActionsDependencyLock[0]["direct"]);
     }
 
     [Fact]

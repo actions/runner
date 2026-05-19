@@ -877,6 +877,7 @@ namespace GitHub.Runner.Worker
 
             // Workflow dependencies (lockfile pins)
             Global.ActionsDependencies = message.ActionsDependencies;
+            Global.ActionsDependencyLock = message.ActionsDependencyLock;
 
             // What type of job request is running (i.e. Run Service vs. pipelines)
             Global.Variables.Set(Constants.Variables.System.JobRequestType, message.MessageType);

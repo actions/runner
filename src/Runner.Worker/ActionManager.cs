@@ -880,10 +880,14 @@ namespace GitHub.Runner.Worker
                 return new Dictionary<string, WebApi.ActionDownloadInfo>();
             }
 
-            // Pass lockfile dependencies to Launch when present, so it can
-            // perform ref-scoped policy matching with the original refs.
+            // Prefer the structured lockfile payload when present, falling back
+            // to legacy string dependencies for older run-service payloads.
+            // Once the lockfile contract is settled, this can collapse to whichever
+            // representation we choose to keep.
             var deps = executionContext.Global.ActionsDependencies;
-            IList<string> dependencies = (deps != null && deps.Count > 0) ? deps : null;
+            var dependencyLock = executionContext.Global.ActionsDependencyLock;
+            var hasDependencyLock = dependencyLock != null && dependencyLock.Count > 0;
+            IList<string> dependencies = (!hasDependencyLock && deps != null && deps.Count > 0) ? deps : null;
 
             // Resolve download info
             var launchServer = HostContext.GetService<ILaunchServer>();
@@ -896,7 +900,7 @@ namespace GitHub.Runner.Worker
                     if (MessageUtil.IsRunServiceJob(executionContext.Global.Variables.Get(Constants.Variables.System.JobRequestType)))
                     {
                         var displayHelpfulActionsDownloadErrors = executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DisplayHelpfulActionsDownloadErrors) ?? false;
-                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences, Dependencies = dependencies }, executionContext.CancellationToken, displayHelpfulActionsDownloadErrors);
+                        actionDownloadInfos = await launchServer.ResolveActionsDownloadInfoAsync(executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences, Dependencies = dependencies, DependencyLock = dependencyLock }, executionContext.CancellationToken, displayHelpfulActionsDownloadErrors);
                     }
                     else
                     {

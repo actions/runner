@@ -19,5 +19,12 @@ namespace GitHub.DistributedTask.WebApi
             get;
             set;
         }
+
+        [DataMember(EmitDefaultValue = false)]
+        public IList<IDictionary<string, string>> DependencyLock
+        {
+            get;
+            set;
+        }
     }
 }

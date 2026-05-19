@@ -39,5 +39,6 @@ namespace GitHub.Runner.Worker
         public HashSet<string> UpgradedToNode24Actions { get; set; }
         public HashSet<string> Arm32Node20Actions { get; set; }
         public IList<String> ActionsDependencies { get; set; }
+        public IList<IDictionary<String, String>> ActionsDependencyLock { get; set; }
     }
 }
