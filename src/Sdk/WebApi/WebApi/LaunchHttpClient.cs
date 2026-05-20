@@ -99,7 +99,7 @@ namespace GitHub.Services.Launch.Client
             {
                 Actions = actionReferenceList.Actions?.Select(ToGitHubData).ToList(),
                 ActionsDependencies = actionReferenceList.Dependencies,
-                ActionsDependencyLock = actionReferenceList.DependencyLock
+                ActionsDependenciesLock = actionReferenceList.LockfileDependencies
             };
         }
 

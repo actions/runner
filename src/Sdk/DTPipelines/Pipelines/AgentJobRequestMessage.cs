@@ -301,7 +301,7 @@ namespace GitHub.DistributedTask.Pipelines
         /// Gets or sets the structured workflow-level action dependency lock payload.
         /// </summary>
         [DataMember(Name = "dependencyLock", EmitDefaultValue = false)]
-        public IList<IDictionary<String, String>> ActionsDependencyLock
+        public IList<IDictionary<String, String>> ActionsDependenciesLock
         {
             get;
             set;

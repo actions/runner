@@ -101,7 +101,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async Task GetDownloadInfoAsync_PropagatesDependencyLock_WhenPresent()
+        public async Task GetDownloadInfoAsync_PropagatesActionsDependenciesLock_WhenPresent()
         {
             try
             {
@@ -121,11 +121,75 @@ namespace GitHub.Runner.Common.Tests.Worker
                         ["direct"] = "true",
                     }
                 };
-                _ec.Object.Global.ActionsDependencyLock = dependencyLock;
-                _ec.Object.Global.ActionsDependencies = new List<string>
+                _ec.Object.Global.ActionsDependenciesLock = dependencyLock;
+                IList<string> dependencies = new List<string>
                 {
                     "github.com/actions/checkout@v4:sha256-legacy"
                 };
+                _ec.Object.Global.ActionsDependencies = dependencies;
+
+                ActionReferenceList capturedList = null;
+                _launchServer
+                    .Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+                    .Callback<Guid, Guid, ActionReferenceList, CancellationToken, bool>((planId, jobId, list, ct, display) => capturedList = list)
+                    .Returns((Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken ct, bool display) =>
+                    {
+                        var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
+                        foreach (var action in actions.Actions)
+                        {
+                            var key = $"{action.NameWithOwner}@{action.Ref}";
+                            result.Actions[key] = new ActionDownloadInfo
+                            {
+                                NameWithOwner = action.NameWithOwner,
+                                Ref = action.Ref,
+                                ResolvedNameWithOwner = action.NameWithOwner,
+                                ResolvedSha = $"{action.Ref}-sha",
+                                TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                                ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            };
+                        }
+                        return Task.FromResult(result);
+                    });
+
+                var actionStep = new Pipelines.ActionStep()
+                {
+                    Name = "action",
+                    Id = Guid.NewGuid(),
+                    Reference = new Pipelines.RepositoryPathReference()
+                    {
+                        Name = "actions/checkout",
+                        Ref = "v4",
+                        RepositoryType = "GitHub"
+                    }
+                };
+
+                // Act
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
+
+                // Assert
+                Assert.NotNull(capturedList);
+                Assert.Same(dependencies, capturedList.Dependencies);
+                Assert.Same(dependencyLock, capturedList.LockfileDependencies);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task GetDownloadInfoAsync_DoesNotPropagateEmptyDependencyLists()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+
+                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, "RunnerJobRequest");
+                _ec.Object.Global.ActionsDependencies = new List<string>();
+                _ec.Object.Global.ActionsDependenciesLock = new List<IDictionary<string, string>>();
 
                 ActionReferenceList capturedList = null;
                 _launchServer
@@ -168,7 +232,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Assert
                 Assert.NotNull(capturedList);
                 Assert.Null(capturedList.Dependencies);
-                Assert.Same(dependencyLock, capturedList.DependencyLock);
+                Assert.Null(capturedList.LockfileDependencies);
             }
             finally
             {

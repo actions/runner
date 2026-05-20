@@ -27,7 +27,7 @@ namespace GitHub.Services.Launch.Contracts
         public IList<string> ActionsDependencies { get; set; }
 
         [DataMember(EmitDefaultValue = false, Name = "actions_dependency_lock")]
-        public IList<IDictionary<string, string>> ActionsDependencyLock { get; set; }
+        public IList<IDictionary<string, string>> ActionsDependenciesLock { get; set; }
     }
 
     [DataContract]

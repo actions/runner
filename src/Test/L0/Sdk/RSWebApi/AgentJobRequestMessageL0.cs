@@ -165,7 +165,7 @@ public sealed class AgentJobRequestMessageL0
     [Fact]
     [Trait("Level", "L0")]
     [Trait("Category", "Common")]
-    public void VerifyActionsDependencyLockDeserialization_WithEntries()
+    public void VerifyActionsDependenciesLockDeserialization_WithEntries()
     {
         // Arrange
         string json = DoubleQuotify("{'dependencyLock': [{'workflow': '.github/workflows/ci.yml', 'source': 'github.com/actions/checkout', 'ref': 'v4', 'digest': 'sha256-abc123', 'direct': 'true'}]}");
@@ -175,13 +175,13 @@ public sealed class AgentJobRequestMessageL0
 
         // Assert
         Assert.NotNull(recoveredMessage);
-        Assert.NotNull(recoveredMessage.ActionsDependencyLock);
-        Assert.Single(recoveredMessage.ActionsDependencyLock);
-        Assert.Equal(".github/workflows/ci.yml", recoveredMessage.ActionsDependencyLock[0]["workflow"]);
-        Assert.Equal("github.com/actions/checkout", recoveredMessage.ActionsDependencyLock[0]["source"]);
-        Assert.Equal("v4", recoveredMessage.ActionsDependencyLock[0]["ref"]);
-        Assert.Equal("sha256-abc123", recoveredMessage.ActionsDependencyLock[0]["digest"]);
-        Assert.Equal("true", recoveredMessage.ActionsDependencyLock[0]["direct"]);
+        Assert.NotNull(recoveredMessage.ActionsDependenciesLock);
+        Assert.Single(recoveredMessage.ActionsDependenciesLock);
+        Assert.Equal(".github/workflows/ci.yml", recoveredMessage.ActionsDependenciesLock[0]["workflow"]);
+        Assert.Equal("github.com/actions/checkout", recoveredMessage.ActionsDependenciesLock[0]["source"]);
+        Assert.Equal("v4", recoveredMessage.ActionsDependenciesLock[0]["ref"]);
+        Assert.Equal("sha256-abc123", recoveredMessage.ActionsDependenciesLock[0]["digest"]);
+        Assert.Equal("true", recoveredMessage.ActionsDependenciesLock[0]["direct"]);
     }
 
     [Fact]

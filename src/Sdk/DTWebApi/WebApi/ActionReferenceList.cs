@@ -21,7 +21,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public IList<IDictionary<string, string>> DependencyLock
+        public IList<IDictionary<string, string>> LockfileDependencies
         {
             get;
             set;
