@@ -108,7 +108,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange
                 Setup();
 
-                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, "RunnerJobRequest");
+                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, JobRequestMessageTypes.RunnerJobRequest);
 
                 IList<IDictionary<string, string>> dependencyLock = new List<IDictionary<string, string>>
                 {
@@ -164,7 +164,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 // Act
-                var result = await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
+                await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
 
                 // Assert
                 Assert.NotNull(capturedList);
@@ -187,7 +187,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange
                 Setup();
 
-                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, "RunnerJobRequest");
+                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, JobRequestMessageTypes.RunnerJobRequest);
                 _ec.Object.Global.ActionsDependencies = new List<string>();
                 _ec.Object.Global.ActionsDependenciesLock = new List<IDictionary<string, string>>();
 
@@ -227,7 +227,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 // Act
-                var result = await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
+                await _actionManager.PrepareActionsAsync(_ec.Object, new List<Pipelines.JobStep> { actionStep }, default);
 
                 // Assert
                 Assert.NotNull(capturedList);
