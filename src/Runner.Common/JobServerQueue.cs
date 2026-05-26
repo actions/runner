@@ -471,38 +471,31 @@ namespace GitHub.Runner.Common
                         Trace.Info($"Uploading {filesToUpload.Count} files in one shot.");
                     }
 
-                    // TODO: upload all file in parallel
                     int errorCount = 0;
-                    foreach (var file in filesToUpload)
+                    if (_enableTelemetry)
+                    {
+                        _actionsUploadTimer.Start();
+                    }
+
+                    var uploadTasks = filesToUpload.Select(async file =>
                     {
                         try
                         {
-                            if (_enableTelemetry)
-                            {
-                                _actionsUploadTimer.Start();
-                            }
                             await UploadFile(file);
                         }
                         catch (Exception ex)
                         {
                             Trace.Info("Catch exception during log or attachment file upload, keep going since the process is best effort.");
                             Trace.Error(ex);
-                            errorCount++;
+                            Interlocked.Increment(ref errorCount);
+                        }
+                    });
 
-                            // put the failed upload file back to queue.
-                            // TODO: figure out how should we retry paging log upload.
-                            //lock (_fileUploadQueueLock)
-                            //{
-                            //    _fileUploadQueue.Enqueue(file);
-                            //}
-                        }
-                        finally
-                        {
-                            if (_enableTelemetry)
-                            {
-                                _actionsUploadTimer.Stop();
-                            }
-                        }
+                    await Task.WhenAll(uploadTasks);
+
+                    if (_enableTelemetry)
+                    {
+                        _actionsUploadTimer.Stop();
                     }
 
                     Trace.Info("Try to upload {0} log files or attachments, success rate: {1}/{0}.", filesToUpload.Count, filesToUpload.Count - errorCount);
