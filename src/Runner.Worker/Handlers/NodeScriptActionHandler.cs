@@ -132,11 +132,9 @@ namespace GitHub.Runner.Worker.Handlers
             // Disable maglev jit compiler in node.js 24.x.x on x64 Windows until the node.js bug is fixed.
             // https://github.com/nodejs/node/issues/62260
             if (nodeRuntimeVersion.StartsWith("node24", StringComparison.OrdinalIgnoreCase) &&
-                Constants.Runner.Platform == Constants.OSPlatform.Windows &&
-                Constants.Runner.PlatformArchitecture == Constants.Architecture.X64 &&
-                !StringUtil.ConvertToBoolean(System.Environment.GetEnvironmentVariable("ACTIONS_RUNNER_REENABLE_NODE_MAGLEV")) &&
-                !StringUtil.ConvertToBoolean(Environment.GetValueOrDefault("ACTIONS_RUNNER_REENABLE_NODE_MAGLEV")))
+                (StringUtil.ConvertToBoolean(System.Environment.GetEnvironmentVariable("ACTIONS_RUNNER_DISABLE_NODE_MAGLEV")) || StringUtil.ConvertToBoolean(Environment.GetValueOrDefault("ACTIONS_RUNNER_DISABLE_NODE_MAGLEV"))))
             {
+                Trace.Info("Disable maglev jit compiler in node.js");
                 arguments = $"--no-maglev {arguments}";
             }
 
