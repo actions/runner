@@ -1,0 +1,46 @@
+name: Update skills submodule
+
+on:
+  repository_dispatch:
+    types: [skills-updated]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: Bump skills/sakthai-skills to latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update submodule to latest main
+        id: update
+        run: |
+          git submodule update --remote skills/sakthai-skills
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add skills/sakthai-skills
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: bump skills/sakthai-skills submodule to latest"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: auto/bump-skills-submodule
+          title: "chore: bump skills/sakthai-skills submodule to latest"
+          body: |
+            Automated submodule bump triggered by a push to `beernanthasit-hub/SakThai-skills`.
+
+            Triggered by commit: `${{ github.event.client_payload.sha }}`
+          labels: automated,dependencies

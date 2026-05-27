@@ -1,0 +1,3 @@
+[submodule "skills/sakthai-skills"]
+	path = skills/sakthai-skills
+	url = https://github.com/beernanthasit-hub/SakThai-skills.git
