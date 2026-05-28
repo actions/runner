@@ -926,6 +926,58 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_ContainerAction_RejectsInvalidExpressionContext()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManagerLegacy();
+                actionManifest.Initialize(_hc);
+
+                // Act & Assert — github is not a valid context for container-runs-env (only inputs is allowed)
+                var ex = Assert.Throws<ArgumentException>(() =>
+                    actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "dockerfileaction_env_invalid_context.yml")));
+
+                Assert.Contains("Failed to load", ex.Message);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_ContainerAction_AcceptsValidExpressionContext()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManagerLegacy();
+                actionManifest.Initialize(_hc);
+
+                // Act — inputs is a valid context for container-runs-env
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "dockerfileaction_arg_env_expression.yml"));
+
+                // Assert
+                var containerAction = result.Execution as ContainerActionExecutionData;
+                Assert.NotNull(containerAction);
+                Assert.Equal("${{ inputs.entryPoint }}", containerAction.Environment[1].Value.ToString());
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();

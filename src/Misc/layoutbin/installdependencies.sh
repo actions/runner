@@ -83,17 +83,20 @@ if [ -e /etc/os-release ]; then
             fi
         }
 
-        if ! apt_get_with_fallbacks liblttng-ust1 liblttng-ust0; then
+        if ! apt_get_with_fallbacks liblttng-ust1t64 liblttng-ust1 liblttng-ust0; then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi
 
         if ! apt_get_with_fallbacks libssl3 libssl1.1 libssl1.0.2 libssl1.0.0; then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi
 
-        if ! apt_get_with_fallbacks libicu76 libicu75 libicu74 libicu73 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52; then
+        if ! apt_get_with_fallbacks libicu80 libicu79 libicu78 libicu77 libicu76 libicu75 libicu74 libicu73 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52; then
+            echo "'$apt_get' failed with exit code '$?'"
             print_errormessage
             exit 1
         fi

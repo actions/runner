@@ -1,0 +1,13 @@
+name: 'Action With Invalid Context'
+description: 'Docker action that uses github context in env (only inputs is allowed)'
+inputs:
+  my-input:
+    description: 'A test input'
+    required: false
+    default: 'hello'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    VALID: '${{ inputs.my-input }}'
+    INVALID: '${{ github.event.repository.private }}'

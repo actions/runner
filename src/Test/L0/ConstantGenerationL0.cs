@@ -24,7 +24,10 @@ namespace GitHub.Runner.Common.Tests
                 "osx-arm64"
             };
 
-            Assert.Equal(40, BuildConstants.Source.CommitHash.Length);
+            Assert.True(
+                BuildConstants.Source.CommitHash.Length == 40 || BuildConstants.Source.CommitHash.Length == 64,
+                "CommitHash should be a 40-char SHA-1 or 64-char SHA-256 hex string");
+            Assert.Matches("^[0-9a-f]+$", BuildConstants.Source.CommitHash);
             Assert.True(validPackageNames.Contains(BuildConstants.RunnerPackage.PackageName), $"PackageName should be one of the following '{string.Join(", ", validPackageNames)}', current PackageName is '{BuildConstants.RunnerPackage.PackageName}'");
         }
     }

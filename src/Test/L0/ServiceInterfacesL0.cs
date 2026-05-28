@@ -2,6 +2,7 @@
 using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Runner.Worker.Container.ContainerHooks;
 using GitHub.Runner.Worker.Handlers;
 using System;

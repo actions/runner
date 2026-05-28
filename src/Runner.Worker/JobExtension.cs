@@ -16,6 +16,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -50,6 +51,7 @@ namespace GitHub.Runner.Worker
         private Task _diskSpaceCheckTask = null;
         private CancellationTokenSource _serviceConnectivityCheckToken = new();
         private Task _serviceConnectivityCheckTask = null;
+        private IDapDebugger _dapDebugger;
 
         // Download all required actions.
         // Make sure all condition inputs are valid.
@@ -67,6 +69,7 @@ namespace GitHub.Runner.Worker
 
             List<IStep> preJobSteps = new();
             List<IStep> jobSteps = new();
+            var initSucceeded = false;
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
@@ -77,20 +80,25 @@ namespace GitHub.Runner.Worker
 
                     var setting = HostContext.GetService<IConfigurationStore>().GetSettings();
                     var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
-                    if (File.Exists(credFile))
+                    var credData = File.Exists(credFile) ? IOUtil.LoadObject<CredentialData>(credFile) : null;
+                    // self-hosted runner is the only runner type using OAuth, can be identified via clientId
+                    if (credData != null &&
+                        credData.Data.TryGetValue("clientId", out _))
                     {
-                        var credData = IOUtil.LoadObject<CredentialData>(credFile);
-                        if (credData != null &&
-                            credData.Data.TryGetValue("clientId", out var clientId))
+                        context.Output($"Runner name: '{setting.AgentName}'");
+                        // use system variable for group name since self-hosted runners can be renamed
+                        if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
                         {
-                            // print out HostName for self-hosted runner
-                            context.Output($"Runner name: '{setting.AgentName}'");
-                            if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
-                            {
-                                context.Output($"Runner group name: '{runnerGroupName.Value}'");
-                            }
-                            context.Output($"Machine name: '{Environment.MachineName}'");
+                            context.Output($"Runner group name: '{runnerGroupName.Value}'");
                         }
+                        // print out machine name for self-hosted runner
+                        context.Output($"Machine name: '{Environment.MachineName}'");
+                    }
+                    // print runner info for lhr runners, skips standard runners (PoolId = 0)
+                    else if (setting.PoolId > 0 && !string.IsNullOrEmpty(setting.PoolName) && !string.IsNullOrEmpty(setting.AgentName))
+                    {
+                        context.Output($"Runner name: '{setting.AgentName}'");
+                        context.Output($"Runner group name: '{setting.PoolName}'");
                     }
 
                     var setupInfoFile = HostContext.GetConfigFile(WellKnownConfigFile.SetupInfo);
@@ -476,6 +484,41 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Start checking service connectivity in background.");
                     _serviceConnectivityCheckTask = CheckServiceConnectivityAsync(context, _serviceConnectivityCheckToken.Token);
 
+                    // Start the DAP debugger and wait for a client connection inside
+                    // "Set up job" so the step stays in-progress while we wait.
+                    if (jobContext.Global.Debugger?.Enabled == true)
+                    {
+                        Trace.Info("Debugger enabled — starting inside Set up job");
+                        context.Output("Starting debugger…");
+
+                        try
+                        {
+                            _dapDebugger = HostContext.GetService<IDapDebugger>();
+                            await _dapDebugger.StartAsync(jobContext);
+
+                            context.Output("Waiting for debugger client to connect…");
+
+                            await _dapDebugger.WaitUntilReadyAsync();
+                            context.Output("Debugger connected.");
+                            AddDebuggerConnectionTelemetry(jobContext, "Connected");
+                        }
+                        catch (OperationCanceledException) when (jobContext.CancellationToken.IsCancellationRequested)
+                        {
+                            Trace.Info("Job was cancelled before debugger client connected.");
+                            AddDebuggerConnectionTelemetry(jobContext, "Canceled");
+                            context.Error("Job was cancelled before debugger client connected.");
+                            throw;
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"DAP debugger failed: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
+                            context.Error("The debugger failed to start or no debugger client connected in time.");
+                            throw;
+                        }
+                    }
+
+                    initSucceeded = true;
                     return steps;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
@@ -496,10 +539,34 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
+                    // If InitializeJob failed after the debugger was started,
+                    // tear down the transport here since FinalizeJob won't run.
+                    if (!initSucceeded && _dapDebugger != null)
+                    {
+                        try
+                        {
+                            await _dapDebugger.StopAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Warning($"DAP debugger cleanup during failed init: {ex.Message}");
+                        }
+                        _dapDebugger = null;
+                    }
+
                     context.Debug("Finishing: Set up job");
                     context.Complete();
                 }
             }
+        }
+
+        private static void AddDebuggerConnectionTelemetry(IExecutionContext jobContext, string result)
+        {
+            jobContext.Global.JobTelemetry.Add(new JobTelemetry
+            {
+                Type = JobTelemetryType.General,
+                Message = $"DebuggerConnectionResult: {result}"
+            });
         }
 
         private string GetWorkflowReference(IDictionary<string, VariableValue> variables)
@@ -736,13 +803,37 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Add deprecation warning annotation for Node.js 20 actions
+                    // Read dates from server variables with hardcoded fallbacks
+                    var node24DefaultDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node24DefaultDateVariable);
+                    var node24DefaultDate = string.IsNullOrEmpty(node24DefaultDateRaw) ? Constants.Runner.NodeMigration.Node24DefaultDate : node24DefaultDateRaw;
+                    var node20RemovalDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
+                    var node20RemovalDate = string.IsNullOrEmpty(node20RemovalDateRaw) ? Constants.Runner.NodeMigration.Node20RemovalDate : node20RemovalDateRaw;
+
+                    // Add deprecation warning annotation for Node.js 20 actions (Phase 1 - actions still running on node20)
                     if (context.Global.DeprecatedNode20Actions?.Count > 0)
                     {
                         var sortedActions = context.Global.DeprecatedNode20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
                         var actionsList = string.Join(", ", sortedActions);
-                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting {node24DefaultDate}. Node.js 20 will be removed from the runner on {node20RemovalDate}. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
                         context.Warning(deprecationMessage);
+                    }
+
+                    // Add annotation for actions upgraded from Node.js 20 to Node.js 24 (Phase 2/3)
+                    if (context.Global.UpgradedToNode24Actions?.Count > 0)
+                    {
+                        var sortedActions = context.Global.UpgradedToNode24Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
+                        var actionsList = string.Join(", ", sortedActions);
+                        var upgradeMessage = $"Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: {actionsList}. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        context.Warning(upgradeMessage);
+                    }
+
+                    // Add annotation for ARM32 actions stuck on Node.js 20 (ARM32 can't run node24)
+                    if (context.Global.Arm32Node20Actions?.Count > 0)
+                    {
+                        var sortedActions = context.Global.Arm32Node20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
+                        var actionsList = string.Join(", ", sortedActions);
+                        var arm32Message = $"The following actions are running on Node.js 20 because Node.js 24 is not available on Linux ARM32: {actionsList}. Linux ARM32 runners are deprecated and will no longer be supported after {node20RemovalDate}. Please migrate to a supported platform. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
+                        context.Warning(arm32Message);
                     }
                 }
                 catch (Exception ex)
@@ -753,6 +844,34 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
+                    // Pause for debugger inspection, then tear down the DAP session.
+                    // OnJobCompletedAsync pauses first, then sends terminated/exited
+                    // events and stops the transport.
+                    if (_dapDebugger != null)
+                    {
+                        context.Output("Job completed — pausing for debugger inspection. Press continue to finish.");
+                        try
+                        {
+                            await _dapDebugger.OnJobCompletedAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Warning($"DAP debugger completion error: {ex.Message}");
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                await _dapDebugger.StopAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Warning($"DAP debugger stop error: {ex.Message}");
+                            }
+                        }
+                        _dapDebugger = null;
+                    }
+
                     context.Debug("Finishing: Complete job");
                     context.Complete();
                 }

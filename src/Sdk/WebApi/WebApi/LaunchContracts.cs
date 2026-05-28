@@ -22,6 +22,9 @@ namespace GitHub.Services.Launch.Contracts
     {
         [DataMember(EmitDefaultValue = false, Name = "actions")]
         public IList<ActionReferenceRequest> Actions { get; set; }
+
+        [DataMember(EmitDefaultValue = false, Name = "actions_dependencies")]
+        public IList<string> ActionsDependencies { get; set; }
     }
 
     [DataContract]

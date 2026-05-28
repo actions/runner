@@ -34,11 +34,13 @@ fi
 
 updateFile="update.finished"
 "$DIR"/bin/Runner.Listener run $*
-
 returnCode=$?
 if [[ $returnCode == 0 ]]; then
     echo "Runner listener exit with 0 return code, stop the service, no retry needed."
     exit 0
+elif [[ "$ACTIONS_RUNNER_RETURN_VERSION_DEPRECATED_EXIT_CODE" == "1" && $returnCode -eq 7 ]]; then
+    echo "Runner listener exit with deprecated version exit code: ${returnCode}."
+    exit "$returnCode"
 elif [[ $returnCode == 1 ]]; then
     echo "Runner listener exit with terminated error, stop the service, no retry needed."
     exit 0

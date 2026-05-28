@@ -42,11 +42,25 @@ namespace GitHub.Actions.WorkflowParser
         public bool AllowModelsPermission { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether users may use the "vulnerability-alerts" permission.
+        /// Used during parsing only.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool AllowVulnerabilityAlertsPermission { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether the expression function fromJson performs strict JSON parsing.
         /// Used during evaluation only.
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
         public bool StrictJsonParsing { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether service containers may specify "entrypoint" and "command".
+        /// Used during parsing and evaluation.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool AllowServiceContainerCommand { get; set; }
 
         /// <summary>
         /// Gets the default workflow features.
@@ -60,6 +74,8 @@ namespace GitHub.Actions.WorkflowParser
                 Snapshot = false,           // Default to false since this feature is still in an experimental phase
                 StrictJsonParsing = false,  // Default to false since this is temporary for telemetry purposes only
                 AllowModelsPermission = false, // Default to false since we want this to be disabled for all non-production environments
+                AllowVulnerabilityAlertsPermission = false, // Default to false since we want this to be disabled for all non-production environments
+                AllowServiceContainerCommand = false, // Default to false since this feature is gated by actions_service_container_command
             };
         }
 

@@ -77,8 +77,7 @@ namespace GitHub.Runner.Worker
 
         List<string> StepEnvironmentOverrides { get; }
 
-        ExecutionContext Root { get; }
-        ExecutionContext Parent { get; }
+        IExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -251,7 +250,9 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ExecutionContext Root
+        IExecutionContext IExecutionContext.Root => Root;
+
+        private ExecutionContext Root
         {
             get
             {
@@ -266,13 +267,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ExecutionContext Parent
-        {
-            get
-            {
-                return _parentExecutionContext;
-            }
-        }
+
 
         public JobContext JobContext
         {
@@ -859,6 +854,12 @@ namespace GitHub.Runner.Worker
             // Track Node.js 20 actions for deprecation warning
             Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // Track actions upgraded from Node.js 20 to Node.js 24
+            Global.UpgradedToNode24Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Track actions stuck on Node.js 20 due to ARM32 (separate from general deprecation)
+            Global.Arm32Node20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -873,6 +874,9 @@ namespace GitHub.Runner.Worker
 
             // File table
             Global.FileTable = new List<String>(message.FileTable ?? new string[0]);
+
+            // Workflow dependencies (lockfile pins)
+            Global.ActionsDependencies = message.ActionsDependencies;
 
             // What type of job request is running (i.e. Run Service vs. pipelines)
             Global.Variables.Set(Constants.Variables.System.JobRequestType, message.MessageType);
@@ -891,15 +895,12 @@ namespace GitHub.Runner.Worker
 
             Trace.Info("Initializing Job context");
             var jobContext = new JobContext();
-            if (Global.Variables.GetBoolean(Constants.Runner.Features.AddCheckRunIdToJobContext) ?? false)
+            ExpressionValues.TryGetValue("job", out var jobDictionary);
+            if (jobDictionary != null)
             {
-                ExpressionValues.TryGetValue("job", out var jobDictionary);
-                if (jobDictionary != null)
+                foreach (var pair in jobDictionary.AssertDictionary("job"))
                 {
-                    foreach (var pair in jobDictionary.AssertDictionary("job"))
-                    {
-                        jobContext[pair.Key] = pair.Value;
-                    }
+                    jobContext[pair.Key] = pair.Value;
                 }
             }
             ExpressionValues["job"] = jobContext;
@@ -967,6 +968,10 @@ namespace GitHub.Runner.Worker
 
             // Verbosity (from GitHub.Step_Debug).
             Global.WriteDebug = Global.Variables.Step_Debug ?? false;
+
+            // Debugger enabled flag (from acquire response).
+            var overrideDebuggerWelcomeMessage = Global.Variables.GetBoolean(Constants.Runner.Features.OverrideDebuggerWelcomeMessage) ?? false;
+            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel, overrideDebuggerWelcomeMessage, message.DebuggerWelcomeMessage);
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
@@ -1328,9 +1333,9 @@ namespace GitHub.Runner.Worker
             UpdateGlobalStepsContext();
         }
 
-        internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(ObjectTemplating.ITraceWriter traceWriter = null)
+        internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(bool allowServiceContainerCommand, ObjectTemplating.ITraceWriter traceWriter = null)
         {
-            return new PipelineTemplateEvaluatorWrapper(HostContext, this, traceWriter);
+            return new PipelineTemplateEvaluatorWrapper(HostContext, this, allowServiceContainerCommand, traceWriter);
         }
 
         private static void NoOp()
@@ -1418,10 +1423,13 @@ namespace GitHub.Runner.Worker
 
         public static IPipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
         {
+            var allowServiceContainerCommand = (context.Global.Variables.GetBoolean(Constants.Runner.Features.ServiceContainerCommand) ?? false)
+                || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_SERVICE_CONTAINER_COMMAND"));
+
             // Create wrapper?
             if ((context.Global.Variables.GetBoolean(Constants.Runner.Features.CompareWorkflowParser) ?? false) || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_COMPARE_WORKFLOW_PARSER")))
             {
-                return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(traceWriter);
+                return (context as ExecutionContext).ToPipelineTemplateEvaluatorInternal(allowServiceContainerCommand, traceWriter);
             }
 
             // Legacy
@@ -1433,6 +1441,7 @@ namespace GitHub.Runner.Worker
             return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
             {
                 MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
+                AllowServiceContainerCommand = allowServiceContainerCommand,
             };
         }
 

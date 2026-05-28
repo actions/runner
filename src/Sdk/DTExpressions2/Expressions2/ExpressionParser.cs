@@ -17,10 +17,9 @@ namespace GitHub.DistributedTask.Expressions2
             String expression,
             ITraceWriter trace,
             IEnumerable<INamedValueInfo> namedValues,
-            IEnumerable<IFunctionInfo> functions,
-            Boolean allowCaseFunction = true)
+            IEnumerable<IFunctionInfo> functions)
         {
-            var context = new ParseContext(expression, trace, namedValues, functions, allowCaseFunction);
+            var context = new ParseContext(expression, trace, namedValues, functions);
             context.Trace.Info($"Parsing expression: <{expression}>");
             return CreateTree(context);
         }
@@ -416,12 +415,6 @@ namespace GitHub.DistributedTask.Expressions2
             String name,
             out IFunctionInfo functionInfo)
         {
-            if (String.Equals(name, "case", StringComparison.OrdinalIgnoreCase) && !context.AllowCaseFunction)
-            {
-                functionInfo = null;
-                return false;
-            }
-
             return ExpressionConstants.WellKnownFunctions.TryGetValue(name, out functionInfo) ||
                 context.ExtensionFunctions.TryGetValue(name, out functionInfo);
         }
@@ -429,7 +422,6 @@ namespace GitHub.DistributedTask.Expressions2
         private sealed class ParseContext
         {
             public Boolean AllowUnknownKeywords;
-            public Boolean AllowCaseFunction;
             public readonly String Expression;
             public readonly Dictionary<String, IFunctionInfo> ExtensionFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
             public readonly Dictionary<String, INamedValueInfo> ExtensionNamedValues = new Dictionary<String, INamedValueInfo>(StringComparer.OrdinalIgnoreCase);
@@ -445,8 +437,7 @@ namespace GitHub.DistributedTask.Expressions2
                 ITraceWriter trace,
                 IEnumerable<INamedValueInfo> namedValues,
                 IEnumerable<IFunctionInfo> functions,
-                Boolean allowUnknownKeywords = false,
-                Boolean allowCaseFunction = true)
+                Boolean allowUnknownKeywords = false)
             {
                 Expression = expression ?? String.Empty;
                 if (Expression.Length > ExpressionConstants.MaxLength)
@@ -467,7 +458,6 @@ namespace GitHub.DistributedTask.Expressions2
 
                 LexicalAnalyzer = new LexicalAnalyzer(Expression);
                 AllowUnknownKeywords = allowUnknownKeywords;
-                AllowCaseFunction = allowCaseFunction;
             }
 
             private class NoOperationTraceWriter : ITraceWriter

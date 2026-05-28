@@ -2557,6 +2557,25 @@ namespace GitHub.DistributedTask.WebApi
     }
 
     [Serializable]
+    public sealed class FailedToDownloadActionException : DistributedTaskException
+    {
+        public FailedToDownloadActionException(String message)
+            : base(message)
+        {
+        }
+
+        public FailedToDownloadActionException(String message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        private FailedToDownloadActionException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
+
+    [Serializable]
     public sealed class InvalidActionArchiveException : DistributedTaskException
     {
         public InvalidActionArchiveException(String message)

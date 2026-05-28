@@ -12,6 +12,7 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Dap;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -61,6 +62,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _stepsRunner = new StepsRunner();
             _stepsRunner.Initialize(hc);
+
+            var mockDapDebugger = new Mock<IDapDebugger>();
+            hc.SetSingleton(mockDapDebugger.Object);
+
             return hc;
         }
 

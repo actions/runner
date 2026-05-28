@@ -186,7 +186,16 @@
         "vars",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "always(0,0)",
+        "failure(0,0)",
+        "cancelled(0,0)",
+        "success(0,0)",
+        "hashFiles(1,255)"
       ],
       "string": {}
     },
@@ -430,6 +439,21 @@
       }
     },
 
+    "service-container-mapping": {
+      "mapping": {
+        "properties": {
+          "image": "string",
+          "options": "string",
+          "entrypoint": "string",
+          "command": "string",
+          "env": "container-env",
+          "ports": "sequence-of-non-empty-string",
+          "volumes": "sequence-of-non-empty-string",
+          "credentials": "container-registry-credentials"
+        }
+      }
+    },
+
     "services": {
       "context": [
         "github",
@@ -454,7 +478,7 @@
       ],
       "one-of": [
         "string",
-        "container-mapping"
+        "service-container-mapping"
       ]
     },
 

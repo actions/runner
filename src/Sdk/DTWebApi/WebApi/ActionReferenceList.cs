@@ -12,5 +12,12 @@ namespace GitHub.DistributedTask.WebApi
             get;
             set;
         }
+
+        [DataMember(EmitDefaultValue = false)]
+        public IList<string> Dependencies
+        {
+            get;
+            set;
+        }
     }
 }

@@ -178,6 +178,7 @@ namespace GitHub.Runner.Worker
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
 
+
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
                 IJobExtension jobExtension = HostContext.CreateService<IJobExtension>();

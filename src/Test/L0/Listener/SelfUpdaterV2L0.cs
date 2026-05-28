@@ -170,8 +170,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                         DownloadUrl = "https://github.com/actions/runner/notexists"
                     };
 
-                    var ex = await Assert.ThrowsAsync<TaskCanceledException>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
-                    Assert.Contains($"failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts", ex.Message);
+                    var result = await updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+                    Assert.False(result);
                 }
             }
             finally
@@ -220,8 +220,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                         SHA256Checksum = "badhash"
                     };
 
-                    var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
-                    Assert.Contains("did not match expected Runner Hash", ex.Message);
+                    var result = await updater.SelfUpdate(message, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+                    Assert.False(result);
                 }
             }
             finally

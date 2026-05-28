@@ -36,6 +36,24 @@ namespace GitHub.Actions.WorkflowParser
         }
 
         /// <summary>
+        /// Gets or sets the container entrypoint override.
+        /// </summary>
+        public String Entrypoint
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the container command and args (after the image name).
+        /// </summary>
+        public String Command
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// Gets or sets the volumes which are mounted into the container.
         /// </summary>
         public IList<String> Volumes

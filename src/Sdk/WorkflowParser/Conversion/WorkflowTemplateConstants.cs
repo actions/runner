@@ -62,6 +62,8 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         public const String NumberStrategyContext = "number-strategy-context";
         public const String On = "on";
         public const String Options = "options";
+        public const String Entrypoint = "entrypoint";
+        public const String Command = "command";
         public const String Org = "org";
         public const String Organization = "organization";
         public const String Outputs = "outputs";
