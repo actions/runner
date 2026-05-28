@@ -206,7 +206,7 @@ namespace GitHub.Runner.Common
                 public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
 
                 // Node 20 migration dates (hardcoded fallbacks, can be overridden via job variables)
-                public static readonly string Node24DefaultDate = "June 2nd, 2026";
+                public static readonly string Node24DefaultDate = "June 16th, 2026";
                 public static readonly string Node20RemovalDate = "September 16th, 2026";
 
                 // Variable keys for server-overridable dates
