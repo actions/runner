@@ -27,4 +27,5 @@ TestResults
 TestLogs
 .DS_Store
 .mono
-**/*.DotSettings.useractions-runner-linux-x64-*.tar.gz
+**/*.DotSettings.user
+**/*.lscache

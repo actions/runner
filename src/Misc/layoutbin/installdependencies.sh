@@ -94,7 +94,7 @@ then
             fi
         }
 
-        apt_get_with_fallbacks liblttng-ust1 liblttng-ust0
+        apt_get_with_fallbacks liblttng-ust1t64 liblttng-ust1 liblttng-ust0
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
@@ -110,7 +110,7 @@ then
             exit 1
         fi
 
-        apt_get_with_fallbacks libicu76 libicu75 libicu74 libicu73 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
+        apt_get_with_fallbacks libicu80 libicu79 libicu78 libicu77 libicu76 libicu75 libicu74 libicu73 libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"

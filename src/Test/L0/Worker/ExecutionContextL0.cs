@@ -364,6 +364,119 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void RegisterPostJobStep_JobExtensionRunner_DefaultsRunnerTelemetry()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                // Act.
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var extensionStep = new JobExtensionRunner(
+                    runAsync: (_, _) => System.Threading.Tasks.Task.CompletedTask,
+                    condition: "always()",
+                    displayName: "Create Custom Image",
+                    data: null);
+
+                jobContext.RegisterPostJobStep(extensionStep);
+
+                // Assert: telemetry defaults are populated for non-action post-job steps.
+                Assert.NotNull(extensionStep.ExecutionContext);
+                Assert.Equal("runner", extensionStep.ExecutionContext.StepTelemetry.Type);
+                Assert.Equal("create_custom_image", extensionStep.ExecutionContext.StepTelemetry.Action);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RegisterPostJobStep_ActionRunner_DoesNotOverrideTelemetry()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var pagingLogger3 = new Mock<IPagingLogger>();
+                var pagingLogger4 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                var actionRunner = new ActionRunner();
+                actionRunner.Initialize(hc);
+
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.EnqueueInstance(pagingLogger3.Object);
+                hc.EnqueueInstance(pagingLogger4.Object);
+                hc.EnqueueInstance(actionRunner as IActionRunner);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                // Act.
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var action = jobContext.CreateChild(Guid.NewGuid(), "action", "action", null, null, 0);
+
+                var postRunner = hc.CreateService<IActionRunner>();
+                postRunner.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = "post", DisplayName = "Post Action", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner.Stage = ActionRunStage.Post;
+                postRunner.Condition = "always()";
+                postRunner.DisplayName = "Post Action";
+
+                action.RegisterPostJobStep(postRunner);
+
+                // Assert: action post-step telemetry is left for the handler to fill in,
+                // so RegisterPostJobStep should NOT pre-populate runner-owned defaults.
+                Assert.NotNull(postRunner.ExecutionContext);
+                Assert.Null(postRunner.ExecutionContext.StepTelemetry.Type);
+                Assert.Null(postRunner.ExecutionContext.StepTelemetry.Action);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void RegisterPostJobAction_ShareState()
         {
             using (TestHostContext hc = CreateTestContext())

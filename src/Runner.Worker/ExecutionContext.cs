@@ -337,6 +337,11 @@ namespace GitHub.Runner.Worker
             }
 
             step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, siblingScopeName);
+            if (step is JobExtensionRunner)
+            {
+                step.ExecutionContext.StepTelemetry.Type = "runner";
+                step.ExecutionContext.StepTelemetry.Action = step.DisplayName.ToLowerInvariant().Replace(' ', '_');
+            }
             Root.PostJobSteps.Push(step);
         }
 
@@ -970,7 +975,8 @@ namespace GitHub.Runner.Worker
             Global.WriteDebug = Global.Variables.Step_Debug ?? false;
 
             // Debugger enabled flag (from acquire response).
-            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel);
+            var overrideDebuggerWelcomeMessage = Global.Variables.GetBoolean(Constants.Runner.Features.OverrideDebuggerWelcomeMessage) ?? false;
+            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel, overrideDebuggerWelcomeMessage, message.DebuggerWelcomeMessage);
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;

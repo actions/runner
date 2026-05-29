@@ -2291,6 +2291,10 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Needs),
             new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Strategy),
             new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Matrix),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Steps),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Job),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Env),
         };
         private static readonly IFunctionInfo[] s_jobConditionFunctions = new IFunctionInfo[]
         {
@@ -2307,6 +2311,13 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Success, 0, 0),
             new FunctionInfo<NoOperation>(WorkflowTemplateConstants.HashFiles, 1, Byte.MaxValue),
         };
-        private static readonly IFunctionInfo[] s_snapshotConditionFunctions = null;
+        private static readonly IFunctionInfo[] s_snapshotConditionFunctions = new IFunctionInfo[]
+        {
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Always, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Cancelled, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Failure, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Success, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.HashFiles, 1, Byte.MaxValue),
+        };
     }
 }

@@ -268,6 +268,21 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
+        /// Optional welcome message shown in the debugger console when a client connects.
+        /// Only used when the <c>actions_runner_override_debugger_welcome_message</c>
+        /// feature flag is set to <c>true</c> in the job variables. With the flag set,
+        /// a non-empty value is shown as-is and a null or empty value suppresses the
+        /// default welcome message. When the flag is not set, the runner shows its
+        /// built-in help text and this field is ignored.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public string DebuggerWelcomeMessage
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// Gets the workflow-level action dependencies (lockfile entries)
         /// </summary>
         public IList<String> ActionsDependencies

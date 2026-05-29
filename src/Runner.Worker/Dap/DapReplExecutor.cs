@@ -9,6 +9,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
 
 namespace GitHub.Runner.Worker.Dap
@@ -43,6 +44,7 @@ namespace GitHub.Runner.Worker.Dap
         public async Task<EvaluateResponseBody> ExecuteRunCommandAsync(
             RunCommand command,
             IExecutionContext context,
+            bool isActionStep,
             CancellationToken cancellationToken)
         {
             if (context == null)
@@ -52,7 +54,7 @@ namespace GitHub.Runner.Worker.Dap
 
             try
             {
-                return await ExecuteScriptAsync(command, context, cancellationToken);
+                return await ExecuteScriptAsync(command, context, isActionStep, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -65,9 +67,17 @@ namespace GitHub.Runner.Worker.Dap
         private async Task<EvaluateResponseBody> ExecuteScriptAsync(
             RunCommand command,
             IExecutionContext context,
+            bool isActionStep,
             CancellationToken cancellationToken)
         {
-            // 1. Resolve shell — same logic as ScriptHandler
+            // 1. Resolve step host — container or host, same as ActionRunner.
+            //    Only action steps (user-defined run:/uses:) execute inside the
+            //    container.  Infrastructure steps (Set up job, Initialize
+            //    containers, Complete job, etc.) always run on the host.
+            var stepHost = CreateStepHost(context, isActionStep);
+            var isContainerStepHost = stepHost is IContainerStepHost;
+
+            // 2. Resolve shell — same logic as ScriptHandler
             string shellCommand;
             string argFormat;
 
@@ -87,9 +97,9 @@ namespace GitHub.Runner.Worker.Dap
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
 
-            _trace.Info("Resolved REPL shell");
+            _trace.Info($"Resolved REPL shell (container={isContainerStepHost})");
 
-            // 2. Expand ${{ }} expressions in the script body, just like
+            // 3. Expand ${{ }} expressions in the script body, just like
             //    ActionRunner evaluates step inputs before ScriptHandler sees them
             var contents = ExpandExpressions(command.Script, context);
             contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents);
@@ -111,25 +121,47 @@ namespace GitHub.Runner.Worker.Dap
 
             try
             {
-                // 3. Format arguments with script path
-                var resolvedPath = scriptFilePath.Replace("\"", "\\\"");
+                // 4. Resolve script path — translate for container if needed
+                var resolvedPath = stepHost.ResolvePathForStepHost(context, scriptFilePath).Replace("\"", "\\\"");
                 if (string.IsNullOrEmpty(argFormat) || !argFormat.Contains("{0}"))
                 {
                     return ErrorResult($"Invalid shell option '{shellCommand}'. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing '{{0}}'");
                 }
                 var arguments = string.Format(argFormat, resolvedPath);
 
-                // 4. Resolve shell command path
+                // 5. Resolve shell command path — for containers, use the shell
+                //    name directly (it will be resolved inside the container);
+                //    for host execution, resolve the full path on the host.
                 string prependPath = string.Join(
                     Path.PathSeparator.ToString(),
                     Enumerable.Reverse(context.Global.PrependPath));
-                var commandPath = WhichUtil.Which(shellCommand, false, _trace, prependPath)
-                    ?? shellCommand;
+                var fileName = isContainerStepHost
+                    ? shellCommand
+                    : WhichUtil.Which(shellCommand, false, _trace, prependPath) ?? shellCommand;
 
-                // 5. Build environment — merge from execution context like a real step
+                // 6. Build environment — merge from execution context like a real step
                 var environment = BuildEnvironment(context, command.Env);
 
-                // 6. Resolve working directory
+                // 7. Handle PrependPath — mirrors Handler.AddPrependPathToEnvironment
+                if (context.Global.PrependPath.Count > 0)
+                {
+                    if (stepHost is IContainerStepHost containerHost)
+                    {
+                        containerHost.PrependPath = prependPath;
+                    }
+                    else
+                    {
+                        string taskEnvPATH;
+                        environment.TryGetValue(Constants.PathVariable, out taskEnvPATH);
+                        string originalPath = context.Global.Variables?.Get(Constants.PathVariable) ?? // Prefer a job variable.
+                            taskEnvPATH ?? // Then a task-environment variable.
+                            System.Environment.GetEnvironmentVariable(Constants.PathVariable) ?? // Then an environment variable.
+                            string.Empty;
+                        environment[Constants.PathVariable] = PathUtil.PrependPath(prependPath, originalPath);
+                    }
+                }
+
+                // 8. Resolve working directory — translate for container
                 var workingDirectory = command.WorkingDirectory;
                 if (string.IsNullOrEmpty(workingDirectory))
                 {
@@ -141,48 +173,60 @@ namespace GitHub.Runner.Worker.Dap
                         : null;
                     workingDirectory = workspace ?? _hostContext.GetDirectory(WellKnownDirectory.Work);
                 }
+                workingDirectory = stepHost.ResolvePathForStepHost(context, workingDirectory);
 
                 _trace.Info("Executing REPL command");
 
                 // Stream execution info to debugger
                 SendOutput("console", $"$ {shellCommand} {command.Script.Substring(0, Math.Min(command.Script.Length, 80))}{(command.Script.Length > 80 ? "..." : "")}\n");
 
-                // 7. Execute via IProcessInvoker (same as DefaultStepHost)
-                int exitCode;
-                using (var processInvoker = _hostContext.CreateService<IProcessInvoker>())
+                // NOTE: When container hooks are enabled, ContainerStepHost routes
+                // execution through IContainerHookManager which does not raise
+                // OutputDataReceived/ErrorDataReceived events. Output will not be
+                // streamed to the debug console in that mode.
+                if (isContainerStepHost && FeatureManager.IsContainerHooksEnabled(context.Global?.Variables))
                 {
-                    processInvoker.OutputDataReceived += (sender, args) =>
-                    {
-                        if (!string.IsNullOrEmpty(args.Data))
-                        {
-                            var masked = _hostContext.SecretMasker.MaskSecrets(args.Data);
-                            SendOutput("stdout", masked + "\n");
-                        }
-                    };
-
-                    processInvoker.ErrorDataReceived += (sender, args) =>
-                    {
-                        if (!string.IsNullOrEmpty(args.Data))
-                        {
-                            var masked = _hostContext.SecretMasker.MaskSecrets(args.Data);
-                            SendOutput("stderr", masked + "\n");
-                        }
-                    };
-
-                    exitCode = await processInvoker.ExecuteAsync(
-                        workingDirectory: workingDirectory,
-                        fileName: commandPath,
-                        arguments: arguments,
-                        environment: environment,
-                        requireExitCodeZero: false,
-                        outputEncoding: null,
-                        killProcessOnCancel: true,
-                        cancellationToken: cancellationToken);
+                    const string hookWarning = "Container hooks are enabled. REPL output will not be streamed to the debug console for this command.";
+                    _trace.Warning(hookWarning);
+                    SendOutput("stderr", hookWarning + "\n");
                 }
+
+                // 9. Execute via IStepHost — handles docker exec for containers,
+                //    direct process execution for host, and container hooks
+                stepHost.OutputDataReceived += (sender, args) =>
+                {
+                    if (!string.IsNullOrEmpty(args.Data))
+                    {
+                        var masked = _hostContext.SecretMasker.MaskSecrets(args.Data);
+                        SendOutput("stdout", masked + "\n");
+                    }
+                };
+
+                stepHost.ErrorDataReceived += (sender, args) =>
+                {
+                    if (!string.IsNullOrEmpty(args.Data))
+                    {
+                        var masked = _hostContext.SecretMasker.MaskSecrets(args.Data);
+                        SendOutput("stderr", masked + "\n");
+                    }
+                };
+
+                int exitCode = await stepHost.ExecuteAsync(
+                    context: context,
+                    workingDirectory: workingDirectory,
+                    fileName: fileName,
+                    arguments: arguments,
+                    environment: environment,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: true,
+                    inheritConsoleHandler: false,
+                    standardInInput: null,
+                    cancellationToken: cancellationToken);
 
                 _trace.Info($"REPL command exited with code {exitCode}");
 
-                // 8. Return only the exit code summary (output was already streamed)
+                // 10. Return only the exit code summary (output was already streamed)
                 return new EvaluateResponseBody
                 {
                     Result = exitCode == 0 ? $"(exit code: {exitCode})" : $"Process completed with exit code {exitCode}.",
@@ -196,6 +240,43 @@ namespace GitHub.Runner.Worker.Dap
                 try { File.Delete(scriptFilePath); }
                 catch { /* best effort */ }
             }
+        }
+
+        /// <summary>
+        /// Creates the appropriate <see cref="IStepHost"/> for the current
+        /// execution context, mirroring how <see cref="ActionRunner"/> decides
+        /// between host and container execution.
+        ///
+        /// Only action steps (user-defined run:/uses: steps) run inside the
+        /// job container.  Infrastructure steps like "Set up job", "Initialize
+        /// containers", "Stop containers", and "Complete job" always execute
+        /// on the host regardless of whether a container is configured.
+        /// </summary>
+        internal IStepHost CreateStepHost(IExecutionContext context, bool isActionStep)
+        {
+            if (!isActionStep)
+            {
+                _trace.Info("Creating DefaultStepHost for REPL execution (infrastructure step)");
+                return _hostContext.CreateService<IDefaultStepHost>();
+            }
+
+            var container = context?.Global?.Container;
+            if (container != null)
+            {
+                // Container hooks don't always set ContainerId, but the container
+                // step host handles that internally
+                var hooksEnabled = FeatureManager.IsContainerHooksEnabled(context.Global?.Variables);
+                if (hooksEnabled || !string.IsNullOrEmpty(container.ContainerId))
+                {
+                    _trace.Info("Creating ContainerStepHost for REPL execution");
+                    var containerStepHost = _hostContext.CreateService<IContainerStepHost>();
+                    containerStepHost.Container = container;
+                    return containerStepHost;
+                }
+            }
+
+            _trace.Info("Creating DefaultStepHost for REPL execution");
+            return _hostContext.CreateService<IDefaultStepHost>();
         }
 
         /// <summary>
