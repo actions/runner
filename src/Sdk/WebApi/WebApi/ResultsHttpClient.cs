@@ -5,10 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http.Formatting;
 using Azure;
+using Azure.Core.Pipeline;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -191,6 +193,42 @@ namespace GitHub.Services.Results.Client
             return (blobUri.Uri, sasUrl);
         }
 
+        private HttpClientTransport GetMTLSTransport()
+        {
+            var certPath = Environment.GetEnvironmentVariable("HTTPS_PROXY_CLIENT_CERT")
+                        ?? Environment.GetEnvironmentVariable("https_proxy_client_cert");
+            var keyPath = Environment.GetEnvironmentVariable("HTTPS_PROXY_CLIENT_KEY")
+                       ?? Environment.GetEnvironmentVariable("https_proxy_client_key");
+
+            if (string.IsNullOrEmpty(certPath) || !File.Exists(certPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var handler = new HttpClientHandler();
+                var certPem = File.ReadAllText(certPath);
+                var keyPem = !string.IsNullOrEmpty(keyPath) && File.Exists(keyPath) ? File.ReadAllText(keyPath) : null;
+                X509Certificate2 cert;
+                if (keyPem != null)
+                {
+                    cert = X509Certificate2.CreateFromPem(certPem, keyPem);
+                    cert = new X509Certificate2(cert.Export(X509ContentType.Pfx));
+                }
+                else
+                {
+                    cert = new X509Certificate2(certPath);
+                }
+                handler.ClientCertificates.Add(cert);
+                return new HttpClientTransport(handler);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private BlobClient GetBlobClient(string url)
         {
             var blobUri = ParseSasToken(url);
@@ -203,6 +241,12 @@ namespace GitHub.Services.Results.Client
                     NetworkTimeout = TimeSpan.FromSeconds(Constants.DefaultNetworkTimeoutInSeconds)
                 }
             };
+
+            var transport = GetMTLSTransport();
+            if (transport != null)
+            {
+                opts.Transport = transport;
+            }
 
             return new BlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
         }
@@ -219,6 +263,12 @@ namespace GitHub.Services.Results.Client
                     NetworkTimeout = TimeSpan.FromSeconds(Constants.DefaultNetworkTimeoutInSeconds)
                 }
             };
+
+            var transport = GetMTLSTransport();
+            if (transport != null)
+            {
+                opts.Transport = transport;
+            }
 
             return new AppendBlobClient(blobUri.path, new AzureSasCredential(blobUri.sas), opts);
         }
