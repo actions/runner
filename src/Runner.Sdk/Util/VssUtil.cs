@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography.X509Certificates;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
@@ -34,6 +36,38 @@ namespace GitHub.Runner.Sdk
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
             VssHttpMessageHandler.DefaultWebProxy = proxy;
+            RawHttpMessageHandler.DefaultWebProxy = proxy;
+
+            // Wire mTLS client cert loading into both HTTP message handlers
+            var certPath = Environment.GetEnvironmentVariable("HTTPS_PROXY_CLIENT_CERT")
+                        ?? Environment.GetEnvironmentVariable("https_proxy_client_cert");
+            var keyPath = Environment.GetEnvironmentVariable("HTTPS_PROXY_CLIENT_KEY")
+                       ?? Environment.GetEnvironmentVariable("https_proxy_client_key");
+            if (!string.IsNullOrEmpty(certPath) && File.Exists(certPath))
+            {
+                Action<HttpClientHandler> configureCerts = (HttpClientHandler handler) =>
+                {
+                    try
+                    {
+                        var certPem = File.ReadAllText(certPath);
+                        var keyPem = !string.IsNullOrEmpty(keyPath) && File.Exists(keyPath) ? File.ReadAllText(keyPath) : null;
+                        X509Certificate2 cert;
+                        if (keyPem != null)
+                        {
+                            cert = X509Certificate2.CreateFromPem(certPem, keyPem);
+                            cert = new X509Certificate2(cert.Export(X509ContentType.Pfx));
+                        }
+                        else
+                        {
+                            cert = new X509Certificate2(certPath);
+                        }
+                        handler.ClientCertificates.Add(cert);
+                    }
+                    catch { }
+                };
+                VssHttpMessageHandler.ConfigureClientCertificates = configureCerts;
+                RawHttpMessageHandler.ConfigureClientCertificates = configureCerts;
+            }
 
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
             {
