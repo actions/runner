@@ -343,6 +343,19 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.StepTelemetry.Action = step.DisplayName.ToLowerInvariant().Replace(' ', '_');
             }
             Root.PostJobSteps.Push(step);
+
+            if (Root.Global.Debugger?.Enabled == true)
+            {
+                try
+                {
+                    HostContext.GetService<Dap.IDapDebugger>().OnPostStepRegistered(step);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Warning("Failed to notify DAP debugger about registered post job step.");
+                    Trace.Error(ex);
+                }
+            }
         }
 
         public IExecutionContext CreateChild(
