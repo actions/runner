@@ -596,13 +596,6 @@ namespace GitHub.Services.Results.Client
             var stepUpdateEndpoint = new Uri(m_resultsServiceUrl, Constants.WorkflowStepsUpdate);
             foreach (var request in stepUpdateRequests)
             {
-                // DEBUG: capture request JSON
-                try
-                {
-                    var debugJson = Newtonsoft.Json.JsonConvert.SerializeObject(request, Newtonsoft.Json.Formatting.Indented);
-                    System.IO.File.AppendAllText("/tmp/runner-step-update-debug.json", $"\n---{DateTime.UtcNow}---\n{debugJson}\n");
-                }
-                catch { }
                 await SendRequest<StepsUpdateRequest>(stepUpdateEndpoint, cancellationToken, request, timestamp);
             }
         }
