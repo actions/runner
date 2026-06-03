@@ -584,7 +584,7 @@ namespace GitHub.Services.Results.Client
         public async Task UpdateWorkflowStepsAsync(Guid planId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture);
-            var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal)).ToList();
+            var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal));
             var stepUpdateRequests = stepRecords.GroupBy(r => r.ParentId).Select(sg => new StepsUpdateRequest()
             {
                 WorkflowRunBackendId = planId.ToString(),
