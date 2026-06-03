@@ -33,7 +33,6 @@ namespace GitHub.DistributedTask.Pipelines
 
     /// <summary>
     /// Represents a unified background step control-flow step (wait, wait-all, cancel).
-    /// Replaces the separate WaitStep, WaitAllStep, and CancelStep types.
     /// </summary>
     [DataContract]
     [EditorBrowsable(EditorBrowsableState.Never)]
