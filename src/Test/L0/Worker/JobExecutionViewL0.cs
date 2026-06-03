@@ -24,7 +24,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 new[] { post.Object });
 
             Assert.Equal(
-                "pre:\n  - step: \"Setup job\"\n  - step: \"Pre cache\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Post cache\"\n  - step: \"Complete job\"\n",
+                "pre:\n  - step: \"Set up job\"\n  - step: \"Pre cache\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Post cache\"\n  - step: \"Complete job\"\n", 
                 view.Content);
             Assert.Equal(3, view.TryGetLineForStep(pre.Object));
             Assert.Equal(6, view.TryGetLineForStep(checkout.Object));
@@ -55,7 +55,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(8, line);
             Assert.Equal(8, view.TryGetLineForStep(post.Object));
             Assert.Equal(
-                "pre:\n  - step: \"Setup job\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Post Checkout\"\n  - step: \"Complete job\"\n",
+                "pre:\n  - step: \"Set up job\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Post Checkout\"\n  - step: \"Complete job\"\n", 
                 view.Content);
         }
 

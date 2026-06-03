@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker.Dap
         {
             JobId = string.IsNullOrWhiteSpace(jobId) ? "job" : jobId;
 
-            _preEntries.Add(new SourceEntry("Setup job"));
+            _preEntries.Add(new SourceEntry("Set up job"));
             AddSteps(steps);
             AddPredictedPostSteps(predictedPostSteps);
             AddSteps(initialPostSteps);
