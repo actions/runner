@@ -40,10 +40,10 @@ namespace GitHub.DistributedTask.Pipelines
 
         public override StepType Type => StepType.BackgroundStepControl;
 
-        [JsonProperty("controlType")]
+        [DataMember(EmitDefaultValue = false)]
         public string ControlType { get; set; }
 
-        [JsonProperty("stepIds")]
+        [DataMember(EmitDefaultValue = false)]
         public string[] StepIds { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
