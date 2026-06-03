@@ -446,7 +446,10 @@ namespace GitHub.Runner.Worker
             {
                 context.Global.HasActionManifestMismatch = true;
                 var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"ActionManifestMismatch: {methodName}" };
-                context.Global.JobTelemetry.Add(telemetry);
+                lock (context.Global.CollectionLock) 
+                { 
+                    context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
         }
 
@@ -456,7 +459,10 @@ namespace GitHub.Runner.Worker
             {
                 context.Global.HasActionManifestMismatch = true;
                 var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"ActionManifestComparisonError: {errorDetails}" };
-                context.Global.JobTelemetry.Add(telemetry);
+                lock (context.Global.CollectionLock) 
+                { 
+                    context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
         }
 

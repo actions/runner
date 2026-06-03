@@ -1068,11 +1068,14 @@ namespace GitHub.Runner.Worker
                                 }
 
                                 executionContext.Debug($"Created symlink from cached directory '{cacheDirectory}' to '{destDirectory}'");
-                                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                                lock (executionContext.Global.CollectionLock)
                                 {
-                                    Type = JobTelemetryType.General,
-                                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache} via symlink"
-                                });
+                                    executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                                    {
+                                        Type = JobTelemetryType.General,
+                                        Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache} via symlink"
+                                    });
+                                }
 
                                 Trace.Info("Finished getting action repository.");
                                 return;
@@ -1108,11 +1111,14 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                lock (executionContext.Global.CollectionLock)
                 {
-                    Type = JobTelemetryType.General,
-                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache}"
-                });
+                    executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                    {
+                        Type = JobTelemetryType.General,
+                        Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache}"
+                    });
+                }
 
                 if (!useActionArchiveCache)
                 {

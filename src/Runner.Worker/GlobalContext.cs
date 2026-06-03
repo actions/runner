@@ -12,6 +12,9 @@ namespace GitHub.Runner.Worker
 {
     public sealed class GlobalContext
     {
+        // Lock for thread-safe access to shared collections during concurrent background step execution
+        public readonly object CollectionLock = new object();
+
         public ContainerInfo Container { get; set; }
         public List<ServiceEndpoint> Endpoints { get; set; }
         public IDictionary<String, String> EnvironmentVariables { get; set; }

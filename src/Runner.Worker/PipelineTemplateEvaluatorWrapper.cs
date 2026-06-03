@@ -207,7 +207,10 @@ namespace GitHub.Runner.Worker
             {
                 _context.Global.HasTemplateEvaluatorMismatch = true;
                 var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"TemplateEvaluatorMismatch: {methodName}" };
-                _context.Global.JobTelemetry.Add(telemetry);
+                lock (_context.Global.CollectionLock) 
+                { 
+                    _context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
         }
 
@@ -217,7 +220,10 @@ namespace GitHub.Runner.Worker
             {
                 _context.Global.HasTemplateEvaluatorMismatch = true;
                 var telemetry = new JobTelemetry { Type = JobTelemetryType.General, Message = $"TemplateEvaluatorComparisonError: {errorDetails}" };
-                _context.Global.JobTelemetry.Add(telemetry);
+                lock (_context.Global.CollectionLock) 
+                { 
+                    _context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
         }
 

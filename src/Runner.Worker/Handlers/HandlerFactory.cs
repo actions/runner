@@ -115,17 +115,26 @@ namespace GitHub.Runner.Worker.Handlers
                         if (string.Equals(finalNodeVersion, Constants.Runner.NodeMigration.Node24, StringComparison.OrdinalIgnoreCase))
                         {
                             // Action was upgraded from node20 to node24
-                            executionContext.Global.UpgradedToNode24Actions?.Add(actionName);
+                            lock (executionContext.Global.CollectionLock)
+                            {
+                                executionContext.Global.UpgradedToNode24Actions?.Add(actionName);
+                            }
                         }
                         else if (ShouldTrackAsArm32Node20(deprecateArm32, nodeVersion, finalNodeVersion, platformWarningMessage))
                         {
                             // Action is on node20 because ARM32 can't run node24
-                            executionContext.Global.Arm32Node20Actions?.Add(actionName);
+                            lock (executionContext.Global.CollectionLock)
+                            {
+                                executionContext.Global.Arm32Node20Actions?.Add(actionName);
+                            }
                         }
                         else if (warnOnNode20)
                         {
                             // Action is still running on node20 (general case)
-                            executionContext.Global.DeprecatedNode20Actions?.Add(actionName);
+                            lock (executionContext.Global.CollectionLock)
+                            {
+                                executionContext.Global.DeprecatedNode20Actions?.Add(actionName);
+                            }
                         }
                     }
 
@@ -159,7 +168,10 @@ namespace GitHub.Runner.Worker.Handlers
 
                     if (!string.IsNullOrEmpty(actionName) && ShouldTrackAsArm32Node20(deprecateArm32, preferredVersion, finalNodeVersion, platformWarningMessage))
                     {
-                        executionContext.Global.Arm32Node20Actions?.Add(actionName);
+                        lock (executionContext.Global.CollectionLock)
+                        {
+                            executionContext.Global.Arm32Node20Actions?.Add(actionName);
+                        }
                     }
                 }
 

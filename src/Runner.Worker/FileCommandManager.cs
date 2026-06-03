@@ -122,8 +122,18 @@ namespace GitHub.Runner.Worker
                     {
                         continue;
                     }
-                    context.Global.PrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
-                    context.Global.PrependPath.Add(line);
+                    if (context.DeferredPrependPath != null)
+                    {
+                        // Background step: buffer path additions until wait/wait-all
+                        context.DeferredPrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
+                        context.DeferredPrependPath.Add(line);
+                        context.Debug($"Deferred prepend path '{line}' for background step");
+                    }
+                    else
+                    {
+                        context.Global.PrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
+                        context.Global.PrependPath.Add(line);
+                    }
                 }
             }
         }
@@ -172,8 +182,17 @@ namespace GitHub.Runner.Worker
             string name,
             string value)
         {
-            context.Global.EnvironmentVariables[name] = value;
-            context.SetEnvContext(name, value);
+            if (context.DeferredEnvironmentVariables != null)
+            {
+                // Background step: buffer env changes until wait/wait-all
+                context.DeferredEnvironmentVariables[name] = value;
+                context.Debug($"Deferred env '{name}' for background step");
+            }
+            else
+            {
+                context.Global.EnvironmentVariables[name] = value;
+                context.SetEnvContext(name, value);
+            }
             context.Debug($"{name}='{value}'");
         }
 
@@ -302,7 +321,16 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
-                context.SetOutput(pair.Key, pair.Value, out var reference);
+                if (context.DeferredOutputs != null)
+                {
+                    // Background step: buffer outputs until wait/wait-all
+                    context.DeferredOutputs[pair.Key] = pair.Value;
+                    context.Debug($"Deferred output '{pair.Key}' for background step");
+                }
+                else
+                {
+                    context.SetOutput(pair.Key, pair.Value, out var reference);
+                }
                 context.Debug($"Set output {pair.Key} = {pair.Value}");
             }
         }

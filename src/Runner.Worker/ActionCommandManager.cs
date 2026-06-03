@@ -178,7 +178,10 @@ namespace GitHub.Runner.Worker
                     Message = $"Invoked ::stopCommand:: with token: [{stopToken}]",
                     Type = JobTelemetryType.ActionCommand
                 };
-                context.Global.JobTelemetry.Add(telemetry);
+                lock (context.Global.CollectionLock) 
+                { 
+                    context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
 
             if (isTokenInvalid && !allowUnsecureStopCommandTokens)
@@ -326,7 +329,10 @@ namespace GitHub.Runner.Worker
                     Type = JobTelemetryType.ActionCommand,
                     Message = "DeprecatedCommand: set-output"
                 };
-                context.Global.JobTelemetry.Add(telemetry);
+                lock (context.Global.CollectionLock) 
+                { 
+                    context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
 
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
@@ -372,7 +378,10 @@ namespace GitHub.Runner.Worker
                     Type = JobTelemetryType.ActionCommand,
                     Message = "DeprecatedCommand: save-state"
                 };
-                context.Global.JobTelemetry.Add(telemetry);
+                lock (context.Global.CollectionLock) 
+                { 
+                    context.Global.JobTelemetry.Add(telemetry); 
+                }
             }
 
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))

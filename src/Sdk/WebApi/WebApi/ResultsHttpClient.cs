@@ -514,7 +514,7 @@ namespace GitHub.Services.Results.Client
 
         private Step ConvertTimelineRecordToStep(TimelineRecord r)
         {
-            return new Step()
+            var step = new Step()
             {
                 ExternalId = r.Id.ToString(),
                 Number = r.Order.GetValueOrDefault(),
@@ -522,8 +522,25 @@ namespace GitHub.Services.Results.Client
                 Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
                 StartedAt = r.StartTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
                 CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
-                Conclusion = ConvertResultToConclusion(r.Result)
+                Conclusion = ConvertResultToConclusion(r.Result),
+                IsBackground = r.IsBackground,
             };
+
+            // Set background control type directly (no enum mapping needed)
+            if (!string.IsNullOrEmpty(r.BackgroundControlType))
+            {
+                step.BackgroundControlType = r.BackgroundControlType;
+            }
+            if (r.BackgroundControlStepIds != null)
+            {
+                step.BackgroundControlStepIds = r.BackgroundControlStepIds;
+            }
+            if (!string.IsNullOrEmpty(r.ParallelGroupId))
+            {
+                step.ParallelGroupId = r.ParallelGroupId;
+            }
+
+            return step;
         }
 
         private Status ConvertStateToStatus(TimelineRecordState s)
@@ -567,7 +584,7 @@ namespace GitHub.Services.Results.Client
         public async Task UpdateWorkflowStepsAsync(Guid planId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken)
         {
             var timestamp = DateTime.UtcNow.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture);
-            var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal));
+            var stepRecords = records.Where(r => String.Equals(r.RecordType, "Task", StringComparison.Ordinal)).ToList();
             var stepUpdateRequests = stepRecords.GroupBy(r => r.ParentId).Select(sg => new StepsUpdateRequest()
             {
                 WorkflowRunBackendId = planId.ToString(),
@@ -579,6 +596,13 @@ namespace GitHub.Services.Results.Client
             var stepUpdateEndpoint = new Uri(m_resultsServiceUrl, Constants.WorkflowStepsUpdate);
             foreach (var request in stepUpdateRequests)
             {
+                // DEBUG: capture request JSON
+                try
+                {
+                    var debugJson = Newtonsoft.Json.JsonConvert.SerializeObject(request, Newtonsoft.Json.Formatting.Indented);
+                    System.IO.File.AppendAllText("/tmp/runner-step-update-debug.json", $"\n---{DateTime.UtcNow}---\n{debugJson}\n");
+                }
+                catch { }
                 await SendRequest<StepsUpdateRequest>(stepUpdateEndpoint, cancellationToken, request, timestamp);
             }
         }

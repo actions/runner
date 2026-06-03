@@ -85,6 +85,12 @@ namespace GitHub.Runner.Worker
         IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, List<Issue> embeddedIssueCollector = null, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null);
         IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
+        // Background step deferral properties
+        Dictionary<string, string> DeferredOutputs { get; set; }
+        Dictionary<string, string> DeferredEnvironmentVariables { get; set; }
+        List<string> DeferredPrependPath { get; set; }
+        bool DeferOutcomeConclusion { get; set; }
+
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
@@ -100,11 +106,18 @@ namespace GitHub.Runner.Worker
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
+
+        // Background step deferral flush methods
+        void FlushDeferredOutputs();
+        void FlushDeferredEnvironment();
+        void FlushDeferredOutcomeConclusion();
+
         void AddIssue(Issue issue, ExecutionContextLogOptions logOptions);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
         void UpdateTimelineRecordDisplayName(string displayName);
+        void SetBackgroundStepMetadata(bool isBackground = false, string backgroundControlType = null, string[] backgroundControlStepIds = null, string parallelGroupId = null);
 
         // matchers
         void Add(OnMatcherChanged handler);
@@ -278,6 +291,12 @@ namespace GitHub.Runner.Worker
         }
 
         public List<string> StepEnvironmentOverrides { get; } = new List<string>();
+
+        // Background step deferral properties
+        public Dictionary<string, string> DeferredOutputs { get; set; }
+        public Dictionary<string, string> DeferredEnvironmentVariables { get; set; }
+        public List<string> DeferredPrependPath { get; set; }
+        public bool DeferOutcomeConclusion { get; set; }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -516,6 +535,11 @@ namespace GitHub.Runner.Worker
                     Annotations = new List<Annotation>()
                 };
 
+                // Populate background step metadata from timeline record fields
+                stepResult.IsBackground = _record.IsBackground;
+                stepResult.BackgroundControlType = _record.BackgroundControlType;
+                stepResult.BackgroundControlStepIds = _record.BackgroundControlStepIds;
+
                 _record.Issues?.ForEach(issue =>
                 {
                     var annotation = issue.ToAnnotation();
@@ -541,7 +565,10 @@ namespace GitHub.Runner.Worker
                         var annotation = issue.ToAnnotation();
                         if (annotation != null)
                         {
-                            Global.JobAnnotations.Add(annotation.Value);
+                            lock (Global.CollectionLock)
+                            {
+                                Global.JobAnnotations.Add(annotation.Value);
+                            }
                             if (annotation.Value.IsInfrastructureIssue && string.IsNullOrEmpty(Global.InfrastructureFailureCategory))
                             {
                                 Global.InfrastructureFailureCategory = issue.Category;
@@ -559,9 +586,20 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
-            UpdateGlobalStepsContext();
+            if (!DeferOutcomeConclusion)
+            {
+                UpdateGlobalStepsContext();
+            }
 
             return Result.Value;
+        }
+
+        public void FlushDeferredOutcomeConclusion()
+        {
+            if (DeferOutcomeConclusion)
+            {
+                UpdateGlobalStepsContext();
+            }
         }
 
         public void UpdateGlobalStepsContext()
@@ -637,6 +675,40 @@ namespace GitHub.Runner.Worker
             // todo: restrict multiline?
 
             Global.StepsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
+        }
+
+        public void FlushDeferredOutputs()
+        {
+            if (DeferredOutputs == null || DeferredOutputs.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var kvp in DeferredOutputs)
+            {
+                Global.StepsContext.SetOutput(ScopeName, ContextName, kvp.Key, kvp.Value, out _);
+            }
+        }
+
+        public void FlushDeferredEnvironment()
+        {
+            if (DeferredEnvironmentVariables != null)
+            {
+                foreach (var kvp in DeferredEnvironmentVariables)
+                {
+                    Global.EnvironmentVariables[kvp.Key] = kvp.Value;
+                    SetEnvContext(kvp.Key, kvp.Value);
+                }
+            }
+
+            if (DeferredPrependPath != null)
+            {
+                foreach (var path in DeferredPrependPath)
+                {
+                    Global.PrependPath.RemoveAll(x => string.Equals(x, path, StringComparison.CurrentCulture));
+                    Global.PrependPath.Add(path);
+                }
+            }
         }
 
         public void SetTimeout(TimeSpan? timeout)
@@ -809,6 +881,15 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNull(displayName, nameof(displayName));
             _record.Name = displayName;
+            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+        }
+
+        public void SetBackgroundStepMetadata(bool isBackground = false, string backgroundControlType = null, string[] backgroundControlStepIds = null, string parallelGroupId = null)
+        {
+            _record.IsBackground = isBackground;
+            _record.BackgroundControlType = backgroundControlType;
+            _record.BackgroundControlStepIds = backgroundControlStepIds;
+            _record.ParallelGroupId = parallelGroupId;
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
@@ -1196,7 +1277,10 @@ namespace GitHub.Runner.Worker
                     }
 
                     Trace.Info($"Publish step telemetry for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
-                    Global.StepsTelemetry.Add(StepTelemetry);
+                    lock (Global.CollectionLock)
+                    {
+                        Global.StepsTelemetry.Add(StepTelemetry);
+                    }
                     _stepTelemetryPublished = true;
                 }
             }
@@ -1335,7 +1419,10 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Updated step result (continue on error)");
             }
 
-            UpdateGlobalStepsContext();
+            if (!DeferOutcomeConclusion)
+            {
+                UpdateGlobalStepsContext();
+            }
         }
 
         internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(bool allowServiceContainerCommand, ObjectTemplating.ITraceWriter traceWriter = null)

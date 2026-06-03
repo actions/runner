@@ -50,5 +50,14 @@ namespace GitHub.Actions.RunService.WebApi
 
         [DataMember(Name = "annotations", EmitDefaultValue = false)]
         public List<Annotation> Annotations { get; set; }
+
+        [DataMember(Name = "is_background", EmitDefaultValue = false)]
+        public bool IsBackground { get; set; }
+
+        [DataMember(Name = "background_control_type", EmitDefaultValue = false)]
+        public string BackgroundControlType { get; set; }
+
+        [DataMember(Name = "background_control_step_ids", EmitDefaultValue = false)]
+        public string[] BackgroundControlStepIds { get; set; }
     }
 }
