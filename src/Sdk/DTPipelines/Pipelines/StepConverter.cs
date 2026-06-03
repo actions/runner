@@ -51,6 +51,9 @@ namespace GitHub.DistributedTask.Pipelines
                     case StepType.Action:
                         stepObject = new ActionStep();
                         break;
+                    case StepType.BackgroundStepControl:
+                        stepObject = new BackgroundStepControl();
+                        break;
                 }
 
                 using (var objectReader = value.CreateReader())
