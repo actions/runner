@@ -7,6 +7,7 @@ namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [KnownType(typeof(ActionStep))]
+    [KnownType(typeof(BackgroundStepControl))]
     [JsonConverter(typeof(StepConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class Step
@@ -68,5 +69,7 @@ namespace GitHub.DistributedTask.Pipelines
     {
         [DataMember]
         Action = 4,
+        [DataMember]
+        BackgroundStepControl = 5,
     }
 }

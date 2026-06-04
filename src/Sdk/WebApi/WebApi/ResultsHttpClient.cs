@@ -514,7 +514,7 @@ namespace GitHub.Services.Results.Client
 
         private Step ConvertTimelineRecordToStep(TimelineRecord r)
         {
-            return new Step()
+            var step = new Step()
             {
                 ExternalId = r.Id.ToString(),
                 Number = r.Order.GetValueOrDefault(),
@@ -522,8 +522,25 @@ namespace GitHub.Services.Results.Client
                 Status = ConvertStateToStatus(r.State.GetValueOrDefault()),
                 StartedAt = r.StartTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
                 CompletedAt = r.FinishTime?.ToString(Constants.TimestampFormat, CultureInfo.InvariantCulture),
-                Conclusion = ConvertResultToConclusion(r.Result)
+                Conclusion = ConvertResultToConclusion(r.Result),
+                IsBackground = r.IsBackground,
             };
+
+            // Set background control type directly (no enum mapping needed)
+            if (!string.IsNullOrEmpty(r.BackgroundControlType))
+            {
+                step.BackgroundControlType = r.BackgroundControlType;
+            }
+            if (r.BackgroundControlStepIds != null)
+            {
+                step.BackgroundControlStepIds = r.BackgroundControlStepIds;
+            }
+            if (!string.IsNullOrEmpty(r.ParallelGroupId))
+            {
+                step.ParallelGroupId = r.ParallelGroupId;
+            }
+
+            return step;
         }
 
         private Status ConvertStateToStatus(TimelineRecordState s)
