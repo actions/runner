@@ -833,7 +833,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.True(response.Success);
                 var body = Assert.IsType<SourceResponseBody>(response.Body);
                 Assert.Equal(
-                    "pre:\n  - step: \"Setup job\"\n  - step: \"Pre cache\"\n\nmain:\n  - step: \"Checkout\"\n  - step: \"***\"\n\npost:\n  - step: \"Post cache\"\n  - step: \"Complete job\"\n",
+                    "pre:\n  - step: \"Set up job\"\n  - step: \"Pre cache\"\n\nmain:\n  - step: \"Checkout\"\n  - step: \"***\"\n\npost:\n  - step: \"Post cache\"\n  - step: \"Complete job\"\n",
                     body.Content);
                 Assert.Null(body.MimeType);
 
@@ -1011,7 +1011,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new SourceArguments { SourceReference = 1 }));
                 var sourceBody = Assert.IsType<SourceResponseBody>(sourceResponse.Body);
                 Assert.Equal(
-                    "pre:\n  - step: \"Setup job\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Post Checkout\"\n  - step: \"Complete job\"\n",
+                    "pre:\n  - step: \"Set up job\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Post Checkout\"\n  - step: \"Complete job\"\n",
                     sourceBody.Content);
 
                 var post = CreateActionRunner("Post Checkout", ActionRunStage.Post, action);
