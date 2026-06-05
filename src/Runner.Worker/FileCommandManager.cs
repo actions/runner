@@ -122,8 +122,16 @@ namespace GitHub.Runner.Worker
                     {
                         continue;
                     }
-                    context.Global.PrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
-                    context.Global.PrependPath.Add(line);
+                    if (context.DeferredPrependPath != null)
+                    {
+                        context.DeferredPrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
+                        context.DeferredPrependPath.Add(line);
+                    }
+                    else
+                    {
+                        context.Global.PrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
+                        context.Global.PrependPath.Add(line);
+                    }
                 }
             }
         }
@@ -172,8 +180,15 @@ namespace GitHub.Runner.Worker
             string name,
             string value)
         {
-            context.Global.EnvironmentVariables[name] = value;
-            context.SetEnvContext(name, value);
+            if (context.DeferredEnvironmentVariables != null)
+            {
+                context.DeferredEnvironmentVariables[name] = value;
+            }
+            else
+            {
+                context.Global.EnvironmentVariables[name] = value;
+                context.SetEnvContext(name, value);
+            }
             context.Debug($"{name}='{value}'");
         }
 
@@ -302,7 +317,14 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
-                context.SetOutput(pair.Key, pair.Value, out var reference);
+                if (context.DeferredOutputs != null)
+                {
+                    context.DeferredOutputs[pair.Key] = pair.Value;
+                }
+                else
+                {
+                    context.SetOutput(pair.Key, pair.Value, out var reference);
+                }
                 context.Debug($"Set output {pair.Key} = {pair.Value}");
             }
         }
