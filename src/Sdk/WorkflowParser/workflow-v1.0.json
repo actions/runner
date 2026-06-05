@@ -2196,7 +2196,16 @@
         "vars",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "always(0,0)",
+        "failure(0,0)",
+        "cancelled(0,0)",
+        "success(0,0)",
+        "hashFiles(1,255)"
       ],
       "description": "Use the if conditional to prevent a snapshot from being taken unless a condition is met. Any supported context and expression can be used to create a conditional. Expressions in an `if` conditional do not require the bracketed expression syntax. When you use expressions in an `if` conditional, you may omit the expression syntax because GitHub automatically evaluates the `if` conditional as an expression.",
       "string": {

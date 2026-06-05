@@ -85,6 +85,13 @@ namespace GitHub.Runner.Worker
         IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, List<Issue> embeddedIssueCollector = null, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null);
         IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
+
+        // Background step deferral properties
+        Dictionary<string, string> DeferredOutputs { get; set; }
+        Dictionary<string, string> DeferredEnvironmentVariables { get; set; }
+        List<string> DeferredPrependPath { get; set; }
+        bool DeferOutcomeConclusion { get; set; }
+
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
@@ -100,6 +107,12 @@ namespace GitHub.Runner.Worker
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
+
+        // Background step deferral flush methods
+        void FlushDeferredOutputs();
+        void FlushDeferredEnvironment();
+        void FlushDeferredOutcomeConclusion();
+
         void AddIssue(Issue issue, ExecutionContextLogOptions logOptions);
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
@@ -283,6 +296,12 @@ namespace GitHub.Runner.Worker
 
         public List<string> StepEnvironmentOverrides { get; } = new List<string>();
 
+        // Background step deferral properties
+        public Dictionary<string, string> DeferredOutputs { get; set; }
+        public Dictionary<string, string> DeferredEnvironmentVariables { get; set; }
+        public List<string> DeferredPrependPath { get; set; }
+        public bool DeferOutcomeConclusion { get; set; }
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -341,6 +360,11 @@ namespace GitHub.Runner.Worker
             }
 
             step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, siblingScopeName);
+            if (step is JobExtensionRunner)
+            {
+                step.ExecutionContext.StepTelemetry.Type = "runner";
+                step.ExecutionContext.StepTelemetry.Action = step.DisplayName.ToLowerInvariant().Replace(' ', '_');
+            }
             Root.PostJobSteps.Push(step);
         }
 
@@ -517,7 +541,11 @@ namespace GitHub.Runner.Worker
                     Type = StepTelemetry?.Type,
                     StartedAt = _record.StartTime,
                     CompletedAt = _record.FinishTime,
-                    Annotations = new List<Annotation>()
+                    Annotations = new List<Annotation>(),
+                    // Populate background step metadata from timeline record fields
+                    IsBackground = _record.IsBackground,
+                    BackgroundControlType = _record.BackgroundControlType,
+                    BackgroundControlStepIds = _record.BackgroundControlStepIds
                 };
 
                 _record.Issues?.ForEach(issue =>
@@ -583,9 +611,20 @@ namespace GitHub.Runner.Worker
                 _jobServerQueue.QueueResultsUpload(_record.Id, "ResultsLog", blockFile, "Results.Core.Log", deleteSource: true, finalize: true, firstBlock: true, totalLines: 1);
             }
 
-            UpdateGlobalStepsContext();
+            if (!DeferOutcomeConclusion)
+            {
+                UpdateGlobalStepsContext();
+            }
 
             return Result.Value;
+        }
+
+        public void FlushDeferredOutcomeConclusion()
+        {
+            if (DeferOutcomeConclusion)
+            {
+                UpdateGlobalStepsContext();
+            }
         }
 
         public void UpdateGlobalStepsContext()
@@ -661,6 +700,40 @@ namespace GitHub.Runner.Worker
             // todo: restrict multiline?
 
             Global.StepsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
+        }
+
+        public void FlushDeferredOutputs()
+        {
+            if (DeferredOutputs == null || DeferredOutputs.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var kvp in DeferredOutputs)
+            {
+                Global.StepsContext.SetOutput(ScopeName, ContextName, kvp.Key, kvp.Value, out _);
+            }
+        }
+
+        public void FlushDeferredEnvironment()
+        {
+            if (DeferredEnvironmentVariables != null)
+            {
+                foreach (var kvp in DeferredEnvironmentVariables)
+                {
+                    Global.EnvironmentVariables[kvp.Key] = kvp.Value;
+                    SetEnvContext(kvp.Key, kvp.Value);
+                }
+            }
+
+            if (DeferredPrependPath != null)
+            {
+                foreach (var path in DeferredPrependPath)
+                {
+                    Global.PrependPath.RemoveAll(x => string.Equals(x, path, StringComparison.CurrentCulture));
+                    Global.PrependPath.Add(path);
+                }
+            }
         }
 
         public void SetTimeout(TimeSpan? timeout)
@@ -1016,7 +1089,8 @@ namespace GitHub.Runner.Worker
             Global.WriteDebug = Global.Variables.Step_Debug ?? false;
 
             // Debugger enabled flag (from acquire response).
-            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel);
+            var overrideDebuggerWelcomeMessage = Global.Variables.GetBoolean(Constants.Runner.Features.OverrideDebuggerWelcomeMessage) ?? false;
+            Global.Debugger = new Dap.DebuggerConfig(message.EnableDebugger, message.DebuggerTunnel, overrideDebuggerWelcomeMessage, message.DebuggerWelcomeMessage);
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
@@ -1390,7 +1464,10 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Updated step result (continue on error)");
             }
 
-            UpdateGlobalStepsContext();
+            if (!DeferOutcomeConclusion)
+            {
+                UpdateGlobalStepsContext();
+            }
         }
 
         internal IPipelineTemplateEvaluator ToPipelineTemplateEvaluatorInternal(bool allowServiceContainerCommand, ObjectTemplating.ITraceWriter traceWriter = null)

@@ -12,6 +12,7 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Container.ContainerHooks;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -127,6 +128,15 @@ namespace GitHub.Runner.Worker.Handlers
             // 2) Escape double quotes within the script file path. Double-quote is a valid
             // file name character on Linux.
             string arguments = StepHost.ResolvePathForStepHost(ExecutionContext, StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
+
+            // Disable maglev jit compiler in node.js 24.x.x on x64 Windows until the node.js bug is fixed.
+            // https://github.com/nodejs/node/issues/62260
+            if (nodeRuntimeVersion.StartsWith("node24", StringComparison.OrdinalIgnoreCase) &&
+                (StringUtil.ConvertToBoolean(System.Environment.GetEnvironmentVariable("ACTIONS_RUNNER_DISABLE_NODE_MAGLEV")) || StringUtil.ConvertToBoolean(Environment.GetValueOrDefault("ACTIONS_RUNNER_DISABLE_NODE_MAGLEV"))))
+            {
+                Trace.Info("Disable maglev jit compiler in node.js");
+                arguments = $"--no-maglev {arguments}";
+            }
 
 #if OS_WINDOWS
             // It appears that node.exe outputs UTF8 when not in TTY mode.

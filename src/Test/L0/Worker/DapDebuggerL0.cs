@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -236,7 +236,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null)
+        private static Mock<IExecutionContext> CreateJobContextWithTunnel(CancellationToken cancellationToken, ushort port, string jobName = null, bool overrideWelcomeMessage = false, string welcomeMessage = null)
         {
             var tunnel = new GitHub.DistributedTask.Pipelines.DebuggerTunnelInfo
             {
@@ -245,7 +245,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 HostToken = "test-token",
                 Port = port
             };
-            var debuggerConfig = new DebuggerConfig(true, tunnel);
+            var debuggerConfig = new DebuggerConfig(true, tunnel, overrideWelcomeMessage, welcomeMessage);
             var jobContext = new Mock<IExecutionContext>();
             jobContext.Setup(x => x.CancellationToken).Returns(cancellationToken);
             jobContext.Setup(x => x.Global).Returns(new GlobalContext { Debugger = debuggerConfig });
@@ -742,16 +742,36 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Read the configurationDone response
                 await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                // Read the welcome message output event
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
                 await waitTask;
 
-                // Complete the job — events are sent via OnJobCompletedAsync
-                await _debugger.OnJobCompletedAsync();
+                // Complete the job — OnJobCompletedAsync pauses when stepping,
+                // so run it in the background and send continue to unblock.
+                var completedTask = _debugger.OnJobCompletedAsync();
 
-                var msg1 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
-                var msg2 = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                // Read the stopped event from the pause
+                var stoppedMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedMsg);
 
-                // Both events should arrive (order may vary)
-                var combined = msg1 + msg2;
+                // Send continue to unblock the pause
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "continue"
+                });
+
+                await completedTask;
+
+                // Read remaining messages — continue response + continued event + terminated + exited
+                var allMessages = new System.Text.StringBuilder();
+                for (int i = 0; i < 4; i++)
+                {
+                    allMessages.Append(await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5)));
+                }
+
+                var combined = allMessages.ToString();
                 Assert.Contains("\"event\":\"terminated\"", combined);
                 Assert.Contains("\"event\":\"exited\"", combined);
             }
@@ -807,6 +827,267 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     Assert.Equal(30, _debugger.ResolveTunnelConnectTimeout());
                 });
+            }
+        }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WaitForCommandAsyncUnblocksOnCancellationDuringWait()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                // Read the welcome message output event
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                await waitTask;
+
+                // Start OnJobCompletedAsync — it will pause because _pauseOnNextStep is true
+                var completedTask = _debugger.OnJobCompletedAsync();
+
+                // Read the stopped event
+                var stoppedMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedMsg);
+
+                // Cancel the job while waiting — should unblock the pause
+                cts.Cancel();
+
+                // OnJobCompletedAsync should complete without hanging
+                var finished = await Task.WhenAny(completedTask, Task.Delay(TimeSpan.FromSeconds(5)));
+                Assert.Equal(completedTask, finished);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WelcomeMessageSendsDefaultHelpWhenOverrideDisabled()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                // First message: configurationDone response
+                var configDoneResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", configDoneResponse);
+
+                // Second message: welcome output event with default help text
+                var welcomeMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"output\"", welcomeMsg);
+                Assert.Contains("\"category\":\"console\"", welcomeMsg);
+                Assert.Contains("Actions Debug Console", welcomeMsg);
+                Assert.Contains("help", welcomeMsg);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WelcomeMessageShowsCustomMessageWhenOverrideEnabled()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port,
+                    overrideWelcomeMessage: true,
+                    welcomeMessage: "Welcome to debugging!");
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                // First: configurationDone response
+                var configDoneResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", configDoneResponse);
+
+                // Second: custom welcome message
+                var welcomeMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"output\"", welcomeMsg);
+                Assert.Contains("Welcome to debugging!", welcomeMsg);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WelcomeMessageSuppressedWhenOverrideEnabledWithEmptyMessage()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port,
+                    overrideWelcomeMessage: true,
+                    welcomeMessage: "");
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                // Read configurationDone response
+                var configDoneResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", configDoneResponse);
+
+                // Send threads request — if welcome message was suppressed, this
+                // should be the next response (no output event in between)
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "threads"
+                });
+
+                var threadsResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"threads\"", threadsResponse);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WelcomeMessageSuppressedWhenOverrideEnabledWithNullMessage()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port,
+                    overrideWelcomeMessage: true,
+                    welcomeMessage: null);
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                // Read configurationDone response
+                var configDoneResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", configDoneResponse);
+
+                // Send threads request — if welcome message was suppressed, this
+                // should be the next response (no output event in between)
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "threads"
+                });
+
+                var threadsResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"threads\"", threadsResponse);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WelcomeMessageSentOnlyOnce()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                // First configurationDone
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                var configDoneResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", configDoneResponse);
+
+                // Welcome message should appear
+                var welcomeMsg = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"output\"", welcomeMsg);
+                Assert.Contains("Actions Debug Console", welcomeMsg);
+
+                // Second configurationDone — should NOT produce another welcome message
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 2,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+
+                var secondResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"configurationDone\"", secondResponse);
+
+                // Next message should be threads response, not another welcome output
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 3,
+                    Type = "request",
+                    Command = "threads"
+                });
+
+                var threadsResponse = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"threads\"", threadsResponse);
+
+                await _debugger.StopAsync();
             }
         }
     }
