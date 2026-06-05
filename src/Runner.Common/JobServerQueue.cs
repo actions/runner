@@ -837,6 +837,15 @@ namespace GitHub.Runner.Common
                             timelineRecord.Variables[variable.Key] = variable.Value.Clone();
                         }
                     }
+
+                    // Merge background step metadata
+                    if (rec.IsBackground)
+                    {
+                        timelineRecord.IsBackground = rec.IsBackground;
+                    }
+                    timelineRecord.BackgroundControlType = rec.BackgroundControlType ?? timelineRecord.BackgroundControlType;
+                    timelineRecord.BackgroundControlStepIds = rec.BackgroundControlStepIds ?? timelineRecord.BackgroundControlStepIds;
+                    timelineRecord.ParallelGroupId = rec.ParallelGroupId ?? timelineRecord.ParallelGroupId;
                 }
                 else
                 {

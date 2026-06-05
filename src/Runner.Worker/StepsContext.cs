@@ -18,6 +18,7 @@ namespace GitHub.Runner.Worker
     {
         private static readonly Regex _propertyRegex = new("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
         private readonly DictionaryContextData _contextData = new();
+        private readonly object _lock = new();
 
         /// <summary>
         /// Clears memory for a composite action's isolated "steps" context, after the action
@@ -25,9 +26,12 @@ namespace GitHub.Runner.Worker
         /// </summary>
         public void ClearScope(string scopeName)
         {
-            if (_contextData.TryGetValue(scopeName, out _))
+            lock (_lock)
             {
-                _contextData[scopeName] = new DictionaryContextData();
+                if (_contextData.TryGetValue(scopeName, out _))
+                {
+                    _contextData[scopeName] = new DictionaryContextData();
+                }
             }
         }
 
@@ -41,23 +45,26 @@ namespace GitHub.Runner.Worker
         /// </summary>
         public DictionaryContextData GetScope(string scopeName)
         {
-            if (scopeName == null)
+            lock (_lock)
             {
-                scopeName = string.Empty;
-            }
+                if (scopeName == null)
+                {
+                    scopeName = string.Empty;
+                }
 
-            var scope = default(DictionaryContextData);
-            if (_contextData.TryGetValue(scopeName, out var scopeValue))
-            {
-                scope = scopeValue.AssertDictionary("scope");
-            }
-            else
-            {
-                scope = new DictionaryContextData();
-                _contextData.Add(scopeName, scope);
-            }
+                var scope = default(DictionaryContextData);
+                if (_contextData.TryGetValue(scopeName, out var scopeValue))
+                {
+                    scope = scopeValue.AssertDictionary("scope");
+                }
+                else
+                {
+                    scope = new DictionaryContextData();
+                    _contextData.Add(scopeName, scope);
+                }
 
-            return scope;
+                return scope;
+            }
         }
 
         public void SetOutput(
@@ -67,16 +74,19 @@ namespace GitHub.Runner.Worker
             string value,
             out string reference)
         {
-            var step = GetStep(scopeName, stepName);
-            var outputs = step["outputs"].AssertDictionary("outputs");
-            outputs[outputName] = new StringContextData(value);
-            if (_propertyRegex.IsMatch(outputName))
+            lock (_lock)
             {
-                reference = $"steps.{stepName}.outputs.{outputName}";
-            }
-            else
-            {
-                reference = $"steps['{stepName}']['outputs']['{outputName}']";
+                var step = GetStep(scopeName, stepName);
+                var outputs = step["outputs"].AssertDictionary("outputs");
+                outputs[outputName] = new StringContextData(value);
+                if (_propertyRegex.IsMatch(outputName))
+                {
+                    reference = $"steps.{stepName}.outputs.{outputName}";
+                }
+                else
+                {
+                    reference = $"steps['{stepName}']['outputs']['{outputName}']";
+                }
             }
         }
 
@@ -85,8 +95,11 @@ namespace GitHub.Runner.Worker
             string stepName,
             ActionResult conclusion)
         {
-            var step = GetStep(scopeName, stepName);
-            step["conclusion"] = new StringContextData(conclusion.ToString().ToLowerInvariant());
+            lock (_lock)
+            {
+                var step = GetStep(scopeName, stepName);
+                step["conclusion"] = new StringContextData(conclusion.ToString().ToLowerInvariant());
+            }
         }
 
         public void SetOutcome(
@@ -94,8 +107,11 @@ namespace GitHub.Runner.Worker
             string stepName,
             ActionResult outcome)
         {
-            var step = GetStep(scopeName, stepName);
-            step["outcome"] = new StringContextData(outcome.ToString().ToLowerInvariant());
+            lock (_lock)
+            {
+                var step = GetStep(scopeName, stepName);
+                step["outcome"] = new StringContextData(outcome.ToString().ToLowerInvariant());
+            }
         }
 
         private DictionaryContextData GetStep(string scopeName, string stepName)
