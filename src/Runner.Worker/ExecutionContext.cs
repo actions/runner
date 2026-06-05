@@ -77,12 +77,14 @@ namespace GitHub.Runner.Worker
 
         List<string> StepEnvironmentOverrides { get; }
 
+        bool IsBackground { get; }
+
         IExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, List<Issue> embeddedIssueCollector = null, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, List<Issue> embeddedIssueCollector = null, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null, TimeSpan? timeout = null, bool isBackground = false, string backgroundControlType = null, string[] backgroundControlStepIds = null, string parallelGroupId = null);
         IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
 
@@ -228,6 +230,9 @@ namespace GitHub.Runner.Worker
         public Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
+
+        // Whether this step runs in the background
+        public bool IsBackground => _record.IsBackground;
 
         // An embedded execution context shares the same record ID, record name, and logger
         // as its enclosing execution context.
@@ -379,7 +384,11 @@ namespace GitHub.Runner.Worker
             CancellationTokenSource cancellationTokenSource = null,
             Guid embeddedId = default(Guid),
             string siblingScopeName = null,
-            TimeSpan? timeout = null)
+            TimeSpan? timeout = null,
+            bool isBackground = false,
+            string backgroundControlType = null,
+            string[] backgroundControlStepIds = null,
+            string parallelGroupId = null)
         {
             Trace.Entering();
 
@@ -419,6 +428,24 @@ namespace GitHub.Runner.Worker
             }
 
             child.EchoOnActionCommand = EchoOnActionCommand;
+
+            // Set background step metadata before InitializeTimelineRecord so it's included in the first update
+            if (isBackground || backgroundControlType != null || parallelGroupId != null)
+            {
+                child._record.IsBackground = isBackground;
+                child._record.BackgroundControlType = backgroundControlType;
+                child._record.BackgroundControlStepIds = backgroundControlStepIds;
+                child._record.ParallelGroupId = parallelGroupId;
+
+                // Initialize deferred state for background steps — flushed at wait/wait-all
+                if (isBackground)
+                {
+                    child.DeferredOutputs = new Dictionary<string, string>();
+                    child.DeferredEnvironmentVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    child.DeferredPrependPath = new List<string>();
+                    child.DeferOutcomeConclusion = true;
+                }
+            }
 
             if (recordOrder != null)
             {
