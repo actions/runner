@@ -6,7 +6,7 @@ namespace GitHub.Runner.Worker
     /// Pure data for control-flow steps (wait, wait-all, cancel).
     /// Type uses Pipelines.BackgroundControlTypes string constants.
     /// </summary>
-    public sealed class ControlFlowStepData
+    public sealed class BackgroundStepControlFlowData
     {
         public string Type { get; set; }
         public Guid StepId { get; set; }

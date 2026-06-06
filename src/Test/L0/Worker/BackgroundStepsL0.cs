@@ -504,7 +504,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private JobExtensionRunner CreateWaitStep(TestHostContext hc, string[] stepIds, Dictionary<string, string> timelineVariables = null)
         {
-            var waitData = new ControlFlowStepData
+            var waitData = new BackgroundStepControlFlowData
             {
                 Type = Pipelines.BackgroundControlTypes.Wait,
                 StepIds = stepIds,
@@ -542,7 +542,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private JobExtensionRunner CreateWaitAllStep(TestHostContext hc, Dictionary<string, string> timelineVariables = null)
         {
-            var waitAllData = new ControlFlowStepData
+            var waitAllData = new BackgroundStepControlFlowData
             {
                 Type = Pipelines.BackgroundControlTypes.WaitAll,
             };
@@ -579,7 +579,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private JobExtensionRunner CreateCancelStep(TestHostContext hc, string cancelStepId, Dictionary<string, string> timelineVariables = null)
         {
-            var cancelData = new ControlFlowStepData
+            var cancelData = new BackgroundStepControlFlowData
             {
                 Type = Pipelines.BackgroundControlTypes.Cancel,
                 StepIds = new[] { cancelStepId },

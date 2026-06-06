@@ -362,7 +362,7 @@ namespace GitHub.Runner.Worker
                             }
                             var displayName = (ctrl.DisplayNameToken as GitHub.DistributedTask.ObjectTemplating.Tokens.StringToken)?.Value
                                 ?? step.DisplayName ?? step.Name ?? ctrl.ControlType;
-                            var data = new ControlFlowStepData
+                            var data = new BackgroundStepControlFlowData
                             {
                                 Type = controlType,
                                 StepId = step.Id,
@@ -463,7 +463,7 @@ namespace GitHub.Runner.Worker
                                 backgroundStepExternalIds.Add(externalId);
                             }
                         }
-                        else if (step is JobExtensionRunner runnerStep && runnerStep.Data is ControlFlowStepData cf)
+                        else if (step is JobExtensionRunner runnerStep && runnerStep.Data is BackgroundStepControlFlowData cf)
                         {
                             // Resolve step IDs to external IDs and track coverage
                             string[] externalIds = null;
@@ -512,7 +512,7 @@ namespace GitHub.Runner.Worker
                         if (hasUncoveredBackgroundSteps)
                         {
                             var implicitStepId = Guid.NewGuid();
-                            var implicitWaitAllData = new ControlFlowStepData
+                            var implicitWaitAllData = new BackgroundStepControlFlowData
                             {
                                 Type = Pipelines.BackgroundControlTypes.WaitAll,
                                 StepId = implicitStepId,
