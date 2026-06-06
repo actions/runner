@@ -399,6 +399,45 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(100, scope.Count);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ControlFlowStepsRunEvenAfterFailure()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: a background step, a foreground step that fails, then a wait step
+                var bgStep = CreateStep(hc, TaskResult.Succeeded, "success()", name: "bg", contextName: "bg", isBackground: true);
+                bgStep.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
+                bgStep.Setup(x => x.Action).Returns(new GitHub.DistributedTask.Pipelines.ActionStep()
+                {
+                    Name = "bg",
+                    Id = Guid.NewGuid(),
+                    ContextName = "bg",
+                    Background = true,
+                });
+
+                var failStep = CreateStep(hc, TaskResult.Failed, "success()", name: "fail", contextName: "fail");
+
+                // Wait step uses always() condition — should run even after failure
+                var waitStep = CreateWaitStep(hc, new[] { "bg" });
+                waitStep.Condition = $"{GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants.Always}()";
+
+                _ec.Object.Result = null;
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new IStep[]
+                {
+                    bgStep.Object, failStep.Object, waitStep
+                }));
+
+                // Act
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert: wait step should have run (not skipped) because it has always() condition
+                Assert.NotNull(waitStep.ExecutionContext.Result);
+                Assert.NotEqual(TaskResult.Skipped, waitStep.ExecutionContext.Result);
+            }
+        }
+
         #region Helpers
 
         private Mock<IActionRunner> CreateStep(TestHostContext hc, TaskResult result, string condition, string name = "Test", string contextName = null, Guid? recordId = null, bool isBackground = false)

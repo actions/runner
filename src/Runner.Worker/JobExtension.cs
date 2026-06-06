@@ -511,28 +511,28 @@ namespace GitHub.Runner.Worker
                         // Add implicit wait-all only if there are uncovered background steps
                         if (hasUncoveredBackgroundSteps)
                         {
-                        var implicitStepId = Guid.NewGuid();
-                        var implicitWaitAllData = new ControlFlowStepData
-                        {
-                            Type = Pipelines.BackgroundControlTypes.WaitAll,
-                            StepId = implicitStepId,
-                            StepName = "__implicit_wait_all",
-                        };
-                        var implicitWaitAll = new JobExtensionRunner(
-                            runAsync: bgCoordinator.RunControlFlowAsync,
-                            condition: $"{PipelineTemplateConstants.Always}()",
-                            displayName: "Wait for all background steps",
-                            data: implicitWaitAllData);
-                        var uncoveredExternalIds = contextNameToExternalId
-                            .Where(kvp => !coveredBackgroundIds.Contains(kvp.Key))
-                            .Select(kvp => kvp.Value)
-                            .ToArray();
-                        implicitWaitAll.ExecutionContext = jobContext.CreateChild(
-                            implicitStepId, implicitWaitAll.DisplayName, "__implicit_wait_all",
-                            null, "__implicit_wait_all", ActionRunStage.Main,
-                            backgroundControlType: Pipelines.BackgroundControlTypes.WaitAll,
-                            backgroundControlStepIds: uncoveredExternalIds.Length > 0 ? uncoveredExternalIds : null);
-                        jobSteps.Add(implicitWaitAll);
+                            var implicitStepId = Guid.NewGuid();
+                            var implicitWaitAllData = new ControlFlowStepData
+                            {
+                                Type = Pipelines.BackgroundControlTypes.WaitAll,
+                                StepId = implicitStepId,
+                                StepName = "__implicit_wait_all",
+                            };
+                            var implicitWaitAll = new JobExtensionRunner(
+                                runAsync: bgCoordinator.RunControlFlowAsync,
+                                condition: $"{PipelineTemplateConstants.Always}()",
+                                displayName: "Wait for all background steps",
+                                data: implicitWaitAllData);
+                            var uncoveredExternalIds = contextNameToExternalId
+                                .Where(kvp => !coveredBackgroundIds.Contains(kvp.Key))
+                                .Select(kvp => kvp.Value)
+                                .ToArray();
+                            implicitWaitAll.ExecutionContext = jobContext.CreateChild(
+                                implicitStepId, implicitWaitAll.DisplayName, "__implicit_wait_all",
+                                null, "__implicit_wait_all", ActionRunStage.Main,
+                                backgroundControlType: Pipelines.BackgroundControlTypes.WaitAll,
+                                backgroundControlStepIds: uncoveredExternalIds.Length > 0 ? uncoveredExternalIds : null);
+                            jobSteps.Add(implicitWaitAll);
                         }
                     }
 
