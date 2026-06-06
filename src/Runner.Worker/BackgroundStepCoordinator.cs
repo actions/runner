@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -143,51 +142,25 @@ namespace GitHub.Runner.Worker
         // Wait
         // -----------------------------------------------------------------
 
-        /// <summary>
-        /// Wait for specific background steps by ID. Flushes deferred state and
-        /// returns the aggregate result.
-        /// </summary>
-        public async Task<TaskResult> WaitForStepsAsync(string[] stepIds, CancellationToken cancellationToken)
+        private async Task<TaskResult> WaitForStepsAsync(string[] stepIds, CancellationToken cancellationToken)
         {
             var ids = stepIds ?? Array.Empty<string>();
-
             await WaitForStepTasksAsync(ids, cancellationToken);
-
-            foreach (var id in ids)
-            {
-                FlushDeferredState(id);
-                _waitedStepIds.Add(id);
-            }
-
-            return GetWaitResult(ids);
+            return CompleteWaitedSteps(ids);
         }
 
-        /// <summary>
-        /// Wait for all not-yet-waited background steps. Returns the aggregate result.
-        /// </summary>
-        public async Task<TaskResult> WaitForAllAsync(CancellationToken cancellationToken)
+        private async Task<TaskResult> WaitForAllAsync(CancellationToken cancellationToken)
         {
             var remaining = _backgroundSteps.Keys.Where(id => !_waitedStepIds.Contains(id)).ToList();
-
             await WaitForStepTasksAsync(remaining, cancellationToken);
-
-            foreach (var id in remaining)
-            {
-                FlushDeferredState(id);
-                _waitedStepIds.Add(id);
-            }
-
-            return GetWaitResult(remaining);
+            return CompleteWaitedSteps(remaining);
         }
 
         // -----------------------------------------------------------------
         // Cancel
         // -----------------------------------------------------------------
 
-        /// <summary>
-        /// Cancel specific background steps by ID. Flushes deferred state after cancellation.
-        /// </summary>
-        public async Task CancelStepsAsync(string[] cancelStepIds)
+        private async Task CancelStepsAsync(string[] cancelStepIds)
         {
             if (cancelStepIds == null || cancelStepIds.Length == 0) return;
 
@@ -208,12 +181,9 @@ namespace GitHub.Runner.Worker
         }
 
         // -----------------------------------------------------------------
-        // Failure propagation
+        // Safety net
         // -----------------------------------------------------------------
 
-        /// <summary>
-        /// Safety net: wait for any unwaited background steps and propagate failures.
-        /// </summary>
         public async Task WaitForUnwaitedStepsAsync(IExecutionContext jobContext)
         {
             var unwaitedIds = _backgroundSteps.Keys.Where(id => !_waitedStepIds.Contains(id)).ToList();
@@ -224,14 +194,8 @@ namespace GitHub.Runner.Worker
 
             Trace.Info($"Safety net: {unwaitedIds.Count} unwaited background step(s) at post-job boundary: {string.Join(", ", unwaitedIds)}");
             await WaitForAllAsync(jobContext.CancellationToken);
-            PropagateFailures(jobContext);
-        }
 
-        /// <summary>
-        /// Propagate any unhandled background step failures to the job result.
-        /// </summary>
-        public void PropagateFailures(IExecutionContext jobContext)
-        {
+            // Propagate any background step failures to the job result
             foreach (var (_, (step, _, _)) in _backgroundSteps)
             {
                 if (step.ExecutionContext.Result == TaskResult.Failed)
@@ -347,19 +311,19 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private TaskResult GetWaitResult(IEnumerable<string> stepIds)
+        private TaskResult CompleteWaitedSteps(IEnumerable<string> stepIds)
         {
-            if (stepIds == null) return TaskResult.Succeeded;
-
-            foreach (var stepId in stepIds)
+            var result = TaskResult.Succeeded;
+            foreach (var id in stepIds)
             {
-                if (_backgroundSteps.TryGetValue(stepId, out var entry) && entry.Step.ExecutionContext.Result == TaskResult.Failed)
+                FlushDeferredState(id);
+                _waitedStepIds.Add(id);
+                if (_backgroundSteps.TryGetValue(id, out var entry) && entry.Step.ExecutionContext.Result == TaskResult.Failed)
                 {
-                    Trace.Info($"Background step '{stepId}' failed.");
-                    return TaskResult.Failed;
+                    result = TaskResult.Failed;
                 }
             }
-            return TaskResult.Succeeded;
+            return result;
         }
     }
 }
