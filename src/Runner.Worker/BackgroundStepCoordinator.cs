@@ -340,27 +340,24 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private void FlushDeferredState(string stepId)
-        {
-            if (_backgroundSteps.TryGetValue(stepId, out var entry))
-            {
-                entry.Step.ExecutionContext.FlushDeferredOutputs();
-                entry.Step.ExecutionContext.FlushDeferredEnvironment();
-                entry.Step.ExecutionContext.FlushDeferredOutcomeConclusion();
-                Trace.Info($"Flushed deferred state for background step '{stepId}'.");
-            }
-        }
-
         private TaskResult CompleteWaitedSteps(IEnumerable<string> stepIds)
         {
             var result = TaskResult.Succeeded;
             foreach (var id in stepIds)
             {
-                FlushDeferredState(id);
                 _completedStepIds.Add(id);
-                if (_backgroundSteps.TryGetValue(id, out var entry) && entry.Step.ExecutionContext.Result.HasValue)
+                if (_backgroundSteps.TryGetValue(id, out var entry))
                 {
-                    result = TaskResultUtil.MergeTaskResults(result, entry.Step.ExecutionContext.Result.Value);
+                    // Flush deferred state for the completed step.
+                    entry.Step.ExecutionContext.FlushDeferredOutputs();
+                    entry.Step.ExecutionContext.FlushDeferredEnvironment();
+                    entry.Step.ExecutionContext.FlushDeferredOutcomeConclusion();
+                    Trace.Info($"Flushed deferred state for background step '{id}'.");
+
+                    if (entry.Step.ExecutionContext.Result.HasValue)
+                    {
+                        result = TaskResultUtil.MergeTaskResults(result, entry.Step.ExecutionContext.Result.Value);
+                    }
                 }
             }
             return result;
