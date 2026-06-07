@@ -22,6 +22,7 @@ namespace GitHub.DistributedTask.Pipelines
             this.Condition = stepToClone.Condition;
             this.ContinueOnError = stepToClone.ContinueOnError?.Clone();
             this.TimeoutInMinutes = stepToClone.TimeoutInMinutes?.Clone();
+            this.ParallelGroupId = stepToClone.ParallelGroupId;
         }
 
         [DataMember(EmitDefaultValue = false)]
@@ -44,5 +45,8 @@ namespace GitHub.DistributedTask.Pipelines
             get;
             set;
         }
+
+        [DataMember(EmitDefaultValue = false)]
+        public string ParallelGroupId { get; set; }
     }
 }
