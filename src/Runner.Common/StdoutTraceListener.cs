@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -9,18 +9,12 @@ namespace GitHub.Runner.Common
     public sealed class StdoutTraceListener : ConsoleTraceListener
     {
         private readonly string _hostType;
-        private readonly bool _prefixMultilineLogs = true;
+        private readonly bool _disablePrefixMultilineLogs = false;
 
         public StdoutTraceListener(string hostType)
         {
             this._hostType = hostType;
-            // The stdout log prefixing behaviour was on before this environment variable,
-            // so only disable it if the env var was set
-            bool multilinePrefixingEnvSetting = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.StdoutMultilineLogPrefixing), defaultValue: true);
-            if (!multilinePrefixingEnvSetting)
-            {
-                this._prefixMultilineLogs = false;
-            }
+            this._disablePrefixMultilineLogs = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.DisableStdoutMultilineLogPrefixing));
         }
 
         // Copied and modified slightly from .Net Core source code. Modification was required to make it compile.
@@ -34,7 +28,7 @@ namespace GitHub.Runner.Common
 
             if (!string.IsNullOrEmpty(message))
             {
-                if (this._prefixMultilineLogs)
+                if (!this._disablePrefixMultilineLogs)
                 {
                     var messageLines = message.Split(Environment.NewLine);
                     foreach (var messageLine in messageLines)
