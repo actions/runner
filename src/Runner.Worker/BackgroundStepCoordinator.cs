@@ -16,8 +16,7 @@ namespace GitHub.Runner.Worker
     {
         void InitializeCoordinator(int maxConcurrent);
         void StartBackgroundStep(IStep step, CancellationToken jobCancellationToken);
-        Task WaitForUnwaitedStepsAsync(CancellationToken cancellationToken);
-        TaskResult GetAggregatedResult();
+        Task<TaskResult> WaitForUnwaitedStepsAsync(CancellationToken cancellationToken);
         Task RunControlFlowAsync(IExecutionContext stepContext, object data);
     }
 
@@ -93,9 +92,9 @@ namespace GitHub.Runner.Worker
         // -----------------------------------------------------------------
 
         // Drain any background steps that weren't already waited on by an explicit wait/cancel
-        // control step. Does not compute or return a result; call GetAggregatedResult afterwards
-        // to fold the background step results into the job result.
-        public async Task WaitForUnwaitedStepsAsync(CancellationToken cancellationToken)
+        // control step, then merge the final results of all background steps into a single result
+        // for the caller to fold into the job result.
+        public async Task<TaskResult> WaitForUnwaitedStepsAsync(CancellationToken cancellationToken)
         {
             var unwaitedIds = _backgroundSteps.Keys.Where(id => !_completedStepIds.Contains(id)).ToList();
             if (unwaitedIds.Count > 0)
@@ -104,12 +103,7 @@ namespace GitHub.Runner.Worker
                 await WaitForStepTasksAsync(unwaitedIds, cancellationToken);
                 CompleteWaitedSteps(unwaitedIds);
             }
-        }
 
-        // Merge the final results of all background steps into a single result for the caller to
-        // fold into the job result
-        public TaskResult GetAggregatedResult()
-        {
             var result = TaskResult.Succeeded;
             foreach (var (stepId, (step, _, _)) in _backgroundSteps)
             {
