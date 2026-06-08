@@ -17,8 +17,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.3" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.3" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.6" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.6" />
     <PackageReference Include="System.Threading.Channels" Version="10.0.3" />
   </ItemGroup>
 
