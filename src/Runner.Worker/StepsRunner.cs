@@ -61,7 +61,8 @@ namespace GitHub.Runner.Worker
                     checkPostJobActions = true;
 
                     // Safety net: wait for any unwaited background steps before post-hooks
-                    var backgroundResult = await _bgCoordinator.WaitForUnwaitedStepsAsync(jobContext.CancellationToken);
+                    await _bgCoordinator.WaitForUnwaitedStepsAsync(jobContext.CancellationToken);
+                    var backgroundResult = _bgCoordinator.GetAggregatedResult();
                     if (backgroundResult != TaskResult.Succeeded)
                     {
                         jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, backgroundResult);

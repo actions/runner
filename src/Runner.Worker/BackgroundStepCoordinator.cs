@@ -16,7 +16,8 @@ namespace GitHub.Runner.Worker
     {
         void InitializeCoordinator(int maxConcurrent);
         void StartBackgroundStep(IStep step, CancellationToken jobCancellationToken);
-        Task<TaskResult> WaitForUnwaitedStepsAsync(CancellationToken cancellationToken);
+        Task WaitForUnwaitedStepsAsync(CancellationToken cancellationToken);
+        TaskResult GetAggregatedResult();
         Task RunControlFlowAsync(IExecutionContext stepContext, object data);
     }
 
@@ -32,6 +33,11 @@ namespace GitHub.Runner.Worker
         // IDs of background steps that have already been completed (waited on or canceled).
         // Used to avoid waiting on or flushing the same step more than once.
         private readonly HashSet<string> _completedStepIds = new();
+
+        // IDs of background steps that were explicitly canceled via a `cancel` control step.
+        // These steps are expected to be canceled, so their (Canceled) result must not be
+        // merged into the overall job result.
+        private readonly HashSet<string> _explicitlyCanceledStepIds = new();
         private SemaphoreSlim _backgroundSlotSemaphore = new SemaphoreSlim(DefaultMaxBackgroundSteps);
 
         /// <summary>
@@ -41,6 +47,7 @@ namespace GitHub.Runner.Worker
         {
             _backgroundSteps.Clear();
             _completedStepIds.Clear();
+            _explicitlyCanceledStepIds.Clear();
             var max = maxConcurrent > 0 ? maxConcurrent : DefaultMaxBackgroundSteps;
             _backgroundSlotSemaphore = new SemaphoreSlim(max);
         }
@@ -85,7 +92,10 @@ namespace GitHub.Runner.Worker
         // Safety net
         // -----------------------------------------------------------------
 
-        public async Task<TaskResult> WaitForUnwaitedStepsAsync(CancellationToken cancellationToken)
+        // Drain any background steps that weren't already waited on by an explicit wait/cancel
+        // control step. Does not compute or return a result; call GetAggregatedResult afterwards
+        // to fold the background step results into the job result.
+        public async Task WaitForUnwaitedStepsAsync(CancellationToken cancellationToken)
         {
             var unwaitedIds = _backgroundSteps.Keys.Where(id => !_completedStepIds.Contains(id)).ToList();
             if (unwaitedIds.Count > 0)
@@ -94,15 +104,30 @@ namespace GitHub.Runner.Worker
                 await WaitForStepTasksAsync(unwaitedIds, cancellationToken);
                 CompleteWaitedSteps(unwaitedIds);
             }
+        }
 
-            // Report the merged result of all background steps; the caller merges this into the job result.
+        // Merge the final results of all background steps into a single result for the caller to
+        // fold into the job result
+        public TaskResult GetAggregatedResult()
+        {
             var result = TaskResult.Succeeded;
-            foreach (var (_, (step, _, _)) in _backgroundSteps)
+            foreach (var (stepId, (step, _, _)) in _backgroundSteps)
             {
-                if (step.ExecutionContext.Result.HasValue)
+                if (!step.ExecutionContext.Result.HasValue)
                 {
-                    result = TaskResultUtil.MergeTaskResults(result, step.ExecutionContext.Result.Value);
+                    continue;
                 }
+
+                // A step explicitly canceled via a `cancel` control step is expected to be canceled,
+                // so a Canceled result must not influence the overall job result. However, if the step
+                // failed (e.g. before the cancellation took effect), that failure should still count.
+                if (_explicitlyCanceledStepIds.Contains(stepId) &&
+                    step.ExecutionContext.Result.Value == TaskResult.Canceled)
+                {
+                    continue;
+                }
+
+                result = TaskResultUtil.MergeTaskResults(result, step.ExecutionContext.Result.Value);
             }
 
             if (result != TaskResult.Succeeded)
@@ -254,6 +279,13 @@ namespace GitHub.Runner.Worker
             if (cancelStepIds == null || cancelStepIds.Length == 0)
             {
                 return;
+            }
+
+            // Mark these steps as expected-to-be-canceled so their result does not
+            // affect the overall job result.
+            foreach (var id in cancelStepIds)
+            {
+                _explicitlyCanceledStepIds.Add(id);
             }
 
             var idsToCancel = cancelStepIds

@@ -375,6 +375,88 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async Task CanceledBackgroundStepDoesNotAffectJobResult()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: a background step that runs until explicitly canceled. When canceled it
+                // reports TaskResult.Canceled, but since the cancellation is expected (driven by a
+                // cancel control step), it must not impact the overall job result.
+                using var stepCts = new CancellationTokenSource();
+
+                var bgStep = CreateStep(hc, TaskResult.Succeeded, "success()", name: "server", contextName: "server", isBackground: true);
+                var bgStepContext = Mock.Get(bgStep.Object.ExecutionContext);
+                bgStepContext.Setup(x => x.CancellationToken).Returns(stepCts.Token);
+                bgStepContext.Setup(x => x.CancelToken()).Callback(() => stepCts.Cancel());
+                bgStep.Setup(x => x.RunAsync()).Returns(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), stepCts.Token);
+                });
+                bgStep.Setup(x => x.Action).Returns(new GitHub.DistributedTask.Pipelines.ActionStep()
+                {
+                    Name = "server",
+                    Id = Guid.NewGuid(),
+                    ContextName = "server",
+                    Background = true,
+                });
+
+                var cancelStep = CreateCancelStep(hc, "server");
+
+                _ec.Object.Result = null;
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new IStep[]
+                {
+                    bgStep.Object, cancelStep
+                }));
+
+                // Act
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert: the canceled background step reported Canceled, but the job result is unaffected.
+                Assert.Equal(TaskResult.Canceled, bgStep.Object.ExecutionContext.Result);
+                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task FailedBackgroundStepTargetedByCancelStillAffectsJobResult()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: a background step that fails (e.g. before the cancel takes effect). Even
+                // though a cancel control step targets it, its Failed result must still propagate to
+                // the overall job result.
+                var bgStep = CreateStep(hc, TaskResult.Failed, "success()", name: "server", contextName: "server", isBackground: true);
+                bgStep.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
+                bgStep.Setup(x => x.Action).Returns(new GitHub.DistributedTask.Pipelines.ActionStep()
+                {
+                    Name = "server",
+                    Id = Guid.NewGuid(),
+                    ContextName = "server",
+                    Background = true,
+                });
+
+                var cancelStep = CreateCancelStep(hc, "server");
+
+                _ec.Object.Result = null;
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new IStep[]
+                {
+                    bgStep.Object, cancelStep
+                }));
+
+                // Act
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert: the background step failed, so the job result reflects that failure.
+                Assert.Equal(TaskResult.Failed, bgStep.Object.ExecutionContext.Result);
+                Assert.Equal(TaskResult.Failed, _ec.Object.Result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task StepsContextThreadSafety()
         {
             // Test that concurrent SetOutput/SetConclusion doesn't throw
