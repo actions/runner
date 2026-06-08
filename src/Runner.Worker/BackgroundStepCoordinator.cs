@@ -107,6 +107,8 @@ namespace GitHub.Runner.Worker
             var result = TaskResult.Succeeded;
             foreach (var (stepId, (step, _, _)) in _backgroundSteps)
             {
+                // A step that succeeded does not set a Result by default, so a missing
+                // value means the step succeeded and there is nothing to merge.
                 if (!step.ExecutionContext.Result.HasValue)
                 {
                     continue;
