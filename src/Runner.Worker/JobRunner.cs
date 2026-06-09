@@ -13,6 +13,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Dap;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using Sdk.RSWebApi.Contracts;
@@ -228,6 +229,12 @@ namespace GitHub.Runner.Worker
                     foreach (var step in jobSteps)
                     {
                         jobContext.JobSteps.Enqueue(step);
+                    }
+
+                    if (jobContext.Global.Debugger?.Enabled == true)
+                    {
+                        var dapDebugger = HostContext.GetService<IDapDebugger>();
+                        await dapDebugger.OnJobStepsInitializedAsync(jobContext.JobSteps, jobContext.PostJobSteps);
                     }
 
                     await stepsRunner.RunAsync(jobContext);

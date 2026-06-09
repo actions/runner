@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -169,6 +169,36 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(1, deserialized.Id);
             Assert.Equal("Step: Checkout", deserialized.Name);
             Assert.Equal("normal", deserialized.PresentationHint);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SourceRequestAndResponseSerialization()
+        {
+            var args = new SourceArguments
+            {
+                Source = new Source
+                {
+                    SourceReference = 1
+                }
+            };
+
+            var argsJson = JsonConvert.SerializeObject(args);
+            var deserializedArgs = JsonConvert.DeserializeObject<SourceArguments>(argsJson);
+
+            Assert.Equal(1, deserializedArgs.Source.SourceReference);
+
+            var body = new SourceResponseBody
+            {
+                Content = "pre:\n  - step: \"Setup job\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Complete job\"\n"
+            };
+
+            var bodyJson = JsonConvert.SerializeObject(body);
+            var deserializedBody = JsonConvert.DeserializeObject<SourceResponseBody>(bodyJson);
+
+            Assert.Equal("pre:\n  - step: \"Setup job\"\n\nmain:\n  - step: \"Checkout\"\n\npost:\n  - step: \"Complete job\"\n", deserializedBody.Content);
+            Assert.Null(deserializedBody.MimeType);
         }
 
         [Fact]

@@ -43,6 +43,10 @@ namespace GitHub.DistributedTask.WebApi
                 this.WarningCount = recordToBeCloned.WarningCount;
                 this.NoticeCount = recordToBeCloned.NoticeCount;
                 this.AgentPlatform = recordToBeCloned.AgentPlatform;
+                this.IsBackground = recordToBeCloned.IsBackground;
+                this.BackgroundControlType = recordToBeCloned.BackgroundControlType;
+                this.BackgroundControlStepIds = recordToBeCloned.BackgroundControlStepIds;
+                this.ParallelGroupId = recordToBeCloned.ParallelGroupId;
 
                 if (recordToBeCloned.Log != null)
                 {
@@ -284,6 +288,34 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(Order = 132, EmitDefaultValue = false)]
         public string AgentPlatform
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 140, EmitDefaultValue = false)]
+        public bool IsBackground
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 141, EmitDefaultValue = false)]
+        public string BackgroundControlType
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 142, EmitDefaultValue = false)]
+        public string[] BackgroundControlStepIds
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 144, EmitDefaultValue = false)]
+        public string ParallelGroupId
         {
             get;
             set;

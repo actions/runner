@@ -1,36 +1,40 @@
 ## What's Changed
-* Bump flatted from 3.2.7 to 3.4.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4307
-* Add DAP server by @rentziass in https://github.com/actions/runner/pull/4298
-* Bump @typescript-eslint/eslint-plugin from 8.57.1 to 8.57.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4310
-* Remove AllowCaseFunction feature flag by @ericsciple in https://github.com/actions/runner/pull/4316
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4319
-* Batch and deduplicate action resolution across composite depths by @stefanpenner in https://github.com/actions/runner/pull/4296
-* Add support for Bearer token in action archive downloads by @TingluoHuang in https://github.com/actions/runner/pull/4321
-* Bump brace-expansion in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4318
-* Add devtunnel connection for debugger jobs by @rentziass in https://github.com/actions/runner/pull/4317
-* Update Docker to v29.3.1 and Buildx to v0.33.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4324
-* Bump @typescript-eslint/eslint-plugin from 8.57.2 to 8.58.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4327
-* Bump actions/github-script from 8 to 9 by @dependabot[bot] in https://github.com/actions/runner/pull/4331
-* Bump typescript from 5.9.3 to 6.0.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4329
-* fix: only show changed versions in node upgrade PR description by @salmanmkc in https://github.com/actions/runner/pull/4332
-* Bump System.Formats.Asn1, Cryptography.Pkcs, ProtectedData, ServiceController, CodePages, Threading.Channels, @actions/glob, @typescript-eslint/parser, lint-staged, picomatch by @Copilot in https://github.com/actions/runner/pull/4333
-* feat: add `job.workflow_*` typed accessors to JobContext by @salmanmkc in https://github.com/actions/runner/pull/4335
-* Add WS bridge over DAP TCP server by @rentziass in https://github.com/actions/runner/pull/4328
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4355
-* Bump Docker version to 29.4.0 by @Copilot in https://github.com/actions/runner/pull/4352
-* Update dotnet sdk to latest version @8.0.420 by @github-actions[bot] in https://github.com/actions/runner/pull/4356
-* Bump @typescript-eslint/parser from 8.58.1 to 8.59.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4360
-* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4362
-* Add vulnerability-alerts permission by @salmanmkc in https://github.com/actions/runner/pull/4350
-* Bump @typescript-eslint/eslint-plugin from 8.58.1 to 8.59.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4359
-* Bump System.ServiceProcess.ServiceController from 10.0.3 to 10.0.6 by @dependabot[bot] in https://github.com/actions/runner/pull/4358
-* Bump typescript from 6.0.2 to 6.0.3 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4353
-* Bump Microsoft.DevTunnels.Connections from 1.3.16 to 1.3.39 by @dependabot[bot] in https://github.com/actions/runner/pull/4339
+* Bump System.ServiceProcess.ServiceController from 10.0.6 to 10.0.7 by @dependabot[bot] in https://github.com/actions/runner/pull/4370
+* Bump @actions/glob from 0.6.1 to 0.7.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4367
+* feat: propagate actions dependencies by @nodeselector in https://github.com/actions/runner/pull/4372
+* Not retry and report action download 403. by @TingluoHuang in https://github.com/actions/runner/pull/4391
+* Update setup job starting logs by @GitPaulo in https://github.com/actions/runner/pull/4383
+* fix: expand commit hash regex to support SHA-256 (64-char) hashes by @yaananth in https://github.com/actions/runner/pull/4347
+* Move dap setup to setup job step by @rentziass in https://github.com/actions/runner/pull/4403
+* Add support for Ubuntu 26.04 (liblttng-ust1t64, libicu77-80) by @dvaldivia in https://github.com/actions/runner/pull/4394
+* Update dotnet sdk to latest version @8.0.421 by @github-actions[bot] in https://github.com/actions/runner/pull/4428
+* Update Docker to v29.5.0 and Buildx to v0.34.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4425
+* Execute debugger REPL commands inside job container by @rentziass in https://github.com/actions/runner/pull/4420
+* Send welcome message in debugger console on connect by @rentziass in https://github.com/actions/runner/pull/4419
+* Update snapshot-if context and functions by @drielenr in https://github.com/actions/runner/pull/4443
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4452
+* Allow disable node v8 maglev jit compiler on node24. by @TingluoHuang in https://github.com/actions/runner/pull/4447
+* Update Node 24 default date to June 16th, 2026 by @salmanmkc in https://github.com/actions/runner/pull/4462
+* Populate telemetry for non-action post-job steps by @drielenr in https://github.com/actions/runner/pull/4463
+* Add SDK types and results plumbing for background step control by @lokesh755 in https://github.com/actions/runner/pull/4472
+* Add job execution view model by @rentziass in https://github.com/actions/runner/pull/4470
+* Add thread-safety locks to StepsContext by @lokesh755 in https://github.com/actions/runner/pull/4475
+* Add background step deferral infrastructure and metadata plumbing by @lokesh755 in https://github.com/actions/runner/pull/4479
+* Wire job execution view into DAP by @rentziass in https://github.com/actions/runner/pull/4471
+* Background steps execution engine by @lokesh755 in https://github.com/actions/runner/pull/4476
+* Update Docker to v29.5.2 and Buildx to v0.34.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4451
+* BrokerServer should not retry on 401. by @TingluoHuang in https://github.com/actions/runner/pull/4445
+* Add new env var to allow single-prefix multiline logs on stdout by @nuclearpidgeon in https://github.com/actions/runner/pull/4424
+* Bump Microsoft.DevTunnels.Connections from 1.3.39 to 1.3.48 by @dependabot[bot] in https://github.com/actions/runner/pull/4441
+* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4369
 
 ## New Contributors
-* @stefanpenner made their first contribution in https://github.com/actions/runner/pull/4296
+* @GitPaulo made their first contribution in https://github.com/actions/runner/pull/4383
+* @dvaldivia made their first contribution in https://github.com/actions/runner/pull/4394
+* @drielenr made their first contribution in https://github.com/actions/runner/pull/4443
+* @nuclearpidgeon made their first contribution in https://github.com/actions/runner/pull/4424
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.333.1...v2.334.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.334.0...v2.335.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
