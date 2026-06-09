@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker.Dap
@@ -19,6 +20,8 @@ namespace GitHub.Runner.Worker.Dap
     {
         Task StartAsync(IExecutionContext jobContext);
         Task WaitUntilReadyAsync();
+        Task OnJobStepsInitializedAsync(IEnumerable<IStep> steps, IEnumerable<IStep> initialPostSteps);
+        void OnPostStepRegistered(IStep step);
         Task OnStepStartingAsync(IStep step);
         void OnStepCompleted(IStep step);
         Task OnJobCompletedAsync();

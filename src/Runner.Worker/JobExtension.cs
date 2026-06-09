@@ -345,6 +345,38 @@ namespace GitHub.Runner.Worker
                                 preJobSteps.Add(preStep);
                             }
                         }
+                        else if (step.Type == Pipelines.StepType.BackgroundStepControl)
+                        {
+                            var ctrl = step as Pipelines.BackgroundStepControl;
+                            Trace.Info($"Adding {ctrl.ControlType} step for: {string.Join(", ", ctrl.StepIds ?? Array.Empty<string>())}");
+                            var controlType = ctrl.ControlType;
+                            if (string.IsNullOrEmpty(controlType))
+                            {
+                                throw new ArgumentException($"Background step control '{step.Name}' has no control type.");
+                            }
+                            if (controlType != Pipelines.BackgroundControlTypes.Wait &&
+                                controlType != Pipelines.BackgroundControlTypes.WaitAll &&
+                                controlType != Pipelines.BackgroundControlTypes.Cancel)
+                            {
+                                throw new ArgumentException($"Unknown background step control type '{controlType}' for step '{step.Name}'.");
+                            }
+                            var displayName = (ctrl.DisplayNameToken as GitHub.DistributedTask.ObjectTemplating.Tokens.StringToken)?.Value
+                                ?? step.DisplayName ?? step.Name ?? ctrl.ControlType;
+                            var data = new BackgroundStepControlFlowData
+                            {
+                                Type = controlType,
+                                StepId = step.Id,
+                                StepName = step.Name,
+                                StepIds = ctrl.StepIds,
+                                ParallelGroupId = ctrl.ParallelGroupId,
+                            };
+                            var bgCoord = HostContext.GetService<IBackgroundStepCoordinator>();
+                            jobSteps.Add(new JobExtensionRunner(
+                                runAsync: bgCoord.RunControlFlowAsync,
+                                condition: $"{PipelineTemplateConstants.Always}()",
+                                displayName: displayName,
+                                data: data));
+                        }
                     }
 
                     if (message.Variables.TryGetValue("system.workflowFileFullPath", out VariableValue workflowFileFullPath))
@@ -400,13 +432,107 @@ namespace GitHub.Runner.Worker
                     }
 
                     // Create execution context for job steps
+                    // Build mapping of logical step ID (ContextName) → external ID (timeline record GUID)
+                    // so wait/cancel steps can reference background steps by external ID.
+                    var contextNameToExternalId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    var hasBackgroundSteps = false;
+                    var backgroundStepExternalIds = new List<string>();
+
+                    // Track which background steps are explicitly covered by wait/wait-all/cancel
+                    var coveredBackgroundIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                     foreach (var step in jobSteps)
                     {
                         if (step is IActionRunner actionStep)
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, null, actionStep.Action.ContextName, ActionRunStage.Main, intraActionState);
+
+                            var isBg = actionStep.Action?.Background == true;
+                            actionStep.ExecutionContext = jobContext.CreateChild(
+                                actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name,
+                                null, actionStep.Action.ContextName, ActionRunStage.Main, intraActionState,
+                                isBackground: isBg,
+                                parallelGroupId: isBg ? actionStep.Action.ParallelGroupId : null);
+
+                            if (isBg)
+                            {
+                                hasBackgroundSteps = true;
+                                var externalId = actionStep.Action.Id.ToString("N");
+                                contextNameToExternalId[actionStep.Action.ContextName] = externalId;
+                                backgroundStepExternalIds.Add(externalId);
+                            }
+                        }
+                        else if (step is JobExtensionRunner runnerStep && runnerStep.Data is BackgroundStepControlFlowData cf)
+                        {
+                            // Resolve step IDs to external IDs and track coverage
+                            string[] externalIds = null;
+                            if (cf.StepIds != null && cf.StepIds.Length > 0)
+                            {
+                                foreach (var id in cf.StepIds)
+                                {
+                                    coveredBackgroundIds.Add(id);
+                                }
+                                externalIds = cf.StepIds
+                                    .Where(id => contextNameToExternalId.ContainsKey(id))
+                                    .Select(id => contextNameToExternalId[id])
+                                    .ToArray();
+                            }
+
+                            if (cf.Type == Pipelines.BackgroundControlTypes.WaitAll)
+                            {
+                                externalIds = backgroundStepExternalIds.Count > 0 ? backgroundStepExternalIds.ToArray() : null;
+                                foreach (var id in contextNameToExternalId.Keys)
+                                {
+                                    coveredBackgroundIds.Add(id);
+                                }
+                            }
+
+                            step.ExecutionContext = jobContext.CreateChild(
+                                cf.StepId, step.DisplayName, cf.StepName,
+                                null, cf.StepName, ActionRunStage.Main,
+                                backgroundControlType: cf.Type,
+                                backgroundControlStepIds: externalIds,
+                                parallelGroupId: cf.ParallelGroupId);
+                        }
+                    }
+
+                    // Add implicit wait-all only if there are background steps not covered by any wait/wait-all/cancel
+                    var allBackgroundIds = contextNameToExternalId.Keys;
+                    var hasUncoveredBackgroundSteps = allBackgroundIds.Any(id => !coveredBackgroundIds.Contains(id));
+                    if (hasBackgroundSteps)
+                    {
+                        // Initialize coordinator only when there are background steps
+                        var bgCoordinator = HostContext.GetService<IBackgroundStepCoordinator>();
+                        var maxBgSteps = jobContext.Global.Variables.GetInt("system.runner.maxbackgroundsteps");
+                        var maxConcurrent = (maxBgSteps.HasValue && maxBgSteps.Value > 0) ? maxBgSteps.Value : 10;
+                        bgCoordinator.InitializeCoordinator(maxConcurrent);
+
+                        // Add implicit wait-all only if there are uncovered background steps
+                        if (hasUncoveredBackgroundSteps)
+                        {
+                            var implicitStepId = Guid.NewGuid();
+                            var implicitWaitAllData = new BackgroundStepControlFlowData
+                            {
+                                Type = Pipelines.BackgroundControlTypes.WaitAll,
+                                StepId = implicitStepId,
+                                StepName = "__implicit_wait_all",
+                            };
+                            var implicitWaitAll = new JobExtensionRunner(
+                                runAsync: bgCoordinator.RunControlFlowAsync,
+                                condition: $"{PipelineTemplateConstants.Always}()",
+                                displayName: "Wait for all background steps",
+                                data: implicitWaitAllData);
+                            var uncoveredExternalIds = contextNameToExternalId
+                                .Where(kvp => !coveredBackgroundIds.Contains(kvp.Key))
+                                .Select(kvp => kvp.Value)
+                                .ToArray();
+                            implicitWaitAll.ExecutionContext = jobContext.CreateChild(
+                                implicitStepId, implicitWaitAll.DisplayName, "__implicit_wait_all",
+                                null, "__implicit_wait_all", ActionRunStage.Main,
+                                backgroundControlType: Pipelines.BackgroundControlTypes.WaitAll,
+                                backgroundControlStepIds: uncoveredExternalIds.Length > 0 ? uncoveredExternalIds : null);
+                            jobSteps.Add(implicitWaitAll);
                         }
                     }
 
