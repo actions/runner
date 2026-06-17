@@ -313,6 +313,11 @@ namespace GitHub.Runner.Common
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
                 public static readonly string SymlinkCachedActions = "ACTIONS_RUNNER_SYMLINK_CACHED_ACTIONS";
                 public static readonly string EmitCompositeMarkers = "ACTIONS_RUNNER_EMIT_COMPOSITE_MARKERS";
+
+                // Native OpenTelemetry trace export (see docs/adrs/4366-native-otel-export.md).
+                public static readonly string OtlpEndpoint = "ACTIONS_RUNNER_OTLP_ENDPOINT";
+                public static readonly string OtlpHeaders = "ACTIONS_RUNNER_OTLP_HEADERS";
+                public static readonly string OtlpInsecure = "ACTIONS_RUNNER_OTLP_INSECURE";
             }
 
             public static class System

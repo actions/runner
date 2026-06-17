@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker
@@ -62,12 +63,12 @@ namespace GitHub.Runner.Worker
             lock (s_lock)
             {
                 if (s_initialized) return;
-                s_endpoint = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_OTLP_ENDPOINT")?.TrimEnd('/');
+                s_endpoint = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpEndpoint)?.TrimEnd('/');
                 s_enabled = !string.IsNullOrEmpty(s_endpoint);
                 if (s_enabled)
                 {
                     var insecure = StringUtil.ConvertToBoolean(
-                        Environment.GetEnvironmentVariable("ACTIONS_RUNNER_OTLP_INSECURE"));
+                        Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpInsecure));
                     var handler = new HttpClientHandler();
                     if (insecure)
                     {
@@ -80,7 +81,7 @@ namespace GitHub.Runner.Worker
                     };
                     // Optional auth headers for the collector, e.g.
                     //   ACTIONS_RUNNER_OTLP_HEADERS="x-api-key=abc,authorization=Bearer xyz"
-                    var rawHeaders = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_OTLP_HEADERS");
+                    var rawHeaders = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders);
                     if (!string.IsNullOrEmpty(rawHeaders))
                     {
                         foreach (var pair in rawHeaders.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))

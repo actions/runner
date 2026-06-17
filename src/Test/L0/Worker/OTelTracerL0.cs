@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.Json;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
@@ -221,6 +221,21 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("000000000001869f", span.GetProperty("parentSpanId").GetString());  // workflow(run_id)
             var attrs = ReadAttrs(span);
             Assert.Equal("job", attrs["type"]);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async System.Threading.Tasks.Task Flush_UnreachableEndpoint_DoesNotThrow()
+        {
+            // Best-effort: a dead collector must never surface to the job.
+            Environment.SetEnvironmentVariable("ACTIONS_RUNNER_OTLP_ENDPOINT", "http://127.0.0.1:0");
+            OTelTracer.Reset();
+            OTelTracer.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            OTelTracer.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null);
+
+            var ex = await Record.ExceptionAsync(() => OTelTracer.FlushAsync(default));
+            Assert.Null(ex);
         }
 
         // ---- secret masking ----
