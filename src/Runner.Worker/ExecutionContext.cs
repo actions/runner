@@ -594,7 +594,7 @@ namespace GitHub.Runner.Worker
 
                 Global.StepsResult.Add(stepResult);
 
-                OTelStepTracer.RecordStepCompletion(
+                OTelTracer.RecordStepCompletion(
                     stepName: _record.Name,
                     stepNumber: _record.Order,
                     startTime: _record.StartTime,
@@ -602,8 +602,14 @@ namespace GitHub.Runner.Worker
                     conclusion: _record.Result,
                     stepType: StepTelemetry?.Type,
                     actionName: StepTelemetry?.Action,
-                    actionRef: StepTelemetry?.Ref,
-                    context: this);
+                    actionRef: StepTelemetry?.Ref);
+            }
+            else if (_record.RecordType == ExecutionContextType.Job)
+            {
+                OTelTracer.RecordJobCompletion(
+                    startTime: _record.StartTime,
+                    endTime: _record.FinishTime,
+                    conclusion: _record.Result);
             }
 
             if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
@@ -1046,6 +1052,18 @@ namespace GitHub.Runner.Worker
                 githubContext[pair.Key] = pair.Value;
             }
             ExpressionValues["github"] = githubContext;
+
+            // Capture job-level identifiers once so native OTel job/step spans
+            // share consistent deterministic IDs and parent links.
+            OTelTracer.SetJobInfo(
+                runId: GetGitHubContext("run_id"),
+                runAttempt: GetGitHubContext("run_attempt"),
+                jobName: message.JobDisplayName,
+                jobKey: githubJob,
+                repository: GetGitHubContext("repository"),
+                workflow: GetGitHubContext("workflow"),
+                eventName: GetGitHubContext("event_name"),
+                serverUrl: GetGitHubContext("server_url"));
 
             Trace.Info("Initialize Env context");
 #if OS_WINDOWS

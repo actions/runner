@@ -45,6 +45,18 @@ namespace GitHub.Runner.Worker
 
             DateTime jobStartTimeUtc = DateTime.UtcNow;
             _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
+
+            // Describe the runner itself as the OTLP Resource for native OTel export.
+            OTelTracer.SetResource(
+                runnerName: _runnerSettings.AgentName,
+                runnerId: _runnerSettings.AgentId.ToString(),
+                runnerGroup: _runnerSettings.PoolName,
+                runnerVersion: BuildConstants.RunnerPackage.Version,
+                osType: VarUtil.OS,
+                arch: VarUtil.OSArchitecture,
+                machineName: Environment.MachineName,
+                ephemeral: _runnerSettings.Ephemeral);
+
             IRunnerService server = null;
 
             // add orchestration id to useragent for better correlation.
@@ -322,8 +334,8 @@ namespace GitHub.Runner.Worker
                 telemetry = jobContext.Global.JobTelemetry.Select(x => new Telemetry { Type = x.Type.ToString(), Message = x.Message, }).ToList();
             }
 
-            // Flush OTel step spans before reporting job completion
-            await OTelStepTracer.FlushAsync(default);
+            // Flush OTel spans before reporting job completion
+            await OTelTracer.FlushAsync(default);
 
             Trace.Info($"Raising job completed against run service");
             var completeJobRetryLimit = 5;
@@ -406,8 +418,8 @@ namespace GitHub.Runner.Worker
             // Make sure we don't submit secrets as telemetry
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
-            // Flush OTel step spans before reporting job completion
-            await OTelStepTracer.FlushAsync(default);
+            // Flush OTel spans before reporting job completion
+            await OTelTracer.FlushAsync(default);
 
             Trace.Info($"Raising job completed event");
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.Global.StepsTelemetry, jobContext.Global.JobTelemetry);
