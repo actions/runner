@@ -594,7 +594,7 @@ namespace GitHub.Runner.Worker
 
                 Global.StepsResult.Add(stepResult);
 
-                OTelTracer.RecordStepCompletion(
+                HostContext.GetService<IOTelTraceExporter>().RecordStepCompletion(
                     stepName: _record.Name,
                     stepNumber: _record.Order,
                     startTime: _record.StartTime,
@@ -606,7 +606,7 @@ namespace GitHub.Runner.Worker
             }
             else if (_record.RecordType == ExecutionContextType.Job)
             {
-                OTelTracer.RecordJobCompletion(
+                HostContext.GetService<IOTelTraceExporter>().RecordJobCompletion(
                     startTime: _record.StartTime,
                     endTime: _record.FinishTime,
                     conclusion: _record.Result);
@@ -1055,7 +1055,7 @@ namespace GitHub.Runner.Worker
 
             // Capture job-level identifiers once so native OTel job/step spans
             // share consistent deterministic IDs and parent links.
-            OTelTracer.SetJobInfo(
+            HostContext.GetService<IOTelTraceExporter>().SetJobInfo(
                 runId: GetGitHubContext("run_id"),
                 runAttempt: GetGitHubContext("run_attempt"),
                 jobName: message.JobDisplayName,

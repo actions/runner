@@ -46,11 +46,8 @@ namespace GitHub.Runner.Worker
             DateTime jobStartTimeUtc = DateTime.UtcNow;
             _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
 
-            // Scrub secrets from every exported span string, like other telemetry.
-            OTelTracer.SetSecretMasker(HostContext.SecretMasker.MaskSecrets);
-
             // Describe the runner itself as the OTLP Resource for native OTel export.
-            OTelTracer.SetResource(
+            HostContext.GetService<IOTelTraceExporter>().SetResource(
                 runnerName: _runnerSettings.AgentName,
                 runnerId: _runnerSettings.AgentId.ToString(),
                 runnerGroup: _runnerSettings.PoolName,
@@ -338,7 +335,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Flush OTel spans before reporting job completion
-            await OTelTracer.FlushAsync(default);
+            await HostContext.GetService<IOTelTraceExporter>().FlushAsync(default);
 
             Trace.Info($"Raising job completed against run service");
             var completeJobRetryLimit = 5;
@@ -422,7 +419,7 @@ namespace GitHub.Runner.Worker
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
             // Flush OTel spans before reporting job completion
-            await OTelTracer.FlushAsync(default);
+            await HostContext.GetService<IOTelTraceExporter>().FlushAsync(default);
 
             Trace.Info($"Raising job completed event");
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.Global.StepsTelemetry, jobContext.Global.JobTelemetry);

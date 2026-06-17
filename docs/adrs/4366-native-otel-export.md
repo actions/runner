@@ -18,7 +18,8 @@ time, with sub-second precision, so it can be sent straight to any OTLP collecto
 
 ## Decision
 
-Add an opt-in, best-effort OTLP/HTTP exporter (`OTelTracer`) that emits, for each
+Add an opt-in, best-effort OTLP/HTTP exporter — `IOTelTraceExporter` (a
+`RunnerService` resolved via `HostContext.GetService<>()`) — that emits, for each
 job the runner executes:
 
 1. **Runner info** as the OTLP **Resource** — `service.name=github-actions-runner`,
@@ -54,9 +55,10 @@ step  = md5("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8] parent -> 
 4. `JobRunner.CompleteJobAsync` → `OTelTracer.FlushAsync()` POSTs the resource and all
    spans as a single OTLP/JSON request to `{endpoint}/v1/traces`.
 
-Export is **best-effort**: any failure (unreachable collector, timeout) is swallowed
-and never affects job execution. No new NuGet dependencies are introduced — the
-exporter uses raw HTTP and hand-built OTLP/JSON.
+Export is **best-effort**: any failure (unreachable collector, timeout) is logged via
+`Trace` and swallowed, never affecting job execution. No new NuGet dependencies are
+introduced — the exporter uses hand-built OTLP/JSON over the runner's proxy-aware
+`HostContext.CreateHttpClientHandler()`.
 
 ### Gating
 

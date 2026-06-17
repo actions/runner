@@ -12,15 +12,25 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker
 {
+    [ServiceLocator(Default = typeof(OTelTraceExporter))]
+    public interface IOTelTraceExporter : IRunnerService
+    {
+        void SetResource(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral);
+        void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true);
+        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef);
+        void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion);
+        Task FlushAsync(CancellationToken cancellationToken = default);
+    }
+
     /// <summary>
-    /// Emits native OpenTelemetry trace spans for a job and its steps, plus
-    /// runner-identity as an OTLP Resource. Spans use deterministic IDs derived
-    /// only from identifiers the runner always has (run id, run attempt, job
-    /// display name, step name) so they merge with the GitHub Actions trace
-    /// reconstructed by otel-explorer.
+    /// Emits native OpenTelemetry trace spans for a job and its steps, plus runner
+    /// identity as an OTLP Resource. Spans use deterministic IDs derived only from
+    /// identifiers the runner always has (run id, run attempt, job display name,
+    /// step name) so they merge with a GitHub Actions trace reconstruction.
     ///
-    /// Enabled by setting ACTIONS_RUNNER_OTLP_ENDPOINT to an OTLP/HTTP base URL.
-    /// Spans are exported as OTLP/JSON to {endpoint}/v1/traces.
+    /// Opt-in: set ACTIONS_RUNNER_OTLP_ENDPOINT to an OTLP/HTTP base URL; spans are
+    /// POSTed to {endpoint}/v1/traces. Export is best-effort — failures are logged
+    /// and swallowed, never affecting job execution.
     ///
     /// Shared ID contract (mirrored in otel-explorer pkg/githubapi/ids.go):
     ///   traceID  = md5("{run_id}-{run_attempt}")                                  (16 bytes)
@@ -28,20 +38,20 @@ namespace GitHub.Runner.Worker
     ///   job      = md5("job-{run_id}-{run_attempt}-{job_name}")[:8]               (8 bytes)
     ///   step     = md5("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8]  (8 bytes)
     /// Parent links: step -> job -> workflow.
-    ///
-    /// Export is best-effort: failures are swallowed and never affect job execution.
     /// </summary>
-    public static class OTelTracer
+    public sealed class OTelTraceExporter : RunnerService, IOTelTraceExporter
     {
-        private static string s_endpoint;
-        private static bool s_initialized;
-        private static bool s_enabled;
-        private static HttpClient s_httpClient;
-        private static readonly object s_lock = new();
-        private static readonly List<OTelSpan> s_pendingSpans = new();
-        private static JobInfo s_jobInfo;
-        private static List<KeyValuePair<string, object>> s_resource = DefaultResource();
-        private static Func<string, string> s_mask = static s => s;
+        private readonly object _lock = new();
+        private readonly List<OTelSpan> _pendingSpans = new();
+        private string _endpoint;
+        private bool _enabled;
+        // Server-side kill switch, captured at job init. Defaults to true so the
+        // operator's endpoint opt-in works on self-hosted/GHES where the flag isn't
+        // provisioned; GitHub can send false to disable export fleet-wide.
+        private bool _featureEnabled = true;
+        private HttpClient _httpClient;
+        private JobInfo _jobInfo;
+        private List<KeyValuePair<string, object>> _resource = DefaultResource();
 
         private sealed class JobInfo
         {
@@ -57,91 +67,90 @@ namespace GitHub.Runner.Worker
             public string ServerUrl;
         }
 
-        private static void EnsureInitialized()
+        public override void Initialize(IHostContext hostContext)
         {
-            if (s_initialized) return;
-            lock (s_lock)
+            base.Initialize(hostContext);
+            _endpoint = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpEndpoint)?.TrimEnd('/');
+            _enabled = !string.IsNullOrEmpty(_endpoint);
+            if (!_enabled)
             {
-                if (s_initialized) return;
-                s_endpoint = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpEndpoint)?.TrimEnd('/');
-                s_enabled = !string.IsNullOrEmpty(s_endpoint);
-                if (s_enabled)
+                return;
+            }
+
+            var insecure = StringUtil.ConvertToBoolean(
+                Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpInsecure));
+            // Proxy-aware handler so export honors the runner's proxy configuration.
+            var handler = HostContext.CreateHttpClientHandler();
+            if (insecure)
+            {
+                handler.ServerCertificateCustomValidationCallback =
+                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            }
+            _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
+
+            // Optional collector auth headers, e.g.
+            //   ACTIONS_RUNNER_OTLP_HEADERS="authorization=Bearer xyz,x-api-key=abc"
+            var rawHeaders = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders);
+            if (!string.IsNullOrEmpty(rawHeaders))
+            {
+                foreach (var pair in rawHeaders.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
-                    var insecure = StringUtil.ConvertToBoolean(
-                        Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpInsecure));
-                    var handler = new HttpClientHandler();
-                    if (insecure)
+                    var eq = pair.IndexOf('=');
+                    if (eq <= 0)
                     {
-                        handler.ServerCertificateCustomValidationCallback =
-                            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                        continue;
                     }
-                    s_httpClient = new HttpClient(handler)
-                    {
-                        Timeout = TimeSpan.FromSeconds(5)
-                    };
-                    // Optional auth headers for the collector, e.g.
-                    //   ACTIONS_RUNNER_OTLP_HEADERS="x-api-key=abc,authorization=Bearer xyz"
-                    var rawHeaders = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders);
-                    if (!string.IsNullOrEmpty(rawHeaders))
-                    {
-                        foreach (var pair in rawHeaders.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                        {
-                            var eq = pair.IndexOf('=');
-                            if (eq <= 0) continue;
-                            var name = pair.Substring(0, eq).Trim();
-                            var value = pair.Substring(eq + 1).Trim();
-                            s_httpClient.DefaultRequestHeaders.TryAddWithoutValidation(name, value);
-                        }
-                    }
+                    _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(pair.Substring(0, eq).Trim(), pair.Substring(eq + 1).Trim());
                 }
-                s_initialized = true;
             }
+            Trace.Info($"Native OTel export enabled, endpoint: {_endpoint}");
         }
 
-        // Server-side kill switch (Constants.Runner.Features.RunnerOtelExport), captured
-        // at job init. Defaults to true so the operator's endpoint opt-in works on
-        // self-hosted/GHES where the flag isn't provisioned; GitHub can send false to
-        // disable export fleet-wide without a runner redeploy.
-        private static bool s_featureEnabled = true;
+        public bool IsEnabled => _enabled && _featureEnabled;
 
-        public static bool IsEnabled
+        public void SetResource(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral)
         {
-            get
+            var attrs = DefaultResource();
+            void Add(string k, object v)
             {
-                EnsureInitialized();
-                return s_enabled && s_featureEnabled;
+                if (v is string s && string.IsNullOrEmpty(s))
+                {
+                    return;
+                }
+                attrs.Add(new KeyValuePair<string, object>(k, v));
+            }
+            Add("service.version", runnerVersion);
+            Add("host.name", machineName);
+            Add("host.arch", arch);
+            Add("os.type", osType);
+            Add("github.runner.name", runnerName);
+            Add("github.runner.id", runnerId);
+            Add("github.runner.group", runnerGroup);
+            Add("github.runner.ephemeral", ephemeral);
+            lock (_lock)
+            {
+                _resource = attrs;
             }
         }
 
-        /// <summary>
-        /// Records job-level identifiers once at job initialization. Both step
-        /// spans and the job span read from this so their IDs and parent links
-        /// stay consistent.
-        /// </summary>
-        public static void SetJobInfo(
-            string runId,
-            string runAttempt,
-            string jobName,
-            string jobKey,
-            string repository,
-            string workflow,
-            string eventName,
-            string serverUrl,
-            bool featureEnabled = true)
+        public void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true)
         {
-            EnsureInitialized();
-            s_featureEnabled = featureEnabled;
-            // Nothing to export unless an endpoint is configured; the feature flag is
-            // a kill switch on top of that operator opt-in.
-            if (!s_enabled) return;
+            _featureEnabled = featureEnabled;
+            if (!_enabled)
+            {
+                return;
+            }
 
             long.TryParse(runId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var runIdNum);
             long.TryParse(runAttempt, NumberStyles.Integer, CultureInfo.InvariantCulture, out var runAttemptNum);
-            if (runAttemptNum == 0) runAttemptNum = 1;
-
-            lock (s_lock)
+            if (runAttemptNum == 0)
             {
-                s_jobInfo = new JobInfo
+                runAttemptNum = 1;
+            }
+
+            lock (_lock)
+            {
+                _jobInfo = new JobInfo
                 {
                     RunId = runIdNum,
                     RunAttempt = runAttemptNum,
@@ -157,82 +166,21 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        /// <summary>
-        /// Provides the secret masker so every exported string (span names and
-        /// attribute/resource values) is scrubbed, matching how the runner masks
-        /// all other telemetry sent off-box.
-        /// </summary>
-        public static void SetSecretMasker(Func<string, string> mask)
+        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef)
         {
-            if (mask != null)
+            if (!IsEnabled)
             {
-                s_mask = mask;
+                return;
             }
-        }
-
-        /// <summary>
-        /// Sets the OTLP Resource attributes that describe the runner itself
-        /// (the "runner info"). Attached to every exported batch.
-        /// </summary>
-        public static void SetResource(
-            string runnerName,
-            string runnerId,
-            string runnerGroup,
-            string runnerVersion,
-            string osType,
-            string arch,
-            string machineName,
-            bool ephemeral)
-        {
-            var attrs = DefaultResource();
-            void Add(string k, object v)
-            {
-                if (v is string s && string.IsNullOrEmpty(s)) return;
-                attrs.Add(new KeyValuePair<string, object>(k, v));
-            }
-            Add("service.version", runnerVersion);
-            Add("host.name", machineName);
-            Add("host.arch", arch);
-            Add("os.type", osType);
-            Add("github.runner.name", runnerName);
-            Add("github.runner.id", runnerId);
-            Add("github.runner.group", runnerGroup);
-            Add("github.runner.ephemeral", ephemeral);
-            lock (s_lock)
-            {
-                s_resource = attrs;
-            }
-        }
-
-        private static List<KeyValuePair<string, object>> DefaultResource()
-        {
-            return new List<KeyValuePair<string, object>>
-            {
-                new("service.name", "github-actions-runner"),
-            };
-        }
-
-        /// <summary>
-        /// Records a completed step as an OTel span (child of the job span).
-        /// Called from ExecutionContext.Complete() for Task-type records.
-        /// </summary>
-        public static void RecordStepCompletion(
-            string stepName,
-            int? stepNumber,
-            DateTime? startTime,
-            DateTime? endTime,
-            TaskResult? conclusion,
-            string stepType,
-            string actionName,
-            string actionRef)
-        {
-            if (!IsEnabled) return;
 
             try
             {
                 JobInfo job;
-                lock (s_lock) { job = s_jobInfo; }
-                if (job == null || job.RunId == 0 || string.IsNullOrEmpty(stepName)) return;
+                lock (_lock) { job = _jobInfo; }
+                if (job == null || job.RunId == 0 || string.IsNullOrEmpty(stepName))
+                {
+                    return;
+                }
 
                 var ghConclusion = NormalizeConclusion(conclusion);
                 var span = new OTelSpan
@@ -262,7 +210,6 @@ namespace GitHub.Runner.Worker
                 if (!string.IsNullOrEmpty(stepType)) span.Set("github.step_type", stepType);
                 if (!string.IsNullOrEmpty(actionName)) span.Set("github.action", actionName);
                 if (!string.IsNullOrEmpty(actionRef)) span.Set("github.action_ref", actionRef);
-                // OTel CI/CD semconv (task run)
                 span.Set("cicd.pipeline.name", job.Workflow);
                 span.Set("cicd.pipeline.run.id", job.RunIdRaw);
                 span.Set("cicd.pipeline.task.name", stepName);
@@ -273,31 +220,29 @@ namespace GitHub.Runner.Worker
 
                 ApplyStatus(span, ghConclusion);
 
-                lock (s_lock) { s_pendingSpans.Add(span); }
+                lock (_lock) { _pendingSpans.Add(span); }
             }
-            catch
+            catch (Exception ex)
             {
-                // best-effort; never fail the step
+                Trace.Info($"Skipping OTel step span (best-effort): {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Records the job as an OTel span (parent of all step spans, child of
-        /// the workflow span). Called from ExecutionContext.Complete() for the
-        /// Job-type record, before spans are flushed.
-        /// </summary>
-        public static void RecordJobCompletion(
-            DateTime? startTime,
-            DateTime? endTime,
-            TaskResult? conclusion)
+        public void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion)
         {
-            if (!IsEnabled) return;
+            if (!IsEnabled)
+            {
+                return;
+            }
 
             try
             {
                 JobInfo job;
-                lock (s_lock) { job = s_jobInfo; }
-                if (job == null || job.RunId == 0) return;
+                lock (_lock) { job = _jobInfo; }
+                if (job == null || job.RunId == 0)
+                {
+                    return;
+                }
 
                 var ghConclusion = NormalizeConclusion(conclusion);
                 var span = new OTelSpan
@@ -322,7 +267,6 @@ namespace GitHub.Runner.Worker
                 span.Set("github.run_id", job.RunIdRaw);
                 span.Set("github.run_attempt", job.RunAttemptRaw);
                 span.Set("github.job", job.JobKey);
-                // OTel CI/CD semconv (treat the job as a task run within the pipeline)
                 span.Set("cicd.pipeline.name", job.Workflow);
                 span.Set("cicd.pipeline.run.id", job.RunIdRaw);
                 span.Set("cicd.pipeline.task.name", job.JobName);
@@ -333,51 +277,55 @@ namespace GitHub.Runner.Worker
 
                 ApplyStatus(span, ghConclusion);
 
-                lock (s_lock) { s_pendingSpans.Add(span); }
+                lock (_lock) { _pendingSpans.Add(span); }
             }
-            catch
+            catch (Exception ex)
             {
-                // best-effort
+                Trace.Info($"Skipping OTel job span (best-effort): {ex.Message}");
             }
         }
 
-        /// <summary>Flushes all pending spans to the OTLP endpoint.</summary>
-        public static async Task FlushAsync(CancellationToken cancellationToken = default)
+        public async Task FlushAsync(CancellationToken cancellationToken = default)
         {
-            if (!IsEnabled) return;
+            if (!IsEnabled)
+            {
+                return;
+            }
 
             List<OTelSpan> toFlush;
             List<KeyValuePair<string, object>> resource;
-            lock (s_lock)
+            lock (_lock)
             {
-                if (s_pendingSpans.Count == 0) return;
-                toFlush = new List<OTelSpan>(s_pendingSpans);
-                s_pendingSpans.Clear();
-                resource = s_resource;
+                if (_pendingSpans.Count == 0)
+                {
+                    return;
+                }
+                toFlush = new List<OTelSpan>(_pendingSpans);
+                _pendingSpans.Clear();
+                resource = _resource;
             }
 
             try
             {
                 var json = BuildOTLPJson(toFlush, resource);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var url = $"{s_endpoint}/v1/traces";
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(TimeSpan.FromSeconds(5));
-                await s_httpClient.PostAsync(url, content, cts.Token);
+                await _httpClient.PostAsync($"{_endpoint}/v1/traces", content, cts.Token);
+                Trace.Info($"Exported {toFlush.Count} OTel span(s) to {_endpoint}");
             }
-            catch
+            catch (Exception ex)
             {
-                // best-effort export
+                Trace.Info($"OTel export failed (best-effort, ignored): {ex.Message}");
             }
         }
 
-        // ---- shared deterministic ID contract ----
+        // ---- shared deterministic ID contract (pure, mirrored in otel-explorer) ----
 
         internal static string NewTraceID(long runId, long runAttempt)
         {
             if (runAttempt == 0) runAttempt = 1;
-            var input = $"{runId}-{runAttempt}";
-            return BytesToHex(MD5.HashData(Encoding.UTF8.GetBytes(input)));
+            return BytesToHex(MD5.HashData(Encoding.UTF8.GetBytes($"{runId}-{runAttempt}")));
         }
 
         internal static string NewSpanID(long id)
@@ -444,6 +392,14 @@ namespace GitHub.Runner.Worker
             };
         }
 
+        private static List<KeyValuePair<string, object>> DefaultResource()
+        {
+            return new List<KeyValuePair<string, object>>
+            {
+                new("service.name", "github-actions-runner"),
+            };
+        }
+
         private static string BytesToHex(byte[] bytes, int length = 0)
         {
             if (length <= 0) length = bytes.Length;
@@ -458,7 +414,16 @@ namespace GitHub.Runner.Worker
             return (dt.ToUniversalTime().Ticks - 621355968000000000L) * 100;
         }
 
-        private static string BuildOTLPJson(List<OTelSpan> spans, List<KeyValuePair<string, object>> resource)
+        private string Mask(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+            {
+                return s;
+            }
+            return HostContext?.SecretMasker?.MaskSecrets(s) ?? s;
+        }
+
+        private string BuildOTLPJson(List<OTelSpan> spans, List<KeyValuePair<string, object>> resource)
         {
             var sb = new StringBuilder();
             sb.Append("{\"resourceSpans\":[{");
@@ -495,7 +460,7 @@ namespace GitHub.Runner.Worker
             return sb.ToString();
         }
 
-        private static void AppendAttributes(StringBuilder sb, List<KeyValuePair<string, object>> attrs)
+        private void AppendAttributes(StringBuilder sb, List<KeyValuePair<string, object>> attrs)
         {
             for (int i = 0; i < attrs.Count; i++)
             {
@@ -520,8 +485,6 @@ namespace GitHub.Runner.Worker
                 sb.Append("}}");
             }
         }
-
-        private static string Mask(string s) => string.IsNullOrEmpty(s) ? s : s_mask(s);
 
         private static string JsonEscape(string s)
         {
@@ -550,31 +513,14 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        internal static int PendingSpanCountForTest
+        internal int PendingSpanCountForTest
         {
-            get { lock (s_lock) { return s_pendingSpans.Count; } }
+            get { lock (_lock) { return _pendingSpans.Count; } }
         }
 
-        internal static string BuildPendingOtlpJsonForTest()
+        internal string BuildPendingOtlpJsonForTest()
         {
-            lock (s_lock) { return BuildOTLPJson(new List<OTelSpan>(s_pendingSpans), s_resource); }
-        }
-
-        internal static void Reset()
-        {
-            lock (s_lock)
-            {
-                s_initialized = false;
-                s_enabled = false;
-                s_endpoint = null;
-                s_httpClient?.Dispose();
-                s_httpClient = null;
-                s_pendingSpans.Clear();
-                s_jobInfo = null;
-                s_featureEnabled = true;
-                s_mask = static s => s;
-                s_resource = DefaultResource();
-            }
+            lock (_lock) { return BuildOTLPJson(new List<OTelSpan>(_pendingSpans), _resource); }
         }
     }
 }

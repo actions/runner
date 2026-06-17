@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -70,6 +71,12 @@ namespace GitHub.Runner.Common.Tests
             _term.Silent = true;
             SetSingleton<ITerminal>(_term);
             EnqueueInstance<ITerminal>(_term);
+
+            // ExecutionContext resolves the OTel exporter on every job/step completion.
+            // Register a default (disabled unless ACTIONS_RUNNER_OTLP_ENDPOINT is set) so
+            // tests exercising the real ExecutionContext don't have to wire it up; tests
+            // that assert on export behavior register their own configured instance.
+            SetSingleton<IOTelTraceExporter>(new OTelTraceExporter());
         }
 
         public CultureInfo DefaultCulture { get; private set; }
