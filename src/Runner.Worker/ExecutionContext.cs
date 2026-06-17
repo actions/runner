@@ -1063,7 +1063,10 @@ namespace GitHub.Runner.Worker
                 repository: GetGitHubContext("repository"),
                 workflow: GetGitHubContext("workflow"),
                 eventName: GetGitHubContext("event_name"),
-                serverUrl: GetGitHubContext("server_url"));
+                serverUrl: GetGitHubContext("server_url"),
+                // Server-side kill switch; defaults on so the endpoint opt-in works
+                // where the flag isn't provisioned (self-hosted/GHES).
+                featureEnabled: Global.Variables.GetBoolean(Constants.Runner.Features.RunnerOtelExport) ?? true);
 
             Trace.Info("Initialize Env context");
 #if OS_WINDOWS

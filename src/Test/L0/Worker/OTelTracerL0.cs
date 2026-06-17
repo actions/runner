@@ -113,6 +113,30 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void FeatureFlagOff_DisablesEvenWithEndpoint()
+        {
+            Enable(); // endpoint set
+            OTelTracer.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com", featureEnabled: false);
+            Assert.False(OTelTracer.IsEnabled);
+            OTelTracer.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, "node20", "actions/checkout", "v4");
+            Assert.Equal(0, OTelTracer.PendingSpanCountForTest);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void FeatureFlagOn_WithEndpoint_Records()
+        {
+            Enable();
+            OTelTracer.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com", featureEnabled: true);
+            Assert.True(OTelTracer.IsEnabled);
+            OTelTracer.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, "node20", "actions/checkout", "v4");
+            Assert.Equal(1, OTelTracer.PendingSpanCountForTest);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Disabled_RecordsNothing()
         {
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_OTLP_ENDPOINT", null);

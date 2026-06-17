@@ -82,12 +82,18 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        // Server-side kill switch (Constants.Runner.Features.RunnerOtelExport), captured
+        // at job init. Defaults to true so the operator's endpoint opt-in works on
+        // self-hosted/GHES where the flag isn't provisioned; GitHub can send false to
+        // disable export fleet-wide without a runner redeploy.
+        private static bool s_featureEnabled = true;
+
         public static bool IsEnabled
         {
             get
             {
                 EnsureInitialized();
-                return s_enabled;
+                return s_enabled && s_featureEnabled;
             }
         }
 
@@ -104,9 +110,14 @@ namespace GitHub.Runner.Worker
             string repository,
             string workflow,
             string eventName,
-            string serverUrl)
+            string serverUrl,
+            bool featureEnabled = true)
         {
-            if (!IsEnabled) return;
+            EnsureInitialized();
+            s_featureEnabled = featureEnabled;
+            // Nothing to export unless an endpoint is configured; the feature flag is
+            // a kill switch on top of that operator opt-in.
+            if (!s_enabled) return;
 
             long.TryParse(runId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var runIdNum);
             long.TryParse(runAttempt, NumberStyles.Integer, CultureInfo.InvariantCulture, out var runAttemptNum);
@@ -529,6 +540,7 @@ namespace GitHub.Runner.Worker
                 s_httpClient = null;
                 s_pendingSpans.Clear();
                 s_jobInfo = null;
+                s_featureEnabled = true;
                 s_resource = DefaultResource();
             }
         }
