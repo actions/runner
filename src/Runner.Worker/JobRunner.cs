@@ -46,6 +46,9 @@ namespace GitHub.Runner.Worker
             DateTime jobStartTimeUtc = DateTime.UtcNow;
             _runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
 
+            // Scrub secrets from every exported span string, like other telemetry.
+            OTelTracer.SetSecretMasker(HostContext.SecretMasker.MaskSecrets);
+
             // Describe the runner itself as the OTLP Resource for native OTel export.
             OTelTracer.SetResource(
                 runnerName: _runnerSettings.AgentName,

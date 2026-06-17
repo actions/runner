@@ -40,6 +40,7 @@ namespace GitHub.Runner.Worker
         private static readonly List<OTelSpan> s_pendingSpans = new();
         private static JobInfo s_jobInfo;
         private static List<KeyValuePair<string, object>> s_resource = DefaultResource();
+        private static Func<string, string> s_mask = static s => s;
 
         private sealed class JobInfo
         {
@@ -77,6 +78,20 @@ namespace GitHub.Runner.Worker
                     {
                         Timeout = TimeSpan.FromSeconds(5)
                     };
+                    // Optional auth headers for the collector, e.g.
+                    //   ACTIONS_RUNNER_OTLP_HEADERS="x-api-key=abc,authorization=Bearer xyz"
+                    var rawHeaders = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_OTLP_HEADERS");
+                    if (!string.IsNullOrEmpty(rawHeaders))
+                    {
+                        foreach (var pair in rawHeaders.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        {
+                            var eq = pair.IndexOf('=');
+                            if (eq <= 0) continue;
+                            var name = pair.Substring(0, eq).Trim();
+                            var value = pair.Substring(eq + 1).Trim();
+                            s_httpClient.DefaultRequestHeaders.TryAddWithoutValidation(name, value);
+                        }
+                    }
                 }
                 s_initialized = true;
             }
@@ -138,6 +153,19 @@ namespace GitHub.Runner.Worker
                     EventName = eventName ?? "",
                     ServerUrl = string.IsNullOrEmpty(serverUrl) ? "https://github.com" : serverUrl,
                 };
+            }
+        }
+
+        /// <summary>
+        /// Provides the secret masker so every exported string (span names and
+        /// attribute/resource values) is scrubbed, matching how the runner masks
+        /// all other telemetry sent off-box.
+        /// </summary>
+        public static void SetSecretMasker(Func<string, string> mask)
+        {
+            if (mask != null)
+            {
+                s_mask = mask;
             }
         }
 
@@ -451,7 +479,7 @@ namespace GitHub.Runner.Worker
                 {
                     sb.Append($"\"parentSpanId\":\"{s.ParentSpanId}\",");
                 }
-                sb.Append($"\"name\":\"{JsonEscape(s.Name)}\",");
+                sb.Append($"\"name\":\"{JsonEscape(Mask(s.Name))}\",");
                 sb.Append($"\"kind\":{s.Kind},");
                 sb.Append($"\"startTimeUnixNano\":\"{s.StartTimeUnixNano}\",");
                 sb.Append($"\"endTimeUnixNano\":\"{s.EndTimeUnixNano}\",");
@@ -485,12 +513,14 @@ namespace GitHub.Runner.Worker
                         sb.Append($"\"intValue\":\"{n}\"");
                         break;
                     default:
-                        sb.Append($"\"stringValue\":\"{JsonEscape(kv.Value?.ToString())}\"");
+                        sb.Append($"\"stringValue\":\"{JsonEscape(Mask(kv.Value?.ToString()))}\"");
                         break;
                 }
                 sb.Append("}}");
             }
         }
+
+        private static string Mask(string s) => string.IsNullOrEmpty(s) ? s : s_mask(s);
 
         private static string JsonEscape(string s)
         {
@@ -541,6 +571,7 @@ namespace GitHub.Runner.Worker
                 s_pendingSpans.Clear();
                 s_jobInfo = null;
                 s_featureEnabled = true;
+                s_mask = static s => s;
                 s_resource = DefaultResource();
             }
         }

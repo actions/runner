@@ -223,6 +223,23 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("job", attrs["type"]);
         }
 
+        // ---- secret masking ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SecretMasker_ScrubsSpanStrings()
+        {
+            Enable();
+            OTelTracer.SetSecretMasker(s => s?.Replace("s3cr3t", "***"));
+            OTelTracer.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            OTelTracer.RecordStepCompletion("deploy s3cr3t", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, "octo/deploy s3cr3t", null);
+
+            var json = OTelTracer.BuildPendingOtlpJsonForTest();
+            Assert.DoesNotContain("s3cr3t", json);
+            Assert.Contains("***", json);
+        }
+
         // ---- resource (runner info) ----
 
         [Fact]

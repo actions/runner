@@ -81,7 +81,12 @@ disable export fleet-wide without a runner redeploy.
 | Env var | Required | Description |
 |---------|----------|-------------|
 | `ACTIONS_RUNNER_OTLP_ENDPOINT` | Yes | OTLP/HTTP base URL, e.g. `http://collector:4318`. Traces are POSTed to `{endpoint}/v1/traces`. |
+| `ACTIONS_RUNNER_OTLP_HEADERS` | No | Comma-separated `key=value` headers sent with the export, e.g. `authorization=Bearer xyz,x-honeycomb-team=abc`. For collector auth. |
 | `ACTIONS_RUNNER_OTLP_INSECURE` | No | `true` to skip TLS verification (self-signed collectors). |
+
+Every exported string — span names and attribute/resource values — is run through
+the runner's secret masker before export, the same scrubbing applied to all other
+telemetry the runner sends off-box.
 
 These are intentionally runner-namespaced rather than the standard `OTEL_*`
 variables, so enabling runner export does not clobber `OTEL_*` configuration that
