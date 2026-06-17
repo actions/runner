@@ -204,7 +204,7 @@ namespace GitHub.Runner.Worker
                 var span = new OTelSpan
                 {
                     TraceId = NewTraceID(job.RunId, job.RunAttempt),
-                    SpanId = NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, stepName),
+                    SpanId = NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, stepNumber ?? 0, stepName),
                     ParentSpanId = NewJobSpanID(job.RunId, job.RunAttempt, job.JobName),
                     Name = stepName,
                     Kind = 1, // INTERNAL
@@ -375,10 +375,12 @@ namespace GitHub.Runner.Worker
             return NewSpanIDFromString($"job-{runId}-{runAttempt}-{jobName}");
         }
 
-        internal static string NewStepSpanID(long runId, long runAttempt, string jobName, string stepName)
+        internal static string NewStepSpanID(long runId, long runAttempt, string jobName, int stepNumber, string stepName)
         {
             if (runAttempt == 0) runAttempt = 1;
-            return NewSpanIDFromString($"step-{runId}-{runAttempt}-{jobName}-{stepName}");
+            // Step number disambiguates two top-level steps that share a display name;
+            // it matches the GitHub API's 1-based step.number so the IDs still merge.
+            return NewSpanIDFromString($"step-{runId}-{runAttempt}-{jobName}-{stepNumber}-{stepName}");
         }
 
         // ---- helpers ----

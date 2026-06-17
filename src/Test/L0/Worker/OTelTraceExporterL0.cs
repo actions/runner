@@ -79,7 +79,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void StepSpanID_Golden()
         {
-            Assert.Equal("8f4170e86c7435ac", OTelTraceExporter.NewStepSpanID(99999, 1, "build", "Run tests")); // md5("step-99999-1-build-Run tests")[:8]
+            Assert.Equal("ac6971a4ea7639e5", OTelTraceExporter.NewStepSpanID(99999, 1, "build", 3, "Run tests")); // md5("step-99999-1-build-3-Run tests")[:8]
         }
 
         // ---- enable / disable ----
@@ -151,7 +151,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var span = doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans")[0];
 
             Assert.Equal("37912fcf8909bcb43fd643580e6b5ee1", span.GetProperty("traceId").GetString());
-            Assert.Equal("8f4170e86c7435ac", span.GetProperty("spanId").GetString());
+            Assert.Equal("ac6971a4ea7639e5", span.GetProperty("spanId").GetString());
             Assert.Equal("224bc2674c838206", span.GetProperty("parentSpanId").GetString()); // job span
             Assert.Equal("Run tests", span.GetProperty("name").GetString());
 
@@ -160,7 +160,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("runner", attrs["source"]);
             Assert.Equal("Run tests", attrs["cicd.pipeline.task.name"]);
             Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
-            Assert.Equal("8f4170e86c7435ac", attrs["cicd.pipeline.task.run.id"]);
+            Assert.Equal("ac6971a4ea7639e5", attrs["cicd.pipeline.task.run.id"]);
             Assert.True(attrs.ContainsKey("cicd.pipeline.task.run.url.full"));
             Assert.Equal("https://github.com/octo/repo", attrs["vcs.repository.url.full"]);
             Assert.Equal("3", attrs["github.step_number"]);

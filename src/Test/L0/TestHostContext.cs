@@ -11,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -71,12 +70,6 @@ namespace GitHub.Runner.Common.Tests
             _term.Silent = true;
             SetSingleton<ITerminal>(_term);
             EnqueueInstance<ITerminal>(_term);
-
-            // ExecutionContext resolves the OTel exporter on every job/step completion.
-            // Register a default (disabled unless ACTIONS_RUNNER_OTLP_ENDPOINT is set) so
-            // tests exercising the real ExecutionContext don't have to wire it up; tests
-            // that assert on export behavior register their own configured instance.
-            SetSingleton<IOTelTraceExporter>(new OTelTraceExporter());
         }
 
         public CultureInfo DefaultCulture { get; private set; }
@@ -136,16 +129,43 @@ namespace GitHub.Runner.Common.Tests
         {
             _trace.Verbose($"Get service: '{typeof(T).Name}'");
 
-            // Get the registered singleton instance.
+            // Return the registered singleton (mock or explicitly-set instance) if present.
             object service;
             if (!_serviceSingletons.TryGetValue(typeof(T), out service))
             {
-                throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
+                // Otherwise mirror HostContext: instantiate the ServiceLocator default so
+                // tests that exercise production code resolving a leaf service don't each
+                // have to register it. Interfaces without a default still throw.
+                var defaultType = GetServiceLocatorDefault(typeof(T));
+                if (defaultType == null)
+                {
+                    throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
+                }
+                service = _serviceSingletons.GetOrAdd(typeof(T), Activator.CreateInstance(defaultType));
             }
 
             T s = service as T;
             s.Initialize(this);
             return s;
+        }
+
+        private static Type GetServiceLocatorDefault(Type interfaceType)
+        {
+            foreach (CustomAttributeData attr in interfaceType.GetTypeInfo().CustomAttributes)
+            {
+                if (attr.AttributeType != typeof(ServiceLocatorAttribute))
+                {
+                    continue;
+                }
+                foreach (CustomAttributeNamedArgument arg in attr.NamedArguments)
+                {
+                    if (string.Equals(arg.MemberName, ServiceLocatorAttribute.DefaultPropertyName, StringComparison.Ordinal))
+                    {
+                        return arg.TypedValue.Value as Type;
+                    }
+                }
+            }
+            return null;
         }
 
         public void EnqueueInstance<T>(T instance) where T : class, IRunnerService

@@ -42,7 +42,7 @@ IDs and merge the two sources:
 ```
 trace = md5("{run_id}-{run_attempt}")
 job   = md5("job-{run_id}-{run_attempt}-{job_name}")[:8]              parent -> bigendian(run_id)  (workflow)
-step  = md5("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8] parent -> job
+step  = md5("step-{run_id}-{run_attempt}-{job_name}-{step_number}-{step_name}")[:8] parent -> job
 ```
 
 ### Lifecycle
@@ -78,9 +78,15 @@ enabled = endpoint configured && (feature flag ?? true)
 ```
 
 The endpoint env var is the operator's explicit opt-in. The feature flag is a
-server-side **kill switch** layered on top: it defaults to on so the opt-in keeps
-working on self-hosted / GHES where the flag isn't provisioned, but lets GitHub
-disable export fleet-wide without a runner redeploy.
+server-side **kill switch** layered on top.
+
+**Decision — the flag defaults to on (not the usual `?? false`).** The operator
+already opted in by configuring an endpoint; the flag exists only so GitHub can
+*disable* a misbehaving export. A `?? false` default would silently break the
+opt-in for self-hosted / GHES runners where the flag isn't provisioned — the
+primary audience for this feature. On github.com the flag is always provisioned,
+so GitHub retains full control there by sending `false`; the default only matters
+for servers that don't know the flag, where "on" is the correct behavior.
 
 ## Configuration
 
@@ -114,11 +120,15 @@ export ACTIONS_RUNNER_OTLP_ENDPOINT=http://localhost:4318
 - The name-based ID contract means runner spans merge cleanly with API-reconstructed
   traces (server-side queue time from the API + runner-native step precision).
 - The exporter is self-contained; if the OTLP wire format needs to evolve, only
-  `OTelTracer` changes.
+  `OTelTraceExporter` changes.
 - Cross-trace correlation across jobs/runners relies on the deterministic IDs rather
   than W3C `traceparent` propagation; a backend-rooted run span (covering server-side
   orchestration) would require the job message to carry trace context, which is out of
   scope here.
-- Step span IDs derive from the step **display name**, so two top-level steps with an
-  identical display name in the same job share a span ID (one wins). This matches the
-  GitHub-API trace reconstruction, which has the same property.
+- Step span IDs include the 1-based step number, so two top-level steps that share a
+  display name still get distinct IDs. The number matches the GitHub API's `step.number`,
+  so the IDs continue to merge with the API-reconstructed trace.
+- Re-runs work without special handling: a job for attempt _N_ lands in trace
+  `md5("{run_id}-{N}")` parented to `bigendian(run_id)` — identical to how the API trace
+  for attempt _N_ is reconstructed. Prior attempts live in their own (different) traces
+  the runner never emits to.
