@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -17,7 +20,7 @@ namespace GitHub.Runner.Worker
     {
         void SetResource(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral);
         void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true);
-        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef);
+        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false);
         void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion);
         Task FlushAsync(CancellationToken cancellationToken = default);
     }
@@ -41,9 +44,12 @@ namespace GitHub.Runner.Worker
     /// </summary>
     public sealed class OTelTraceExporter : RunnerService, IOTelTraceExporter
     {
+        private static readonly JsonWriterOptions s_jsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
         private readonly object _lock = new();
         private readonly List<OTelSpan> _pendingSpans = new();
         private string _endpoint;
+        private string _tracesUrl;
         private bool _enabled;
         // Server-side kill switch, captured at job init. Defaults to true so the
         // operator's endpoint opt-in works on self-hosted/GHES where the flag isn't
@@ -77,6 +83,11 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
+            // Allow either a base URL or one that already includes the signal path.
+            _tracesUrl = _endpoint.EndsWith("/v1/traces", StringComparison.OrdinalIgnoreCase)
+                ? _endpoint
+                : $"{_endpoint}/v1/traces";
+
             var insecure = StringUtil.ConvertToBoolean(
                 Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpInsecure));
             // Proxy-aware handler so export honors the runner's proxy configuration.
@@ -100,7 +111,10 @@ namespace GitHub.Runner.Worker
                     {
                         continue;
                     }
-                    _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(pair.Substring(0, eq).Trim(), pair.Substring(eq + 1).Trim());
+                    var value = pair.Substring(eq + 1).Trim();
+                    // Header values are commonly auth tokens; register so they're masked if ever logged.
+                    HostContext.SecretMasker.AddValue(value);
+                    _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(pair.Substring(0, eq).Trim(), value);
                 }
             }
             Trace.Info($"Native OTel export enabled, endpoint: {_endpoint}");
@@ -135,9 +149,9 @@ namespace GitHub.Runner.Worker
 
         public void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true)
         {
-            _featureEnabled = featureEnabled;
             if (!_enabled)
             {
+                lock (_lock) { _featureEnabled = featureEnabled; }
                 return;
             }
 
@@ -150,6 +164,7 @@ namespace GitHub.Runner.Worker
 
             lock (_lock)
             {
+                _featureEnabled = featureEnabled;
                 _jobInfo = new JobInfo
                 {
                     RunId = runIdNum,
@@ -166,9 +181,12 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef)
+        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false)
         {
-            if (!IsEnabled)
+            // Embedded/composite sub-steps are not top-level timeline steps: their
+            // display names aren't unique (would collide as span IDs) and they have no
+            // counterpart in the API-reconstructed trace. Only emit top-level steps.
+            if (!IsEnabled || isEmbedded)
             {
                 return;
             }
@@ -308,11 +326,19 @@ namespace GitHub.Runner.Worker
             try
             {
                 var json = BuildOTLPJson(toFlush, resource);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
-                await _httpClient.PostAsync($"{_endpoint}/v1/traces", content, cts.Token);
-                Trace.Info($"Exported {toFlush.Count} OTel span(s) to {_endpoint}");
+                // Keep job completion snappy even when the collector is slow/unreachable.
+                cts.CancelAfter(TimeSpan.FromSeconds(2));
+                using var response = await _httpClient.PostAsync(_tracesUrl, content, cts.Token);
+                if (response.IsSuccessStatusCode)
+                {
+                    Trace.Info($"Exported {toFlush.Count} OTel span(s) to {_tracesUrl}");
+                }
+                else
+                {
+                    Trace.Info($"OTel export rejected by collector (best-effort, ignored): HTTP {(int)response.StatusCode}");
+                }
             }
             catch (Exception ex)
             {
@@ -411,6 +437,12 @@ namespace GitHub.Runner.Worker
 
         private static long ToUnixNano(DateTime dt)
         {
+            // Timeline timestamps are UTC; treat an Unspecified kind as UTC rather than
+            // letting ToUniversalTime() shift it by the local offset.
+            if (dt.Kind == DateTimeKind.Unspecified)
+            {
+                dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            }
             return (dt.ToUniversalTime().Ticks - 621355968000000000L) * 100;
         }
 
@@ -423,76 +455,90 @@ namespace GitHub.Runner.Worker
             return HostContext?.SecretMasker?.MaskSecrets(s) ?? s;
         }
 
+        // OTLP/JSON, serialized with Utf8JsonWriter for correct escaping (a control
+        // character in a step name must not be able to invalidate the whole batch).
         private string BuildOTLPJson(List<OTelSpan> spans, List<KeyValuePair<string, object>> resource)
         {
-            var sb = new StringBuilder();
-            sb.Append("{\"resourceSpans\":[{");
-            sb.Append("\"resource\":{\"attributes\":[");
-            AppendAttributes(sb, resource);
-            sb.Append("]},");
-            sb.Append("\"scopeSpans\":[{");
-            sb.Append("\"scope\":{\"name\":\"github.actions.runner\"},");
-            sb.Append("\"spans\":[");
-
-            for (int i = 0; i < spans.Count; i++)
+            using var stream = new MemoryStream();
+            using (var w = new Utf8JsonWriter(stream, s_jsonOptions))
             {
-                if (i > 0) sb.Append(',');
-                var s = spans[i];
-                sb.Append('{');
-                sb.Append($"\"traceId\":\"{s.TraceId}\",");
-                sb.Append($"\"spanId\":\"{s.SpanId}\",");
-                if (!string.IsNullOrEmpty(s.ParentSpanId))
-                {
-                    sb.Append($"\"parentSpanId\":\"{s.ParentSpanId}\",");
-                }
-                sb.Append($"\"name\":\"{JsonEscape(Mask(s.Name))}\",");
-                sb.Append($"\"kind\":{s.Kind},");
-                sb.Append($"\"startTimeUnixNano\":\"{s.StartTimeUnixNano}\",");
-                sb.Append($"\"endTimeUnixNano\":\"{s.EndTimeUnixNano}\",");
-                sb.Append("\"attributes\":[");
-                AppendAttributes(sb, s.Attributes);
-                sb.Append(']');
-                sb.Append($",\"status\":{{{(s.StatusCode != 0 ? $"\"code\":{s.StatusCode}" : "")}}}");
-                sb.Append('}');
-            }
+                w.WriteStartObject();
+                w.WriteStartArray("resourceSpans");
+                w.WriteStartObject();
 
-            sb.Append("]}]}]}");
-            return sb.ToString();
+                w.WriteStartObject("resource");
+                w.WriteStartArray("attributes");
+                WriteAttributes(w, resource);
+                w.WriteEndArray();
+                w.WriteEndObject();
+
+                w.WriteStartArray("scopeSpans");
+                w.WriteStartObject();
+                w.WriteStartObject("scope");
+                w.WriteString("name", "github.actions.runner");
+                w.WriteEndObject();
+
+                w.WriteStartArray("spans");
+                foreach (var s in spans)
+                {
+                    w.WriteStartObject();
+                    w.WriteString("traceId", s.TraceId);
+                    w.WriteString("spanId", s.SpanId);
+                    if (!string.IsNullOrEmpty(s.ParentSpanId))
+                    {
+                        w.WriteString("parentSpanId", s.ParentSpanId);
+                    }
+                    w.WriteString("name", Mask(s.Name) ?? "");
+                    w.WriteNumber("kind", s.Kind);
+                    w.WriteString("startTimeUnixNano", s.StartTimeUnixNano.ToString(CultureInfo.InvariantCulture));
+                    w.WriteString("endTimeUnixNano", s.EndTimeUnixNano.ToString(CultureInfo.InvariantCulture));
+                    w.WriteStartArray("attributes");
+                    WriteAttributes(w, s.Attributes);
+                    w.WriteEndArray();
+                    w.WriteStartObject("status");
+                    if (s.StatusCode != 0)
+                    {
+                        w.WriteNumber("code", s.StatusCode);
+                    }
+                    w.WriteEndObject();
+                    w.WriteEndObject();
+                }
+                w.WriteEndArray(); // spans
+
+                w.WriteEndObject(); // scopeSpans[0]
+                w.WriteEndArray();  // scopeSpans
+                w.WriteEndObject(); // resourceSpans[0]
+                w.WriteEndArray();  // resourceSpans
+                w.WriteEndObject();
+            }
+            return Encoding.UTF8.GetString(stream.ToArray());
         }
 
-        private void AppendAttributes(StringBuilder sb, List<KeyValuePair<string, object>> attrs)
+        private void WriteAttributes(Utf8JsonWriter w, List<KeyValuePair<string, object>> attrs)
         {
-            for (int i = 0; i < attrs.Count; i++)
+            foreach (var kv in attrs)
             {
-                if (i > 0) sb.Append(',');
-                var kv = attrs[i];
-                sb.Append($"{{\"key\":\"{JsonEscape(kv.Key)}\",\"value\":{{");
+                w.WriteStartObject();
+                w.WriteString("key", kv.Key);
+                w.WriteStartObject("value");
                 switch (kv.Value)
                 {
                     case bool b:
-                        sb.Append($"\"boolValue\":{(b ? "true" : "false")}");
+                        w.WriteBoolean("boolValue", b);
                         break;
                     case long l:
-                        sb.Append($"\"intValue\":\"{l}\"");
+                        w.WriteString("intValue", l.ToString(CultureInfo.InvariantCulture));
                         break;
                     case int n:
-                        sb.Append($"\"intValue\":\"{n}\"");
+                        w.WriteString("intValue", n.ToString(CultureInfo.InvariantCulture));
                         break;
                     default:
-                        sb.Append($"\"stringValue\":\"{JsonEscape(Mask(kv.Value?.ToString()))}\"");
+                        w.WriteString("stringValue", Mask(kv.Value?.ToString()) ?? "");
                         break;
                 }
-                sb.Append("}}");
+                w.WriteEndObject();
+                w.WriteEndObject();
             }
-        }
-
-        private static string JsonEscape(string s)
-        {
-            return s?.Replace("\\", "\\\\")
-                     .Replace("\"", "\\\"")
-                     .Replace("\n", "\\n")
-                     .Replace("\r", "\\r")
-                     .Replace("\t", "\\t") ?? "";
         }
 
         private sealed class OTelSpan

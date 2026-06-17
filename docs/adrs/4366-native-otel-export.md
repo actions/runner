@@ -55,10 +55,14 @@ step  = md5("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8] parent -> 
 4. `JobRunner.CompleteJobAsync` → `OTelTracer.FlushAsync()` POSTs the resource and all
    spans as a single OTLP/JSON request to `{endpoint}/v1/traces`.
 
-Export is **best-effort**: any failure (unreachable collector, timeout) is logged via
-`Trace` and swallowed, never affecting job execution. No new NuGet dependencies are
-introduced — the exporter uses hand-built OTLP/JSON over the runner's proxy-aware
-`HostContext.CreateHttpClientHandler()`.
+Only **top-level** steps are emitted; composite/embedded sub-steps are skipped (their
+display names aren't unique and have no counterpart in the API-reconstructed trace).
+
+Export is **best-effort**: any failure (unreachable collector, non-2xx, timeout) is
+logged via `Trace` and swallowed, never affecting job execution. Flush is bounded to a
+2s budget so a slow collector can't delay job completion. The payload is OTLP/JSON built
+with `System.Text.Json` (no new NuGet dependencies) and sent over the runner's
+proxy-aware `HostContext.CreateHttpClientHandler()`.
 
 ### Gating
 
@@ -115,3 +119,6 @@ export ACTIONS_RUNNER_OTLP_ENDPOINT=http://localhost:4318
   than W3C `traceparent` propagation; a backend-rooted run span (covering server-side
   orchestration) would require the job message to carry trace context, which is out of
   scope here.
+- Step span IDs derive from the step **display name**, so two top-level steps with an
+  identical display name in the same job share a span ID (one wins). This matches the
+  GitHub-API trace reconstruction, which has the same property.

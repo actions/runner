@@ -207,6 +207,40 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("job", ReadAttrs(span)["type"]);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EmbeddedStep_IsNotRecorded()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            // Composite/embedded sub-steps would collide by name and have no API counterpart.
+            exporter.RecordStepCompletion("Build", 1, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null, isEmbedded: true);
+            Assert.Equal(0, exporter.PendingSpanCountForTest);
+
+            // ... but a top-level step with the same name still records.
+            exporter.RecordStepCompletion("Build", 1, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null, isEmbedded: false);
+            Assert.Equal(1, exporter.PendingSpanCountForTest);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Json_ControlCharsInName_ProducesValidJson()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            // A raw control char + quote + backslash must not break the batch.
+            exporter.RecordStepCompletion("step\u0001name", 1, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null);
+
+            // Parses without throwing == valid JSON, and round-trips the name.
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
+            var span = doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans")[0];
+            Assert.Equal("step\u0001name", span.GetProperty("name").GetString());
+        }
+
         // ---- best-effort resilience ----
 
         [Fact]

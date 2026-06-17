@@ -602,7 +602,8 @@ namespace GitHub.Runner.Worker
                     conclusion: _record.Result,
                     stepType: StepTelemetry?.Type,
                     actionName: StepTelemetry?.Action,
-                    actionRef: StepTelemetry?.Ref);
+                    actionRef: StepTelemetry?.Ref,
+                    isEmbedded: IsEmbedded);
             }
             else if (_record.RecordType == ExecutionContextType.Job)
             {
