@@ -318,10 +318,44 @@ namespace GitHub.Runner.Common.Tests.Worker
             exporter.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null);
 
             var attrs = ReadAttrs(SpanAt(exporter, 0));
-            Assert.Equal("abc123", attrs["vcs.revision"]);
+            Assert.Equal("abc123", attrs["vcs.ref.head.revision"]); // semconv name (not vcs.revision)
             Assert.Equal("main", attrs["vcs.ref.head.name"]);
+            Assert.Equal("github", attrs["vcs.provider.name"]);
+            Assert.Equal("octo", attrs["vcs.owner.name"]);
+            Assert.Equal("repo", attrs["vcs.repository.name"]);
             Assert.Equal("octocat", attrs["github.actor"]);
             Assert.Equal("https://github.com/octo/repo/actions/runs/99999/attempts/1", attrs["cicd.pipeline.run.url.full"]);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SemconvResult_SkippedMapsToSkipEnum()
+        {
+            // semconv cicd.pipeline.task.run.result enum uses "skip", not "skipped".
+            Assert.Equal("skip", OTelTraceExporter.ToSemconvResult("skipped"));
+            Assert.Equal("cancellation", OTelTraceExporter.ToSemconvResult("cancelled"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Resource_HasCicdWorkerAndSchemaUrl()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetResource("my-runner", "42", "default", "2.333.0", "Linux", "X64", "host-1", ephemeral: true);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded);
+
+            var json = exporter.BuildPendingOtlpJsonForTest();
+            Assert.Contains("https://opentelemetry.io/schemas/", json); // schema_url declared
+            using var doc = JsonDocument.Parse(json);
+            var rs = doc.RootElement.GetProperty("resourceSpans")[0];
+            var resAttrs = ReadAttrsFrom(rs.GetProperty("resource"));
+            Assert.Equal("my-runner", resAttrs["cicd.worker.name"]);
+            Assert.Equal("42", resAttrs["cicd.worker.id"]);
+            Assert.Equal("2.333.0", rs.GetProperty("scopeSpans")[0].GetProperty("scope").GetProperty("version").GetString());
         }
 
         [Fact]

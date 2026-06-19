@@ -51,6 +51,9 @@ namespace GitHub.Runner.Worker
     public sealed class OTelTraceExporter : RunnerService, IOTelTraceExporter
     {
         private static readonly JsonWriterOptions s_jsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        // Declares which semantic-convention version this telemetry conforms to.
+        private const string SchemaUrl = "https://opentelemetry.io/schemas/1.29.0";
+        private string _serviceVersion = "";
 
         private readonly object _lock = new();
         private readonly List<OTelSpan> _pendingSpans = new();
@@ -155,10 +158,15 @@ namespace GitHub.Runner.Worker
                 }
                 attrs.Add(new KeyValuePair<string, object>(k, v));
             }
+            _serviceVersion = runnerVersion ?? "";
             Add("service.version", runnerVersion);
             Add("host.name", machineName);
             Add("host.arch", arch);
             Add("os.type", osType);
+            // semconv cicd.worker.* identifies the executor; keep github.runner.* too.
+            Add("cicd.worker.name", runnerName);
+            Add("cicd.worker.id", runnerId);
+            Add("service.instance.id", runnerId);
             Add("github.runner.name", runnerName);
             Add("github.runner.id", runnerId);
             Add("github.runner.group", runnerGroup);
@@ -219,8 +227,18 @@ namespace GitHub.Runner.Worker
             span.Set("cicd.pipeline.run.id", job.RunIdRaw);
             span.Set("cicd.pipeline.run.url.full", $"{job.ServerUrl}/{job.Repository}/actions/runs/{job.RunIdRaw}/attempts/{job.RunAttemptRaw}");
             span.Set("vcs.repository.url.full", $"{job.ServerUrl}/{job.Repository}");
-            if (!string.IsNullOrEmpty(job.Sha)) span.Set("vcs.revision", job.Sha);
+            span.Set("vcs.provider.name", "github");
+            if (!string.IsNullOrEmpty(job.Sha)) span.Set("vcs.ref.head.revision", job.Sha);
             if (!string.IsNullOrEmpty(job.RefName)) span.Set("vcs.ref.head.name", job.RefName);
+            if (!string.IsNullOrEmpty(job.Repository))
+            {
+                var slash = job.Repository.IndexOf('/');
+                if (slash > 0)
+                {
+                    span.Set("vcs.owner.name", job.Repository.Substring(0, slash));
+                    span.Set("vcs.repository.name", job.Repository.Substring(slash + 1));
+                }
+            }
             if (!string.IsNullOrEmpty(job.Actor)) span.Set("github.actor", job.Actor);
         }
 
@@ -570,12 +588,13 @@ namespace GitHub.Runner.Worker
 
         internal static string ToSemconvResult(string ghConclusion)
         {
+            // semconv cicd.pipeline.task.run.result enum: success|failure|cancellation|skip|timeout|error
             return ghConclusion switch
             {
                 "success" => "success",
                 "failure" => "failure",
                 "cancelled" => "cancellation",
-                "skipped" => "skipped",
+                "skipped" => "skip",
                 _ => "error",
             };
         }
@@ -638,6 +657,7 @@ namespace GitHub.Runner.Worker
                 w.WriteStartObject();
                 w.WriteStartObject("scope");
                 w.WriteString("name", "github.actions.runner");
+                if (!string.IsNullOrEmpty(_serviceVersion)) w.WriteString("version", _serviceVersion);
                 w.WriteEndObject();
 
                 w.WriteStartArray("spans");
@@ -666,9 +686,10 @@ namespace GitHub.Runner.Worker
                     w.WriteEndObject();
                 }
                 w.WriteEndArray(); // spans
-
+                w.WriteString("schemaUrl", SchemaUrl);
                 w.WriteEndObject(); // scopeSpans[0]
                 w.WriteEndArray();  // scopeSpans
+                w.WriteString("schemaUrl", SchemaUrl);
                 w.WriteEndObject(); // resourceSpans[0]
                 w.WriteEndArray();  // resourceSpans
                 w.WriteEndObject();
