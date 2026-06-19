@@ -62,7 +62,9 @@ namespace GitHub.Runner.Worker
         private string _baseUrl;
         private string _tracesUrl;
         private string _logsUrl;
+        private string _metricsUrl;
         private string _rawHeaders;
+        private JobMetrics _jobMetrics;
         private bool _enabled;
         // Inject W3C TRACEPARENT + OTEL_* into each step's env so in-job tools/actions
         // emit spans parented to the step. Opt-in (ACTIONS_RUNNER_OTLP_PROPAGATE).
@@ -112,6 +114,7 @@ namespace GitHub.Runner.Worker
                 ? _endpoint.Substring(0, _endpoint.Length - "/v1/traces".Length)
                 : _endpoint;
             _logsUrl = $"{_baseUrl}/v1/logs";
+            _metricsUrl = $"{_baseUrl}/v1/metrics";
             _propagate = StringUtil.ConvertToBoolean(
                 Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpPropagate));
 
@@ -370,7 +373,21 @@ namespace GitHub.Runner.Worker
                     span.AddException("failure", errorMessage, span.EndTimeUnixNano);
                 }
 
-                lock (_lock) { _pendingSpans.Add(span); }
+                var metrics = new JobMetrics
+                {
+                    StartNano = span.StartTimeUnixNano,
+                    EndNano = span.EndTimeUnixNano,
+                    DurationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0),
+                    PipelineName = job.Workflow,
+                    Result = ToSemconvResult(ghConclusion),
+                    Errors = ghConclusion == "failure" ? 1 : 0,
+                };
+
+                lock (_lock)
+                {
+                    _pendingSpans.Add(span);
+                    _jobMetrics = metrics;
+                }
             }
             catch (Exception ex)
             {
@@ -506,13 +523,16 @@ namespace GitHub.Runner.Worker
 
             List<OTelSpan> spans;
             List<OTelLog> logs;
+            JobMetrics metrics;
             List<KeyValuePair<string, object>> resource;
             lock (_lock)
             {
                 spans = new List<OTelSpan>(_pendingSpans);
                 logs = new List<OTelLog>(_pendingLogs);
+                metrics = _jobMetrics;
                 _pendingSpans.Clear();
                 _pendingLogs.Clear();
+                _jobMetrics = null;
                 resource = _resource;
             }
 
@@ -523,6 +543,10 @@ namespace GitHub.Runner.Worker
             if (logs.Count > 0)
             {
                 await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", cancellationToken);
+            }
+            if (metrics != null)
+            {
+                await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, resource), "metrics", cancellationToken);
             }
         }
 
@@ -821,6 +845,107 @@ namespace GitHub.Runner.Worker
             public readonly List<KeyValuePair<string, object>> Attributes = new();
         }
 
+        private sealed class JobMetrics
+        {
+            public long StartNano;
+            public long EndNano;
+            public double DurationSeconds;
+            public string PipelineName;
+            public string Result;
+            public int Errors;
+        }
+
+        // OTLP/JSON metrics: cicd.pipeline.run.duration (histogram) + cicd.pipeline.run.errors (counter).
+        private string BuildOTLPMetricsJson(JobMetrics m, List<KeyValuePair<string, object>> resource)
+        {
+            using var stream = new MemoryStream();
+            using (var w = new Utf8JsonWriter(stream, s_jsonOptions))
+            {
+                w.WriteStartObject();
+                w.WriteStartArray("resourceMetrics");
+                w.WriteStartObject();
+                w.WriteStartObject("resource");
+                w.WriteStartArray("attributes");
+                WriteAttributes(w, resource);
+                w.WriteEndArray();
+                w.WriteEndObject();
+                w.WriteStartArray("scopeMetrics");
+                w.WriteStartObject();
+                w.WriteStartObject("scope");
+                w.WriteString("name", "github.actions.runner");
+                if (!string.IsNullOrEmpty(_serviceVersion)) w.WriteString("version", _serviceVersion);
+                w.WriteEndObject();
+                w.WriteStartArray("metrics");
+
+                // cicd.pipeline.run.duration — histogram with a single observation.
+                w.WriteStartObject();
+                w.WriteString("name", "cicd.pipeline.run.duration");
+                w.WriteString("unit", "s");
+                w.WriteStartObject("histogram");
+                w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
+                w.WriteStartArray("dataPoints");
+                w.WriteStartObject();
+                w.WriteStartArray("attributes");
+                WriteAttributes(w, new List<KeyValuePair<string, object>>
+                {
+                    new("cicd.pipeline.name", m.PipelineName),
+                    new("cicd.pipeline.result", m.Result),
+                });
+                w.WriteEndArray();
+                w.WriteString("startTimeUnixNano", m.StartNano.ToString(CultureInfo.InvariantCulture));
+                w.WriteString("timeUnixNano", m.EndNano.ToString(CultureInfo.InvariantCulture));
+                w.WriteString("count", "1");
+                w.WriteNumber("sum", m.DurationSeconds);
+                w.WriteStartArray("bucketCounts");
+                w.WriteStringValue("1");
+                w.WriteEndArray();
+                w.WriteStartArray("explicitBounds");
+                w.WriteEndArray();
+                w.WriteNumber("min", m.DurationSeconds);
+                w.WriteNumber("max", m.DurationSeconds);
+                w.WriteEndObject();
+                w.WriteEndArray();
+                w.WriteEndObject(); // histogram
+                w.WriteEndObject(); // metric
+
+                if (m.Errors > 0)
+                {
+                    w.WriteStartObject();
+                    w.WriteString("name", "cicd.pipeline.run.errors");
+                    w.WriteString("unit", "{error}");
+                    w.WriteStartObject("sum");
+                    w.WriteNumber("aggregationTemporality", 2);
+                    w.WriteBoolean("isMonotonic", true);
+                    w.WriteStartArray("dataPoints");
+                    w.WriteStartObject();
+                    w.WriteStartArray("attributes");
+                    WriteAttributes(w, new List<KeyValuePair<string, object>>
+                    {
+                        new("cicd.pipeline.name", m.PipelineName),
+                        new("error.type", "failure"),
+                    });
+                    w.WriteEndArray();
+                    w.WriteString("startTimeUnixNano", m.StartNano.ToString(CultureInfo.InvariantCulture));
+                    w.WriteString("timeUnixNano", m.EndNano.ToString(CultureInfo.InvariantCulture));
+                    w.WriteString("asInt", m.Errors.ToString(CultureInfo.InvariantCulture));
+                    w.WriteEndObject();
+                    w.WriteEndArray();
+                    w.WriteEndObject();
+                    w.WriteEndObject();
+                }
+
+                w.WriteEndArray(); // metrics
+                w.WriteString("schemaUrl", SchemaUrl);
+                w.WriteEndObject(); // scopeMetrics[0]
+                w.WriteEndArray();
+                w.WriteString("schemaUrl", SchemaUrl);
+                w.WriteEndObject(); // resourceMetrics[0]
+                w.WriteEndArray();
+                w.WriteEndObject();
+            }
+            return Encoding.UTF8.GetString(stream.ToArray());
+        }
+
         private sealed class OTelEvent
         {
             public string Name;
@@ -877,6 +1002,11 @@ namespace GitHub.Runner.Worker
         internal string BuildPendingOtlpLogsJsonForTest()
         {
             lock (_lock) { return BuildOTLPLogsJson(new List<OTelLog>(_pendingLogs), _resource); }
+        }
+
+        internal string BuildPendingOtlpMetricsJsonForTest()
+        {
+            lock (_lock) { return _jobMetrics == null ? null : BuildOTLPMetricsJson(_jobMetrics, _resource); }
         }
     }
 }

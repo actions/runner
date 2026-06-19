@@ -491,6 +491,49 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("main", attrs["vcs.ref.base.name"]);
         }
 
+        // ---- metrics (#1) ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void JobMetrics_DurationHistogramAndErrorCounter()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordJobCompletion(start, start.AddSeconds(9), TaskResult.Failed);
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
+            var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
+            var dur = metrics[0];
+            Assert.Equal("cicd.pipeline.run.duration", dur.GetProperty("name").GetString());
+            var dp = dur.GetProperty("histogram").GetProperty("dataPoints")[0];
+            Assert.Equal(9.0, dp.GetProperty("sum").GetDouble());
+            var durAttrs = ReadAttrsFrom(dp);
+            Assert.Equal("failure", durAttrs["cicd.pipeline.result"]);
+            Assert.Equal("CI", durAttrs["cicd.pipeline.name"]);
+
+            var err = metrics[1];
+            Assert.Equal("cicd.pipeline.run.errors", err.GetProperty("name").GetString());
+            Assert.Equal("1", err.GetProperty("sum").GetProperty("dataPoints")[0].GetProperty("asInt").GetString());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void JobMetrics_SuccessHasNoErrorCounter()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded);
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
+            var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
+            Assert.Equal(1, metrics.GetArrayLength()); // duration only, no errors counter
+        }
+
         // ---- helpers ----
 
         private static JsonElement SpanAt(OTelTraceExporter exporter, int i)
