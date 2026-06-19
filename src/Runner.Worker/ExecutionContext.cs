@@ -107,6 +107,9 @@ namespace GitHub.Runner.Worker
         void SetRunnerContext(string name, string value);
         string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
+        // W3C trace context + OTEL_* env to propagate into this step's process so
+        // in-job tools/actions emit spans parented to the step. Empty unless opted in.
+        IDictionary<string, string> GetOTelStepEnv();
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
 
@@ -594,7 +597,8 @@ namespace GitHub.Runner.Worker
 
                 Global.StepsResult.Add(stepResult);
 
-                HostContext.GetService<IOTelTraceExporter>().RecordStepCompletion(
+                var otel = HostContext.GetService<IOTelTraceExporter>();
+                otel.RecordStepCompletion(
                     stepName: _record.Name,
                     stepNumber: _record.Order,
                     startTime: _record.StartTime,
@@ -604,13 +608,23 @@ namespace GitHub.Runner.Worker
                     actionName: StepTelemetry?.Action,
                     actionRef: StepTelemetry?.Ref,
                     isEmbedded: IsEmbedded);
+
+                // Mirror this step's errors/warnings as OTel logs correlated to the step span.
+                if (!IsEmbedded)
+                {
+                    _record.Issues?.ForEach(issue =>
+                    {
+                        otel.RecordStepLog(_record.Name, _record.Order, issue.Type.ToString(), issue.Message);
+                    });
+                }
             }
             else if (_record.RecordType == ExecutionContextType.Job)
             {
                 HostContext.GetService<IOTelTraceExporter>().RecordJobCompletion(
                     startTime: _record.StartTime,
                     endTime: _record.FinishTime,
-                    conclusion: _record.Result);
+                    conclusion: _record.Result,
+                    throttlingDelayMs: Interlocked.Read(ref _totalThrottlingDelayInMilliseconds));
             }
 
             if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
@@ -692,6 +706,11 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var githubContext = ExpressionValues["github"] as GitHubContext;
             githubContext[name] = new StringContextData(value);
+        }
+
+        public IDictionary<string, string> GetOTelStepEnv()
+        {
+            return HostContext.GetService<IOTelTraceExporter>().StepPropagationEnv(_record.Name, _record.Order);
         }
 
         public string GetGitHubContext(string name)
@@ -1067,7 +1086,10 @@ namespace GitHub.Runner.Worker
                 serverUrl: GetGitHubContext("server_url"),
                 // Server-side kill switch; defaults on so the endpoint opt-in works
                 // where the flag isn't provisioned (self-hosted/GHES).
-                featureEnabled: Global.Variables.GetBoolean(Constants.Runner.Features.RunnerOtelExport) ?? true);
+                featureEnabled: Global.Variables.GetBoolean(Constants.Runner.Features.RunnerOtelExport) ?? true,
+                sha: GetGitHubContext("sha"),
+                refName: GetGitHubContext("head_ref") ?? GetGitHubContext("ref_name"),
+                actor: GetGitHubContext("actor"));
 
             Trace.Info("Initialize Env context");
 #if OS_WINDOWS

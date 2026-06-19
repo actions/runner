@@ -11,9 +11,15 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class OTelTraceExporterL0 : IDisposable
     {
         private const string EndpointEnv = "ACTIONS_RUNNER_OTLP_ENDPOINT";
+        private const string PropagateEnv = "ACTIONS_RUNNER_OTLP_PROPAGATE";
         private readonly string _originalEndpoint = Environment.GetEnvironmentVariable(EndpointEnv);
+        private readonly string _originalPropagate = Environment.GetEnvironmentVariable(PropagateEnv);
 
-        public void Dispose() => Environment.SetEnvironmentVariable(EndpointEnv, _originalEndpoint);
+        public void Dispose()
+        {
+            Environment.SetEnvironmentVariable(EndpointEnv, _originalEndpoint);
+            Environment.SetEnvironmentVariable(PropagateEnv, _originalPropagate);
+        }
 
         private OTelTraceExporter Enabled(TestHostContext hc, string endpoint = "http://localhost:4318")
         {
@@ -298,7 +304,120 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("true", resourceAttrs["github.runner.ephemeral"]); // boolValue
         }
 
+        // ---- enrichments (#13): vcs, actor, run url, throttling ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Span_CarriesVcsAndActorContext()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com",
+                sha: "abc123", refName: "main", actor: "octocat");
+            exporter.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null);
+
+            var attrs = ReadAttrs(SpanAt(exporter, 0));
+            Assert.Equal("abc123", attrs["vcs.revision"]);
+            Assert.Equal("main", attrs["vcs.ref.head.name"]);
+            Assert.Equal("octocat", attrs["github.actor"]);
+            Assert.Equal("https://github.com/octo/repo/actions/runs/99999/attempts/1", attrs["cicd.pipeline.run.url.full"]);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void JobSpan_CarriesThrottlingDelay()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, throttlingDelayMs: 4200);
+
+            Assert.Equal("4200", ReadAttrs(SpanAt(exporter, 0))["github.throttling_delay_ms"]);
+        }
+
+        // ---- generic child spans (#14) ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecordSpan_ParentsToJobAndCarriesType()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordSpan("Resolve actions/checkout@v4", "action_download", t, t.AddSeconds(1),
+                new System.Collections.Generic.Dictionary<string, string> { ["github.action"] = "actions/checkout" });
+
+            var span = SpanAt(exporter, 0);
+            Assert.Equal("224bc2674c838206", span.GetProperty("parentSpanId").GetString()); // job span
+            var attrs = ReadAttrs(span);
+            Assert.Equal("action_download", attrs["type"]);
+            Assert.Equal("actions/checkout", attrs["github.action"]);
+        }
+
+        // ---- trace-context propagation (#15) ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StepPropagationEnv_EmptyUnlessOptedIn()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc); // propagate flag not set
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            Assert.Empty(exporter.StepPropagationEnv("Run tests", 3));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StepPropagationEnv_TraceparentMatchesStepSpan()
+        {
+            using var hc = new TestHostContext(this);
+            Environment.SetEnvironmentVariable(PropagateEnv, "true");
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+
+            var env = exporter.StepPropagationEnv("Run tests", 3);
+            // 00-{trace}-{step span}-01, matching the step span IDs the exporter emits.
+            Assert.Equal("00-37912fcf8909bcb43fd643580e6b5ee1-ac6971a4ea7639e5-01", env["TRACEPARENT"]);
+            Assert.Equal("http://localhost:4318", env["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+            Assert.Contains("github.run_id=99999", env["OTEL_RESOURCE_ATTRIBUTES"]);
+        }
+
+        // ---- OTel logs (#16) ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecordStepLog_CorrelatesToStepSpan()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordStepLog("Run tests", 3, "Error", "boom: test failed");
+
+            Assert.Equal(1, exporter.PendingLogCountForTest);
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpLogsJsonForTest());
+            var rec = doc.RootElement.GetProperty("resourceLogs")[0].GetProperty("scopeLogs")[0].GetProperty("logRecords")[0];
+            Assert.Equal("37912fcf8909bcb43fd643580e6b5ee1", rec.GetProperty("traceId").GetString());
+            Assert.Equal("ac6971a4ea7639e5", rec.GetProperty("spanId").GetString()); // same as step span
+            Assert.Equal("ERROR", rec.GetProperty("severityText").GetString());
+            Assert.Equal(17, rec.GetProperty("severityNumber").GetInt32());
+            Assert.Equal("boom: test failed", rec.GetProperty("body").GetProperty("stringValue").GetString());
+        }
+
         // ---- helpers ----
+
+        private static JsonElement SpanAt(OTelTraceExporter exporter, int i)
+        {
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
+            return doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans")[i].Clone();
+        }
+
 
         private static System.Collections.Generic.Dictionary<string, string> ReadAttrs(JsonElement span) => ReadAttrsFrom(span);
 

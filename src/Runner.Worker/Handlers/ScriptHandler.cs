@@ -326,6 +326,17 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            // Propagate W3C trace context + OTEL_* so OTel-instrumented tools in this
+            // step emit spans/logs parented to the step span (opt-in, no-op otherwise).
+            var otelStepEnv = ExecutionContext.GetOTelStepEnv();
+            if (otelStepEnv != null)
+            {
+                foreach (var kv in otelStepEnv)
+                {
+                    Environment[kv.Key] = kv.Value;
+                }
+            }
+
             ExecutionContext.Debug($"{fileName} {arguments}");
 
             Inputs.TryGetValue("standardInInput", out var standardInInput);

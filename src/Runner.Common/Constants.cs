@@ -318,6 +318,7 @@ namespace GitHub.Runner.Common
                 public static readonly string OtlpEndpoint = "ACTIONS_RUNNER_OTLP_ENDPOINT";
                 public static readonly string OtlpHeaders = "ACTIONS_RUNNER_OTLP_HEADERS";
                 public static readonly string OtlpInsecure = "ACTIONS_RUNNER_OTLP_INSECURE";
+                public static readonly string OtlpPropagate = "ACTIONS_RUNNER_OTLP_PROPAGATE";
             }
 
             public static class System

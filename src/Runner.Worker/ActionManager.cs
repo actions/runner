@@ -228,11 +228,10 @@ namespace GitHub.Runner.Worker
                     {
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
-
                     Exception downloadFailure = null;
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                        await DownloadActionWithOtelSpan(executionContext, downloadInfo);
                     }
                     catch (Exception ex)
                     {
@@ -463,7 +462,7 @@ namespace GitHub.Runner.Worker
                     Exception downloadFailure = null;
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                        await DownloadActionWithOtelSpan(executionContext, downloadInfo);
                     }
                     catch (Exception ex)
                     {
@@ -1076,6 +1075,28 @@ namespace GitHub.Runner.Worker
                         }, Newtonsoft.Json.Formatting.None)}"
                     });
                 }
+            }
+        }
+
+        private async Task DownloadActionWithOtelSpan(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo)
+        {
+            var start = DateTime.UtcNow;
+            try
+            {
+                await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+            }
+            finally
+            {
+                HostContext.GetService<IOTelTraceExporter>().RecordSpan(
+                    $"Resolve {downloadInfo.NameWithOwner}@{downloadInfo.Ref}",
+                    "action_download",
+                    start,
+                    DateTime.UtcNow,
+                    new Dictionary<string, string>
+                    {
+                        ["github.action"] = downloadInfo.NameWithOwner,
+                        ["github.action_ref"] = downloadInfo.Ref,
+                    });
             }
         }
 
