@@ -19,9 +19,9 @@ namespace GitHub.Runner.Worker
     public interface IOTelTraceExporter : IRunnerService
     {
         void SetResource(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral);
-        void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true, string sha = null, string refName = null, string actor = null);
-        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false);
-        void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0);
+        void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true, string sha = null, string refName = null, string actor = null, string baseRef = null, string changeId = null);
+        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null);
+        void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0, string errorMessage = null);
         // Generic child span (parented to the job) for finer-grained timing, e.g. action download.
         void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null);
         // OTel log record correlated to a step span (step issues/annotations).
@@ -90,6 +90,8 @@ namespace GitHub.Runner.Worker
             public string Sha;
             public string RefName;   // branch/tag (vcs.ref.head.name)
             public string Actor;
+            public string BaseRef;   // base branch for PRs (vcs.ref.base.name)
+            public string ChangeId;  // PR number (vcs.change.id)
         }
 
         public override void Initialize(IHostContext hostContext)
@@ -177,7 +179,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true, string sha = null, string refName = null, string actor = null)
+        public void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true, string sha = null, string refName = null, string actor = null, string baseRef = null, string changeId = null)
         {
             if (!_enabled)
             {
@@ -210,6 +212,8 @@ namespace GitHub.Runner.Worker
                     Sha = sha ?? "",
                     RefName = refName ?? "",
                     Actor = actor ?? "",
+                    BaseRef = baseRef ?? "",
+                    ChangeId = changeId ?? "",
                 };
             }
         }
@@ -230,6 +234,8 @@ namespace GitHub.Runner.Worker
             span.Set("vcs.provider.name", "github");
             if (!string.IsNullOrEmpty(job.Sha)) span.Set("vcs.ref.head.revision", job.Sha);
             if (!string.IsNullOrEmpty(job.RefName)) span.Set("vcs.ref.head.name", job.RefName);
+            if (!string.IsNullOrEmpty(job.BaseRef)) span.Set("vcs.ref.base.name", job.BaseRef);
+            if (!string.IsNullOrEmpty(job.ChangeId)) span.Set("vcs.change.id", job.ChangeId);
             if (!string.IsNullOrEmpty(job.Repository))
             {
                 var slash = job.Repository.IndexOf('/');
@@ -242,7 +248,7 @@ namespace GitHub.Runner.Worker
             if (!string.IsNullOrEmpty(job.Actor)) span.Set("github.actor", job.Actor);
         }
 
-        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false)
+        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null)
         {
             // Embedded/composite sub-steps are not top-level timeline steps: their
             // display names aren't unique (would collide as span IDs) and they have no
@@ -288,8 +294,14 @@ namespace GitHub.Runner.Worker
                 span.Set("cicd.pipeline.task.run.id", span.SpanId);
                 span.Set("cicd.pipeline.task.run.result", ToSemconvResult(ghConclusion));
                 span.Set("cicd.pipeline.task.run.url.full", stepUrl);
+                var taskType = InferTaskType(stepName, actionName);
+                if (taskType != null) span.Set("cicd.pipeline.task.type", taskType);
 
                 ApplyStatus(span, ghConclusion);
+                if (ghConclusion == "failure")
+                {
+                    span.AddException("failure", errorMessage, span.EndTimeUnixNano);
+                }
 
                 lock (_lock) { _pendingSpans.Add(span); }
             }
@@ -299,7 +311,17 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0)
+        // Best-effort cicd.pipeline.task.type (semconv enum: build|test|deploy); omit when unknown.
+        internal static string InferTaskType(string name, string actionName)
+        {
+            var s = $"{name} {actionName}".ToLowerInvariant();
+            if (s.Contains("test") || s.Contains("lint") || s.Contains("spec")) return "test";
+            if (s.Contains("deploy") || s.Contains("release") || s.Contains("publish")) return "deploy";
+            if (s.Contains("build") || s.Contains("compile") || s.Contains("package")) return "build";
+            return null;
+        }
+
+        public void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0, string errorMessage = null)
         {
             if (!IsEnabled)
             {
@@ -343,6 +365,10 @@ namespace GitHub.Runner.Worker
                 }
 
                 ApplyStatus(span, ghConclusion);
+                if (ghConclusion == "failure")
+                {
+                    span.AddException("failure", errorMessage, span.EndTimeUnixNano);
+                }
 
                 lock (_lock) { _pendingSpans.Add(span); }
             }
@@ -677,6 +703,21 @@ namespace GitHub.Runner.Worker
                     w.WriteStartArray("attributes");
                     WriteAttributes(w, s.Attributes);
                     w.WriteEndArray();
+                    if (s.Events.Count > 0)
+                    {
+                        w.WriteStartArray("events");
+                        foreach (var ev in s.Events)
+                        {
+                            w.WriteStartObject();
+                            w.WriteString("name", ev.Name);
+                            w.WriteString("timeUnixNano", ev.TimeUnixNano.ToString(CultureInfo.InvariantCulture));
+                            w.WriteStartArray("attributes");
+                            WriteAttributes(w, ev.Attributes);
+                            w.WriteEndArray();
+                            w.WriteEndObject();
+                        }
+                        w.WriteEndArray();
+                    }
                     w.WriteStartObject("status");
                     if (s.StatusCode != 0)
                     {
@@ -780,6 +821,13 @@ namespace GitHub.Runner.Worker
             public readonly List<KeyValuePair<string, object>> Attributes = new();
         }
 
+        private sealed class OTelEvent
+        {
+            public string Name;
+            public long TimeUnixNano;
+            public readonly List<KeyValuePair<string, object>> Attributes = new();
+        }
+
         private sealed class OTelSpan
         {
             public string TraceId;
@@ -791,10 +839,23 @@ namespace GitHub.Runner.Worker
             public long EndTimeUnixNano;
             public int StatusCode; // 0 unset, 1 ok, 2 error
             public readonly List<KeyValuePair<string, object>> Attributes = new();
+            public readonly List<OTelEvent> Events = new();
 
             public void Set(string key, object value)
             {
                 Attributes.Add(new KeyValuePair<string, object>(key, value));
+            }
+
+            // semconv exception event.
+            public void AddException(string type, string message, long timeNano)
+            {
+                var ev = new OTelEvent { Name = "exception", TimeUnixNano = timeNano };
+                ev.Attributes.Add(new("exception.type", type));
+                if (!string.IsNullOrEmpty(message))
+                {
+                    ev.Attributes.Add(new("exception.message", message));
+                }
+                Events.Add(ev);
             }
         }
 

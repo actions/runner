@@ -444,6 +444,53 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("boom: test failed", rec.GetProperty("body").GetProperty("stringValue").GetString());
         }
 
+        // ---- exception events + PR/task.type (#17/#18) ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void FailedStep_EmitsExceptionEvent()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Failed, null, null, null,
+                errorMessage: "assertion failed: 2 != 3");
+
+            var ev = SpanAt(exporter, 0).GetProperty("events")[0];
+            Assert.Equal("exception", ev.GetProperty("name").GetString());
+            var attrs = ReadAttrsFrom(ev);
+            Assert.Equal("failure", attrs["exception.type"]);
+            Assert.Equal("assertion failed: 2 != 3", attrs["exception.message"]);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void TaskType_InferredFromName()
+        {
+            Assert.Equal("test", OTelTraceExporter.InferTaskType("Run unit tests", null));
+            Assert.Equal("deploy", OTelTraceExporter.InferTaskType("Release to prod", null));
+            Assert.Equal("build", OTelTraceExporter.InferTaskType("Compile", null));
+            Assert.Null(OTelTraceExporter.InferTaskType("Greet", "actions/checkout"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PullRequest_EmitsVcsChangeAndBase()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "pull_request", "https://github.com",
+                sha: "abc", refName: "feature", actor: "octocat", baseRef: "main", changeId: "42");
+            exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded);
+
+            var attrs = ReadAttrs(SpanAt(exporter, 0));
+            Assert.Equal("42", attrs["vcs.change.id"]);
+            Assert.Equal("main", attrs["vcs.ref.base.name"]);
+        }
+
         // ---- helpers ----
 
         private static JsonElement SpanAt(OTelTraceExporter exporter, int i)

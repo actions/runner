@@ -598,6 +598,7 @@ namespace GitHub.Runner.Worker
                 Global.StepsResult.Add(stepResult);
 
                 var otel = HostContext.GetService<IOTelTraceExporter>();
+                var firstError = _record.Issues?.FirstOrDefault(i => i.Type == IssueType.Error)?.Message;
                 otel.RecordStepCompletion(
                     stepName: _record.Name,
                     stepNumber: _record.Order,
@@ -607,7 +608,8 @@ namespace GitHub.Runner.Worker
                     stepType: StepTelemetry?.Type,
                     actionName: StepTelemetry?.Action,
                     actionRef: StepTelemetry?.Ref,
-                    isEmbedded: IsEmbedded);
+                    isEmbedded: IsEmbedded,
+                    errorMessage: firstError);
 
                 // Mirror this step's errors/warnings as OTel logs correlated to the step span.
                 if (!IsEmbedded)
@@ -624,7 +626,8 @@ namespace GitHub.Runner.Worker
                     startTime: _record.StartTime,
                     endTime: _record.FinishTime,
                     conclusion: _record.Result,
-                    throttlingDelayMs: Interlocked.Read(ref _totalThrottlingDelayInMilliseconds));
+                    throttlingDelayMs: Interlocked.Read(ref _totalThrottlingDelayInMilliseconds),
+                    errorMessage: _record.Issues?.FirstOrDefault(i => i.Type == IssueType.Error)?.Message);
             }
 
             if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
@@ -711,6 +714,18 @@ namespace GitHub.Runner.Worker
         public IDictionary<string, string> GetOTelStepEnv()
         {
             return HostContext.GetService<IOTelTraceExporter>().StepPropagationEnv(_record.Name, _record.Order);
+        }
+
+        // PR number for pull_request events, parsed from github.ref (refs/pull/N/merge).
+        private string GetPullRequestNumber()
+        {
+            var eventName = GetGitHubContext("event_name");
+            if (eventName == null || !eventName.StartsWith("pull_request", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            var match = System.Text.RegularExpressions.Regex.Match(GetGitHubContext("ref") ?? "", @"refs/pull/(\d+)/");
+            return match.Success ? match.Groups[1].Value : null;
         }
 
         public string GetGitHubContext(string name)
@@ -1089,7 +1104,9 @@ namespace GitHub.Runner.Worker
                 featureEnabled: Global.Variables.GetBoolean(Constants.Runner.Features.RunnerOtelExport) ?? true,
                 sha: GetGitHubContext("sha"),
                 refName: GetGitHubContext("head_ref") ?? GetGitHubContext("ref_name"),
-                actor: GetGitHubContext("actor"));
+                actor: GetGitHubContext("actor"),
+                baseRef: GetGitHubContext("base_ref"),
+                changeId: GetPullRequestNumber());
 
             Trace.Info("Initialize Env context");
 #if OS_WINDOWS
