@@ -1108,12 +1108,6 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
-                {
-                    Type = JobTelemetryType.General,
-                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache}"
-                });
-
                 if (!useActionArchiveCache)
                 {
                     await DownloadRepositoryArchive(executionContext, link, downloadInfo.Authentication?.Token, archiveFile);
@@ -1121,6 +1115,13 @@ namespace GitHub.Runner.Worker
 
                 var stagingDirectory = Path.Combine(tempDirectory, "_staging");
                 Directory.CreateDirectory(stagingDirectory);
+
+                var fileInfo = new FileInfo(archiveFile);
+                executionContext.Global.JobTelemetry.Add(new JobTelemetry()
+                {
+                    Type = JobTelemetryType.General,
+                    Message = $"Action archive cache usage: {downloadInfo.ResolvedNameWithOwner}@{downloadInfo.ResolvedSha} use cache {useActionArchiveCache} has cache {hasActionArchiveCache} size {fileInfo.Length} bytes"
+                });
 
 #if OS_WINDOWS
                 try
@@ -1159,7 +1160,6 @@ namespace GitHub.Runner.Worker
                     int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
                     if (exitCode != 0)
                     {
-                        var fileInfo = new FileInfo(archiveFile);
                         var sha256hash = await IOUtil.GetFileContentSha256HashAsync(archiveFile);
                         throw new InvalidActionArchiveException($"Can't use 'tar -xzf' extract archive file: {archiveFile} (SHA256 '{sha256hash}', size '{fileInfo.Length}' bytes, tar outputs '{string.Join(' ', tarOutputs)}'). Action being checked out: {downloadInfo.NameWithOwner}@{downloadInfo.Ref}. return code: {exitCode}.");
                     }
