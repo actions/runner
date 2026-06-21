@@ -302,6 +302,39 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("Linux", resourceAttrs["os.type"]);
             Assert.Equal("X64", resourceAttrs["host.arch"]);
             Assert.Equal("true", resourceAttrs["github.runner.ephemeral"]); // boolValue
+            Assert.Equal("agent", resourceAttrs["cicd.system.component"]); // semconv: runner is the agent
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Resource_MergesOtelResourceAttributesEnv()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            var prev = Environment.GetEnvironmentVariable("OTEL_RESOURCE_ATTRIBUTES");
+            try
+            {
+                // Standard OTel env var (spec): comma-separated, values percent-encoded.
+                // This is how ARC/Downward-API attaches k8s.* — no runner-specific env names.
+                Environment.SetEnvironmentVariable("OTEL_RESOURCE_ATTRIBUTES",
+                    "k8s.pod.name=runner-abc123,k8s.namespace.name=actions,k8s.node.name=node%2D3");
+                exporter.SetResource("my-runner", "42", "default", "2.333.0", "Linux", "X64", "host-1", ephemeral: true);
+                exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+                exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded);
+
+                using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
+                var resourceAttrs = ReadAttrsFrom(doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("resource"));
+                Assert.Equal("runner-abc123", resourceAttrs["k8s.pod.name"]);
+                Assert.Equal("actions", resourceAttrs["k8s.namespace.name"]);
+                Assert.Equal("node-3", resourceAttrs["k8s.node.name"]); // percent-decoded
+                // Explicitly-set keys win over the env var.
+                Assert.Equal("github-actions-runner", resourceAttrs["service.name"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("OTEL_RESOURCE_ATTRIBUTES", prev);
+            }
         }
 
         // ---- enrichments (#13): vcs, actor, run url, throttling ----

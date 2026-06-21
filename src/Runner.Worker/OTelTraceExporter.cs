@@ -176,9 +176,57 @@ namespace GitHub.Runner.Worker
             Add("github.runner.id", runnerId);
             Add("github.runner.group", runnerGroup);
             Add("github.runner.ephemeral", ephemeral);
+            // The runner is the CI/CD agent executing tasks (semconv cicd.system.component).
+            Add("cicd.system.component", "agent");
+
+            // Honor the standard OTEL_RESOURCE_ATTRIBUTES env var (OTel spec): a
+            // comma-separated list of key=value pairs with percent-encoded values. This is
+            // the spec-native way for a deployment (e.g. ARC via the Kubernetes Downward
+            // API) to attach k8s.pod.name / k8s.namespace.name / k8s.node.name and any other
+            // resource attributes — no runner-specific env names required. Keys set
+            // explicitly above take precedence over the env var.
+            var present = new HashSet<string>();
+            foreach (var kv in attrs)
+            {
+                present.Add(kv.Key);
+            }
+            foreach (var kv in ParseOtelResourceAttributes(Environment.GetEnvironmentVariable("OTEL_RESOURCE_ATTRIBUTES")))
+            {
+                if (present.Add(kv.Key))
+                {
+                    attrs.Add(new KeyValuePair<string, object>(kv.Key, kv.Value));
+                }
+            }
             lock (_lock)
             {
                 _resource = attrs;
+            }
+        }
+
+        // ParseOtelResourceAttributes parses the W3C-Baggage-style value of the standard
+        // OTEL_RESOURCE_ATTRIBUTES env var: comma-separated key=value pairs, values
+        // percent-encoded. Malformed entries are skipped.
+        internal static IEnumerable<KeyValuePair<string, string>> ParseOtelResourceAttributes(string raw)
+        {
+            if (string.IsNullOrEmpty(raw))
+            {
+                yield break;
+            }
+            foreach (var pair in raw.Split(','))
+            {
+                var trimmed = pair.Trim();
+                var eq = trimmed.IndexOf('=');
+                if (eq <= 0)
+                {
+                    continue;
+                }
+                var key = trimmed.Substring(0, eq).Trim();
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+                var value = trimmed.Substring(eq + 1).Trim();
+                yield return new KeyValuePair<string, string>(key, Uri.UnescapeDataString(value));
             }
         }
 
