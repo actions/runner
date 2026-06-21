@@ -42,10 +42,10 @@ namespace GitHub.Runner.Worker
     /// and swallowed, never affecting job execution.
     ///
     /// Shared ID contract (mirrored in otel-explorer pkg/githubapi/ids.go):
-    ///   traceID  = md5("{run_id}-{run_attempt}")                                  (16 bytes)
+    ///   traceID  = sha256("{run_id}-{run_attempt}")                                  (16 bytes)
     ///   workflow = bigendian(run_id)                                              (8 bytes)
-    ///   job      = md5("job-{run_id}-{run_attempt}-{job_name}")[:8]               (8 bytes)
-    ///   step     = md5("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8]  (8 bytes)
+    ///   job      = sha256("job-{run_id}-{run_attempt}-{job_name}")[:8]               (8 bytes)
+    ///   step     = sha256("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8]  (8 bytes)
     /// Parent links: step -> job -> workflow.
     /// </summary>
     public sealed class OTelTraceExporter : RunnerService, IOTelTraceExporter
@@ -623,11 +623,17 @@ namespace GitHub.Runner.Worker
         }
 
         // ---- shared deterministic ID contract (pure, mirrored in otel-explorer) ----
+        //
+        // SHA-256 (truncated) — NOT MD5: MD5 is disallowed under FIPS, so a FIPS-enabled
+        // host would throw. SHA-256 gives the same deterministic-from-run-id behavior;
+        // we take the leading 16 bytes for a trace ID and 8 for a span ID. These IDs are
+        // intentionally deterministic (not random), so the W3C Level-2 randomness flag is
+        // never set on the trace.
 
         internal static string NewTraceID(long runId, long runAttempt)
         {
             if (runAttempt == 0) runAttempt = 1;
-            return BytesToHex(MD5.HashData(Encoding.UTF8.GetBytes($"{runId}-{runAttempt}")));
+            return BytesToHex(SHA256.HashData(Encoding.UTF8.GetBytes($"{runId}-{runAttempt}")), 16);
         }
 
         internal static string NewSpanID(long id)
@@ -642,7 +648,7 @@ namespace GitHub.Runner.Worker
 
         internal static string NewSpanIDFromString(string s)
         {
-            return BytesToHex(MD5.HashData(Encoding.UTF8.GetBytes(s)), 8);
+            return BytesToHex(SHA256.HashData(Encoding.UTF8.GetBytes(s)), 8);
         }
 
         internal static string NewJobSpanID(long runId, long runAttempt, string jobName)

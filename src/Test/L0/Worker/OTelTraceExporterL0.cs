@@ -38,7 +38,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void TraceID_GoldenAndDeterministic()
         {
-            Assert.Equal("37912fcf8909bcb43fd643580e6b5ee1", OTelTraceExporter.NewTraceID(99999, 1));
+            Assert.Equal("acad1e2a107636235fd56bb742499bd0", OTelTraceExporter.NewTraceID(99999, 1));
             Assert.Equal(OTelTraceExporter.NewTraceID(99999, 1), OTelTraceExporter.NewTraceID(99999, 1));
             Assert.NotEqual(OTelTraceExporter.NewTraceID(99999, 1), OTelTraceExporter.NewTraceID(99999, 2));
         }
@@ -46,10 +46,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void TraceID_CrossLanguageMD5()
+        public void TraceID_CrossLanguageSha256()
         {
-            var expected = System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes("99999-1"));
-            var expectedHex = BitConverter.ToString(expected).Replace("-", "").ToLowerInvariant();
+            // Trace ID = leading 16 bytes of SHA-256("99999-1"); otel-explorer truncates
+            // the same digest identically. (MD5 is avoided — it throws under FIPS.)
+            var full = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("99999-1"));
+            var expectedHex = BitConverter.ToString(full, 0, 16).Replace("-", "").ToLowerInvariant();
             Assert.Equal(expectedHex, OTelTraceExporter.NewTraceID(99999, 1));
         }
 
@@ -77,7 +79,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void JobSpanID_Golden()
         {
-            Assert.Equal("224bc2674c838206", OTelTraceExporter.NewJobSpanID(99999, 1, "build")); // md5("job-99999-1-build")[:8]
+            Assert.Equal("81606d47848a59c0", OTelTraceExporter.NewJobSpanID(99999, 1, "build")); // sha256("job-99999-1-build")[:8]
         }
 
         [Fact]
@@ -85,7 +87,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void StepSpanID_Golden()
         {
-            Assert.Equal("ac6971a4ea7639e5", OTelTraceExporter.NewStepSpanID(99999, 1, "build", 3, "Run tests")); // md5("step-99999-1-build-3-Run tests")[:8]
+            Assert.Equal("7a4c67339b7bb8a7", OTelTraceExporter.NewStepSpanID(99999, 1, "build", 3, "Run tests")); // sha256("step-99999-1-build-3-Run tests")[:8]
         }
 
         // ---- enable / disable ----
@@ -156,9 +158,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
             var span = doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans")[0];
 
-            Assert.Equal("37912fcf8909bcb43fd643580e6b5ee1", span.GetProperty("traceId").GetString());
-            Assert.Equal("ac6971a4ea7639e5", span.GetProperty("spanId").GetString());
-            Assert.Equal("224bc2674c838206", span.GetProperty("parentSpanId").GetString()); // job span
+            Assert.Equal("acad1e2a107636235fd56bb742499bd0", span.GetProperty("traceId").GetString());
+            Assert.Equal("7a4c67339b7bb8a7", span.GetProperty("spanId").GetString());
+            Assert.Equal("81606d47848a59c0", span.GetProperty("parentSpanId").GetString()); // job span
             Assert.Equal("Run tests", span.GetProperty("name").GetString());
 
             var attrs = ReadAttrs(span);
@@ -166,7 +168,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("runner", attrs["source"]);
             Assert.Equal("Run tests", attrs["cicd.pipeline.task.name"]);
             Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
-            Assert.Equal("ac6971a4ea7639e5", attrs["cicd.pipeline.task.run.id"]);
+            Assert.Equal("7a4c67339b7bb8a7", attrs["cicd.pipeline.task.run.id"]);
             Assert.True(attrs.ContainsKey("cicd.pipeline.task.run.url.full"));
             Assert.Equal("https://github.com/octo/repo", attrs["vcs.repository.url.full"]);
             Assert.Equal("3", attrs["github.step_number"]);
@@ -208,7 +210,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
             var span = doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans")[0];
 
-            Assert.Equal("224bc2674c838206", span.GetProperty("spanId").GetString());       // job
+            Assert.Equal("81606d47848a59c0", span.GetProperty("spanId").GetString());       // job
             Assert.Equal("000000000001869f", span.GetProperty("parentSpanId").GetString()); // workflow(run_id)
             Assert.Equal("job", ReadAttrs(span)["type"]);
         }
@@ -419,7 +421,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 new System.Collections.Generic.Dictionary<string, string> { ["github.action"] = "actions/checkout" });
 
             var span = SpanAt(exporter, 0);
-            Assert.Equal("224bc2674c838206", span.GetProperty("parentSpanId").GetString()); // job span
+            Assert.Equal("81606d47848a59c0", span.GetProperty("parentSpanId").GetString()); // job span
             var attrs = ReadAttrs(span);
             Assert.Equal("action_download", attrs["type"]);
             Assert.Equal("actions/checkout", attrs["github.action"]);
@@ -450,7 +452,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var env = exporter.StepPropagationEnv("Run tests", 3);
             // 00-{trace}-{step span}-01, matching the step span IDs the exporter emits.
-            Assert.Equal("00-37912fcf8909bcb43fd643580e6b5ee1-ac6971a4ea7639e5-01", env["TRACEPARENT"]);
+            Assert.Equal("00-acad1e2a107636235fd56bb742499bd0-7a4c67339b7bb8a7-01", env["TRACEPARENT"]);
             Assert.Equal("http://localhost:4318", env["OTEL_EXPORTER_OTLP_ENDPOINT"]);
             Assert.Contains("github.run_id=99999", env["OTEL_RESOURCE_ATTRIBUTES"]);
         }
@@ -470,8 +472,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(1, exporter.PendingLogCountForTest);
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpLogsJsonForTest());
             var rec = doc.RootElement.GetProperty("resourceLogs")[0].GetProperty("scopeLogs")[0].GetProperty("logRecords")[0];
-            Assert.Equal("37912fcf8909bcb43fd643580e6b5ee1", rec.GetProperty("traceId").GetString());
-            Assert.Equal("ac6971a4ea7639e5", rec.GetProperty("spanId").GetString()); // same as step span
+            Assert.Equal("acad1e2a107636235fd56bb742499bd0", rec.GetProperty("traceId").GetString());
+            Assert.Equal("7a4c67339b7bb8a7", rec.GetProperty("spanId").GetString()); // same as step span
             Assert.Equal("ERROR", rec.GetProperty("severityText").GetString());
             Assert.Equal(17, rec.GetProperty("severityNumber").GetInt32());
             Assert.Equal("boom: test failed", rec.GetProperty("body").GetProperty("stringValue").GetString());
