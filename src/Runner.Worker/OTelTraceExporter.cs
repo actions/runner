@@ -168,12 +168,11 @@ namespace GitHub.Runner.Worker
             Add("host.name", machineName);
             Add("host.arch", arch);
             Add("os.type", osType);
-            // semconv cicd.worker.* identifies the executor; keep github.runner.* too.
+            // semconv cicd.worker.* identifies the executor (no bespoke github.runner.name/id
+            // dupes); group/ephemeral have no semconv equivalent so they stay github.runner.*.
             Add("cicd.worker.name", runnerName);
             Add("cicd.worker.id", runnerId);
             Add("service.instance.id", runnerId);
-            Add("github.runner.name", runnerName);
-            Add("github.runner.id", runnerId);
             Add("github.runner.group", runnerGroup);
             Add("github.runner.ephemeral", ephemeral);
             // The runner is the CI/CD agent executing tasks (semconv cicd.system.component).
@@ -334,7 +333,6 @@ namespace GitHub.Runner.Worker
                 var stepUrl = $"{runUrl}/attempts/{job.RunAttemptRaw}#step:{stepNumber ?? 0}:1";
 
                 span.Set("type", "step");
-                span.Set("source", "runner");
                 AddCommonContext(span, job);
                 span.Set("github.step_number", (long)(stepNumber ?? 0));
                 span.Set("github.conclusion", ghConclusion);
@@ -402,7 +400,6 @@ namespace GitHub.Runner.Worker
                 };
 
                 span.Set("type", "job");
-                span.Set("source", "runner");
                 AddInboundParentLink(span);
                 AddCommonContext(span, job);
                 span.Set("github.conclusion", ghConclusion);
@@ -473,7 +470,6 @@ namespace GitHub.Runner.Worker
                     EndTimeUnixNano = ToUnixNano(endTime),
                 };
                 span.Set("type", spanType);
-                span.Set("source", "runner");
                 AddCommonContext(span, job);
                 // task.name marks this as a child task (not a root pipeline) for enrichers.
                 span.Set("cicd.pipeline.task.name", name);

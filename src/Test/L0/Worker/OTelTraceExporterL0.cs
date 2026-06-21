@@ -233,7 +233,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var attrs = ReadAttrs(span);
             Assert.Equal("step", attrs["type"]);
-            Assert.Equal("runner", attrs["source"]);
+            Assert.False(attrs.ContainsKey("source")); // runner identified by scope, not a custom attr
             Assert.Equal("Run tests", attrs["cicd.pipeline.task.name"]);
             Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
             Assert.Equal("7a4c67339b7bb8a7", attrs["cicd.pipeline.task.run.id"]);
@@ -367,7 +367,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
             var resourceAttrs = ReadAttrsFrom(doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("resource"));
             Assert.Equal("github-actions-runner", resourceAttrs["service.name"]);
-            Assert.Equal("my-runner", resourceAttrs["github.runner.name"]);
+            Assert.Equal("my-runner", resourceAttrs["cicd.worker.name"]); // semconv (no github.runner.name dupe)
+            Assert.False(resourceAttrs.ContainsKey("github.runner.name"));
             Assert.Equal("2.333.0", resourceAttrs["service.version"]);
             Assert.Equal("Linux", resourceAttrs["os.type"]);
             Assert.Equal("X64", resourceAttrs["host.arch"]);
