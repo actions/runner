@@ -90,6 +90,74 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("7a4c67339b7bb8a7", OTelTraceExporter.NewStepSpanID(99999, 1, "build", 3, "Run tests")); // sha256("step-99999-1-build-3-Run tests")[:8]
         }
 
+        // ---- inbound W3C trace context -> job span link ----
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Traceparent_ParsesValidAndRejectsMalformed()
+        {
+            Assert.True(OTelTraceExporter.TryParseTraceparent(
+                "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01", out var t, out var s, out var f));
+            Assert.Equal("0af7651916cd43dd8448eb211c80319c", t);
+            Assert.Equal("b7ad6b7169203331", s);
+            Assert.Equal(1, f);
+            // Unknown future version: tolerate, reading only the first four fields.
+            Assert.True(OTelTraceExporter.TryParseTraceparent(
+                "cc-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01-extra", out _, out _, out _));
+            // Rejections.
+            Assert.False(OTelTraceExporter.TryParseTraceparent(null, out _, out _, out _));
+            Assert.False(OTelTraceExporter.TryParseTraceparent("garbage", out _, out _, out _));
+            Assert.False(OTelTraceExporter.TryParseTraceparent( // forbidden version ff
+                "ff-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01", out _, out _, out _));
+            Assert.False(OTelTraceExporter.TryParseTraceparent( // all-zero trace id
+                "00-00000000000000000000000000000000-b7ad6b7169203331-01", out _, out _, out _));
+            Assert.False(OTelTraceExporter.TryParseTraceparent( // all-zero span id
+                "00-0af7651916cd43dd8448eb211c80319c-0000000000000000-01", out _, out _, out _));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void JobSpan_LinksToInboundParentContext()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            var prevTp = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_PARENT_TRACEPARENT");
+            var prevTs = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_PARENT_TRACESTATE");
+            try
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_PARENT_TRACEPARENT",
+                    "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01");
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_PARENT_TRACESTATE", "arc=abc123");
+                exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+                exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded);
+
+                using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
+                var spans = doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans");
+                JsonElement job = default;
+                var found = false;
+                foreach (var sp in spans.EnumerateArray())
+                {
+                    var a = ReadAttrs(sp);
+                    if (a.TryGetValue("type", out var ty) && ty == "job") { job = sp; found = true; break; }
+                }
+                Assert.True(found);
+                // The runner's own trace stays deterministic; the upstream context is a LINK.
+                Assert.Equal("acad1e2a107636235fd56bb742499bd0", job.GetProperty("traceId").GetString());
+                var links = job.GetProperty("links");
+                Assert.Equal(1, links.GetArrayLength());
+                Assert.Equal("0af7651916cd43dd8448eb211c80319c", links[0].GetProperty("traceId").GetString());
+                Assert.Equal("b7ad6b7169203331", links[0].GetProperty("spanId").GetString());
+                Assert.Equal("arc=abc123", links[0].GetProperty("traceState").GetString());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_PARENT_TRACEPARENT", prevTp);
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_PARENT_TRACESTATE", prevTs);
+            }
+        }
+
         // ---- enable / disable ----
 
         [Fact]

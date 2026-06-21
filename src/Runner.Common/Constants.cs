@@ -319,6 +319,11 @@ namespace GitHub.Runner.Common
                 public static readonly string OtlpHeaders = "ACTIONS_RUNNER_OTLP_HEADERS";
                 public static readonly string OtlpInsecure = "ACTIONS_RUNNER_OTLP_INSECURE";
                 public static readonly string OtlpPropagate = "ACTIONS_RUNNER_OTLP_PROPAGATE";
+                // Inbound W3C trace context from an upstream scheduler (e.g. ARC): the job
+                // span gets a span LINK to this context (cross-trace causality), keeping the
+                // runner's deterministic IDs intact.
+                public static readonly string OtlpParentTraceparent = "ACTIONS_RUNNER_PARENT_TRACEPARENT";
+                public static readonly string OtlpParentTracestate = "ACTIONS_RUNNER_PARENT_TRACESTATE";
             }
 
             public static class System

@@ -403,6 +403,7 @@ namespace GitHub.Runner.Worker
 
                 span.Set("type", "job");
                 span.Set("source", "runner");
+                AddInboundParentLink(span);
                 AddCommonContext(span, job);
                 span.Set("github.conclusion", ghConclusion);
                 span.Set("cicd.pipeline.task.name", job.JobName);
@@ -711,6 +712,101 @@ namespace GitHub.Runner.Worker
             };
         }
 
+        // If an upstream scheduler injected a W3C traceparent, attach it to the job span
+        // as a span LINK (cross-trace causality) — we do NOT re-root the job's own
+        // deterministic trace. tracestate is preserved and the inbound sampled flag is
+        // carried on the link rather than overridden.
+        private void AddInboundParentLink(OTelSpan span)
+        {
+            var traceparent = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpParentTraceparent);
+            if (!TryParseTraceparent(traceparent, out var traceId, out var spanId, out var flags))
+            {
+                return;
+            }
+            var link = new OTelLink { TraceId = traceId, SpanId = spanId, Flags = flags };
+            var tracestate = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpParentTracestate);
+            if (!string.IsNullOrEmpty(tracestate))
+            {
+                link.TraceState = tracestate.Trim();
+            }
+            // The linked span belongs to the controller that scheduled this job (semconv).
+            link.Attributes.Add(new KeyValuePair<string, object>("cicd.system.component", "controller"));
+            span.Links.Add(link);
+        }
+
+        // TryParseTraceparent validates a W3C traceparent ("version-traceid-spanid-flags").
+        // Rejects malformed input and the forbidden "ff" version; tolerates unknown future
+        // versions by reading only the first four fields.
+        internal static bool TryParseTraceparent(string traceparent, out string traceId, out string spanId, out byte flags)
+        {
+            traceId = null;
+            spanId = null;
+            flags = 0;
+            if (string.IsNullOrEmpty(traceparent))
+            {
+                return false;
+            }
+            var parts = traceparent.Trim().Split('-');
+            if (parts.Length < 4)
+            {
+                return false;
+            }
+            var version = parts[0];
+            if (version.Length != 2 || !IsHex(version) || version == "ff")
+            {
+                return false;
+            }
+            // Version 00 is exactly four fields; unknown versions may carry more.
+            if (version == "00" && parts.Length != 4)
+            {
+                return false;
+            }
+            var tid = parts[1];
+            var sid = parts[2];
+            var flg = parts[3];
+            if (tid.Length != 32 || !IsHex(tid) || IsAllZeroHex(tid))
+            {
+                return false;
+            }
+            if (sid.Length != 16 || !IsHex(sid) || IsAllZeroHex(sid))
+            {
+                return false;
+            }
+            if (flg.Length != 2 || !IsHex(flg))
+            {
+                return false;
+            }
+            traceId = tid.ToLowerInvariant();
+            spanId = sid.ToLowerInvariant();
+            flags = Convert.ToByte(flg, 16);
+            return true;
+        }
+
+        private static bool IsHex(string s)
+        {
+            foreach (var c in s)
+            {
+                var hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+                if (!hex)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool IsAllZeroHex(string s)
+        {
+            foreach (var c in s)
+            {
+                if (c != '0')
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private static string BytesToHex(byte[] bytes, int length = 0)
         {
             if (length <= 0) length = bytes.Length;
@@ -781,6 +877,29 @@ namespace GitHub.Runner.Worker
                     w.WriteStartArray("attributes");
                     WriteAttributes(w, s.Attributes);
                     w.WriteEndArray();
+                    if (s.Links.Count > 0)
+                    {
+                        w.WriteStartArray("links");
+                        foreach (var lk in s.Links)
+                        {
+                            w.WriteStartObject();
+                            w.WriteString("traceId", lk.TraceId);
+                            w.WriteString("spanId", lk.SpanId);
+                            if (!string.IsNullOrEmpty(lk.TraceState))
+                            {
+                                w.WriteString("traceState", lk.TraceState);
+                            }
+                            if (lk.Flags != 0)
+                            {
+                                w.WriteNumber("flags", lk.Flags);
+                            }
+                            w.WriteStartArray("attributes");
+                            WriteAttributes(w, lk.Attributes);
+                            w.WriteEndArray();
+                            w.WriteEndObject();
+                        }
+                        w.WriteEndArray();
+                    }
                     if (s.Events.Count > 0)
                     {
                         w.WriteStartArray("events");
@@ -1007,6 +1126,18 @@ namespace GitHub.Runner.Worker
             public readonly List<KeyValuePair<string, object>> Attributes = new();
         }
 
+        // A span link expresses cross-trace causality (W3C). Used for the inbound
+        // scheduler context (e.g. ARC) so the job links to its "schedule" span
+        // without re-rooting the runner's deterministic trace.
+        private sealed class OTelLink
+        {
+            public string TraceId;
+            public string SpanId;
+            public string TraceState;
+            public int Flags;
+            public readonly List<KeyValuePair<string, object>> Attributes = new();
+        }
+
         private sealed class OTelSpan
         {
             public string TraceId;
@@ -1017,6 +1148,7 @@ namespace GitHub.Runner.Worker
             public long StartTimeUnixNano;
             public long EndTimeUnixNano;
             public int StatusCode; // 0 unset, 1 ok, 2 error
+            public readonly List<OTelLink> Links = new();
             public readonly List<KeyValuePair<string, object>> Attributes = new();
             public readonly List<OTelEvent> Events = new();
 
