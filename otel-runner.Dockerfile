@@ -15,6 +15,12 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 WORKDIR /runner
 COPY . .
 WORKDIR /runner/src
+# The reported runner version must be >= GitHub's current minimum, else the
+# Actions service denies the ephemeral/JIT runner (AccessDenied -> exit code 7),
+# which ARC interprets as "Outdated" and tears the runner down in a loop.
+# PR#4366 branches off 2.333.0; bump the reported version to a current one.
+ARG RUNNER_VERSION_OVERRIDE=2.335.1
+RUN printf '%s' "${RUNNER_VERSION_OVERRIDE}" > runnerversion
 # dev.sh bootstraps its own pinned dotnet SDK and downloads externals (node).
 RUN ./dev.sh layout Release
 
