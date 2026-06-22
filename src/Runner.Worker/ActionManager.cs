@@ -1081,9 +1081,15 @@ namespace GitHub.Runner.Worker
         private async Task DownloadActionWithOtelSpan(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo)
         {
             var start = DateTime.UtcNow;
+            var result = "success";
             try
             {
                 await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+            }
+            catch
+            {
+                result = "failure";
+                throw;
             }
             finally
             {
@@ -1096,6 +1102,8 @@ namespace GitHub.Runner.Worker
                     {
                         ["github.action"] = downloadInfo.NameWithOwner,
                         ["github.action_ref"] = downloadInfo.Ref,
+                        // Give action-resolution spans a result like every other task span.
+                        ["cicd.pipeline.task.run.result"] = result,
                     });
             }
         }

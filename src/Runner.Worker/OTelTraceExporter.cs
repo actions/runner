@@ -392,7 +392,12 @@ namespace GitHub.Runner.Worker
                 {
                     TraceId = NewTraceID(job.RunId, job.RunAttempt),
                     SpanId = jobSpanId,
-                    ParentSpanId = NewSpanID(job.RunId), // workflow span
+                    // Root of the runner's trace. The runner owns the job, not the
+                    // workflow run, so we do NOT parent to a run span we never emit
+                    // (that left a dangling parentSpanId). The authoritative run span
+                    // comes from the GitHub API path and is merged downstream; an
+                    // upstream scheduler, when present, is attached as a span link below.
+                    ParentSpanId = null,
                     Name = job.JobName,
                     Kind = 2, // SERVER
                     StartTimeUnixNano = ToUnixNano(startTime ?? DateTime.UtcNow),

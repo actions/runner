@@ -268,7 +268,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void JobSpan_LinksToWorkflow()
+        public void JobSpan_IsRoot_NoDanglingParent()
         {
             using var hc = new TestHostContext(this);
             var exporter = Enabled(hc);
@@ -279,7 +279,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             var span = doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans")[0];
 
             Assert.Equal("81606d47848a59c0", span.GetProperty("spanId").GetString());       // job
-            Assert.Equal("000000000001869f", span.GetProperty("parentSpanId").GetString()); // workflow(run_id)
+            // The job is the root of the runner's trace: no parentSpanId pointing at a
+            // workflow/run span the runner never emits (that was a dangling parent).
+            Assert.False(span.TryGetProperty("parentSpanId", out _));
             Assert.Equal("job", ReadAttrs(span)["type"]);
         }
 
@@ -487,13 +489,19 @@ namespace GitHub.Runner.Common.Tests.Worker
             exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
             var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             exporter.RecordSpan("Resolve actions/checkout@v4", "action_download", t, t.AddSeconds(1),
-                new System.Collections.Generic.Dictionary<string, string> { ["github.action"] = "actions/checkout" });
+                new System.Collections.Generic.Dictionary<string, string>
+                {
+                    ["github.action"] = "actions/checkout",
+                    ["cicd.pipeline.task.run.result"] = "success",
+                });
 
             var span = SpanAt(exporter, 0);
             Assert.Equal("81606d47848a59c0", span.GetProperty("parentSpanId").GetString()); // job span
             var attrs = ReadAttrs(span);
             Assert.Equal("action_download", attrs["type"]);
             Assert.Equal("actions/checkout", attrs["github.action"]);
+            // Action-resolution spans now carry a result like every other task span.
+            Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
         }
 
         // ---- trace-context propagation (#15) ----
