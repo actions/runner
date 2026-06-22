@@ -1,0 +1,9 @@
+_layout
+_dotnetsdk
+_downloads
+_work
+_package
+_diag
+ghalistener
+**/bin/Debug
+**/obj
