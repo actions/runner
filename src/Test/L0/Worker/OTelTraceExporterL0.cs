@@ -662,7 +662,44 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
             var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
-            Assert.Equal(1, metrics.GetArrayLength()); // duration only, no errors counter
+            // run.duration + the job's task.duration (no errors counter on success).
+            Assert.Equal(2, metrics.GetArrayLength());
+            Assert.Equal("cicd.pipeline.run.duration", metrics[0].GetProperty("name").GetString());
+            Assert.Equal("cicd.pipeline.task.duration", metrics[1].GetProperty("name").GetString());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void TaskMetrics_DurationPerStepAndJob()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordStepCompletion("Build", 1, t, t.AddSeconds(2), TaskResult.Succeeded, "node20", null, null);
+            exporter.RecordStepCompletion("Unit tests", 2, t.AddSeconds(2), t.AddSeconds(5), TaskResult.Failed, "node20", null, null);
+            exporter.RecordJobCompletion(t, t.AddSeconds(9), TaskResult.Failed);
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
+            var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
+            JsonElement taskDur = default; var found = false;
+            foreach (var m in metrics.EnumerateArray())
+            {
+                if (m.GetProperty("name").GetString() == "cicd.pipeline.task.duration") { taskDur = m; found = true; }
+            }
+            Assert.True(found, "expected cicd.pipeline.task.duration metric");
+
+            var byName = new System.Collections.Generic.Dictionary<string, (string type, string result, double sum)>();
+            foreach (var dp in taskDur.GetProperty("histogram").GetProperty("dataPoints").EnumerateArray())
+            {
+                var a = ReadAttrsFrom(dp);
+                byName[a["cicd.pipeline.task.name"]] = (a["type"], a["cicd.pipeline.task.run.result"], dp.GetProperty("sum").GetDouble());
+            }
+            Assert.Equal(3, byName.Count);                       // 2 steps + the job
+            Assert.Equal(("step", "success", 2.0), byName["Build"]);
+            Assert.Equal(("step", "failure", 3.0), byName["Unit tests"]);
+            Assert.Equal(("job", "failure", 9.0), byName["build"]);
         }
 
         // ---- helpers ----

@@ -66,6 +66,7 @@ namespace GitHub.Runner.Worker
         private string _metricsUrl;
         private string _rawHeaders;
         private JobMetrics _jobMetrics;
+        private readonly List<TaskMetric> _taskMetrics = new();
         private bool _enabled;
         // Inject W3C TRACEPARENT + OTEL_* into each step's env so in-job tools/actions
         // emit spans parented to the step. Opt-in (ACTIONS_RUNNER_OTLP_PROPAGATE).
@@ -353,7 +354,17 @@ namespace GitHub.Runner.Worker
                     span.AddException("failure", errorMessage, span.EndTimeUnixNano);
                 }
 
-                lock (_lock) { _pendingSpans.Add(span); }
+                var stepMetric = new TaskMetric
+                {
+                    Name = stepName,
+                    Type = "step",
+                    Result = ToSemconvResult(ghConclusion),
+                    StartNano = span.StartTimeUnixNano,
+                    EndNano = span.EndTimeUnixNano,
+                    DurationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0),
+                };
+
+                lock (_lock) { _pendingSpans.Add(span); _taskMetrics.Add(stepMetric); }
             }
             catch (Exception ex)
             {
@@ -425,20 +436,31 @@ namespace GitHub.Runner.Worker
                     span.AddException("failure", errorMessage, span.EndTimeUnixNano);
                 }
 
+                var durationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0);
                 var metrics = new JobMetrics
                 {
                     StartNano = span.StartTimeUnixNano,
                     EndNano = span.EndTimeUnixNano,
-                    DurationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0),
+                    DurationSeconds = durationSeconds,
                     PipelineName = job.Workflow,
                     Result = ToSemconvResult(ghConclusion),
                     Errors = ghConclusion == "failure" ? 1 : 0,
+                };
+                var jobMetric = new TaskMetric
+                {
+                    Name = job.JobName,
+                    Type = "job",
+                    Result = ToSemconvResult(ghConclusion),
+                    StartNano = span.StartTimeUnixNano,
+                    EndNano = span.EndTimeUnixNano,
+                    DurationSeconds = durationSeconds,
                 };
 
                 lock (_lock)
                 {
                     _pendingSpans.Add(span);
                     _jobMetrics = metrics;
+                    _taskMetrics.Add(jobMetric);
                 }
             }
             catch (Exception ex)
@@ -581,15 +603,18 @@ namespace GitHub.Runner.Worker
             List<OTelSpan> spans;
             List<OTelLog> logs;
             JobMetrics metrics;
+            List<TaskMetric> tasks;
             List<KeyValuePair<string, object>> resource;
             lock (_lock)
             {
                 spans = new List<OTelSpan>(_pendingSpans);
                 logs = new List<OTelLog>(_pendingLogs);
                 metrics = _jobMetrics;
+                tasks = new List<TaskMetric>(_taskMetrics);
                 _pendingSpans.Clear();
                 _pendingLogs.Clear();
                 _jobMetrics = null;
+                _taskMetrics.Clear();
                 resource = _resource;
             }
 
@@ -601,9 +626,9 @@ namespace GitHub.Runner.Worker
             {
                 await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", cancellationToken);
             }
-            if (metrics != null)
+            if (metrics != null || tasks.Count > 0)
             {
-                await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, resource), "metrics", cancellationToken);
+                await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", cancellationToken);
             }
         }
 
@@ -1036,8 +1061,20 @@ namespace GitHub.Runner.Worker
             public int Errors;
         }
 
-        // OTLP/JSON metrics: cicd.pipeline.run.duration (histogram) + cicd.pipeline.run.errors (counter).
-        private string BuildOTLPMetricsJson(JobMetrics m, List<KeyValuePair<string, object>> resource)
+        // Per-task (job or step) duration observation -> cicd.pipeline.task.duration.
+        private sealed class TaskMetric
+        {
+            public string Name;
+            public string Type;   // "job" | "step"
+            public string Result; // semconv result (success|failure|skip|...)
+            public double DurationSeconds;
+            public long StartNano;
+            public long EndNano;
+        }
+
+        // OTLP/JSON metrics: cicd.pipeline.run.duration (histogram) + cicd.pipeline.run.errors
+        // (counter) + cicd.pipeline.task.duration (histogram, one point per job/step).
+        private string BuildOTLPMetricsJson(JobMetrics m, List<TaskMetric> tasks, List<KeyValuePair<string, object>> resource)
         {
             using var stream = new MemoryStream();
             using (var w = new Utf8JsonWriter(stream, s_jsonOptions))
@@ -1058,61 +1095,102 @@ namespace GitHub.Runner.Worker
                 w.WriteEndObject();
                 w.WriteStartArray("metrics");
 
-                // cicd.pipeline.run.duration — histogram with a single observation.
-                w.WriteStartObject();
-                w.WriteString("name", "cicd.pipeline.run.duration");
-                w.WriteString("unit", "s");
-                w.WriteStartObject("histogram");
-                w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
-                w.WriteStartArray("dataPoints");
-                w.WriteStartObject();
-                w.WriteStartArray("attributes");
-                WriteAttributes(w, new List<KeyValuePair<string, object>>
+                if (m != null)
                 {
-                    new("cicd.pipeline.name", m.PipelineName),
-                    new("cicd.pipeline.result", m.Result),
-                });
-                w.WriteEndArray();
-                w.WriteString("startTimeUnixNano", m.StartNano.ToString(CultureInfo.InvariantCulture));
-                w.WriteString("timeUnixNano", m.EndNano.ToString(CultureInfo.InvariantCulture));
-                w.WriteString("count", "1");
-                w.WriteNumber("sum", m.DurationSeconds);
-                w.WriteStartArray("bucketCounts");
-                w.WriteStringValue("1");
-                w.WriteEndArray();
-                w.WriteStartArray("explicitBounds");
-                w.WriteEndArray();
-                w.WriteNumber("min", m.DurationSeconds);
-                w.WriteNumber("max", m.DurationSeconds);
-                w.WriteEndObject();
-                w.WriteEndArray();
-                w.WriteEndObject(); // histogram
-                w.WriteEndObject(); // metric
-
-                if (m.Errors > 0)
-                {
+                    // cicd.pipeline.run.duration — histogram with a single observation.
                     w.WriteStartObject();
-                    w.WriteString("name", "cicd.pipeline.run.errors");
-                    w.WriteString("unit", "{error}");
-                    w.WriteStartObject("sum");
-                    w.WriteNumber("aggregationTemporality", 2);
-                    w.WriteBoolean("isMonotonic", true);
+                    w.WriteString("name", "cicd.pipeline.run.duration");
+                    w.WriteString("unit", "s");
+                    w.WriteStartObject("histogram");
+                    w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
                     w.WriteStartArray("dataPoints");
                     w.WriteStartObject();
                     w.WriteStartArray("attributes");
                     WriteAttributes(w, new List<KeyValuePair<string, object>>
                     {
                         new("cicd.pipeline.name", m.PipelineName),
-                        new("error.type", "failure"),
+                        new("cicd.pipeline.result", m.Result),
                     });
                     w.WriteEndArray();
                     w.WriteString("startTimeUnixNano", m.StartNano.ToString(CultureInfo.InvariantCulture));
                     w.WriteString("timeUnixNano", m.EndNano.ToString(CultureInfo.InvariantCulture));
-                    w.WriteString("asInt", m.Errors.ToString(CultureInfo.InvariantCulture));
+                    w.WriteString("count", "1");
+                    w.WriteNumber("sum", m.DurationSeconds);
+                    w.WriteStartArray("bucketCounts");
+                    w.WriteStringValue("1");
+                    w.WriteEndArray();
+                    w.WriteStartArray("explicitBounds");
+                    w.WriteEndArray();
+                    w.WriteNumber("min", m.DurationSeconds);
+                    w.WriteNumber("max", m.DurationSeconds);
                     w.WriteEndObject();
                     w.WriteEndArray();
-                    w.WriteEndObject();
-                    w.WriteEndObject();
+                    w.WriteEndObject(); // histogram
+                    w.WriteEndObject(); // metric
+
+                    if (m.Errors > 0)
+                    {
+                        w.WriteStartObject();
+                        w.WriteString("name", "cicd.pipeline.run.errors");
+                        w.WriteString("unit", "{error}");
+                        w.WriteStartObject("sum");
+                        w.WriteNumber("aggregationTemporality", 2);
+                        w.WriteBoolean("isMonotonic", true);
+                        w.WriteStartArray("dataPoints");
+                        w.WriteStartObject();
+                        w.WriteStartArray("attributes");
+                        WriteAttributes(w, new List<KeyValuePair<string, object>>
+                        {
+                            new("cicd.pipeline.name", m.PipelineName),
+                            new("error.type", "failure"),
+                        });
+                        w.WriteEndArray();
+                        w.WriteString("startTimeUnixNano", m.StartNano.ToString(CultureInfo.InvariantCulture));
+                        w.WriteString("timeUnixNano", m.EndNano.ToString(CultureInfo.InvariantCulture));
+                        w.WriteString("asInt", m.Errors.ToString(CultureInfo.InvariantCulture));
+                        w.WriteEndObject();
+                        w.WriteEndArray();
+                        w.WriteEndObject();
+                        w.WriteEndObject();
+                    }
+                }
+
+                // cicd.pipeline.task.duration — histogram with one observation per job/step.
+                if (tasks != null && tasks.Count > 0)
+                {
+                    w.WriteStartObject();
+                    w.WriteString("name", "cicd.pipeline.task.duration");
+                    w.WriteString("unit", "s");
+                    w.WriteStartObject("histogram");
+                    w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
+                    w.WriteStartArray("dataPoints");
+                    foreach (var task in tasks)
+                    {
+                        w.WriteStartObject();
+                        w.WriteStartArray("attributes");
+                        WriteAttributes(w, new List<KeyValuePair<string, object>>
+                        {
+                            new("cicd.pipeline.task.name", task.Name),
+                            new("cicd.pipeline.task.run.result", task.Result),
+                            new("type", task.Type),
+                        });
+                        w.WriteEndArray();
+                        w.WriteString("startTimeUnixNano", task.StartNano.ToString(CultureInfo.InvariantCulture));
+                        w.WriteString("timeUnixNano", task.EndNano.ToString(CultureInfo.InvariantCulture));
+                        w.WriteString("count", "1");
+                        w.WriteNumber("sum", task.DurationSeconds);
+                        w.WriteStartArray("bucketCounts");
+                        w.WriteStringValue("1");
+                        w.WriteEndArray();
+                        w.WriteStartArray("explicitBounds");
+                        w.WriteEndArray();
+                        w.WriteNumber("min", task.DurationSeconds);
+                        w.WriteNumber("max", task.DurationSeconds);
+                        w.WriteEndObject();
+                    }
+                    w.WriteEndArray();
+                    w.WriteEndObject(); // histogram
+                    w.WriteEndObject(); // metric
                 }
 
                 w.WriteEndArray(); // metrics
@@ -1200,7 +1278,12 @@ namespace GitHub.Runner.Worker
 
         internal string BuildPendingOtlpMetricsJsonForTest()
         {
-            lock (_lock) { return _jobMetrics == null ? null : BuildOTLPMetricsJson(_jobMetrics, _resource); }
+            lock (_lock)
+            {
+                return _jobMetrics == null && _taskMetrics.Count == 0
+                    ? null
+                    : BuildOTLPMetricsJson(_jobMetrics, _taskMetrics, _resource);
+            }
         }
     }
 }
