@@ -1104,7 +1104,10 @@ namespace GitHub.Runner.Worker
                         ["github.action_ref"] = downloadInfo.Ref,
                         // Give action-resolution spans a result like every other task span.
                         ["cicd.pipeline.task.run.result"] = result,
-                    });
+                    },
+                    // Action resolution runs inside this step (e.g. "Set up job") — nest under it.
+                    parentStepName: executionContext.StepDisplayName,
+                    parentStepNumber: executionContext.StepOrder);
             }
         }
 

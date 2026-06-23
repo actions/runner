@@ -22,8 +22,9 @@ namespace GitHub.Runner.Worker
         void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true, string sha = null, string refName = null, string actor = null, string baseRef = null, string changeId = null);
         void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null);
         void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0, string errorMessage = null);
-        // Generic child span (parented to the job) for finer-grained timing, e.g. action download.
-        void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null);
+        // Generic child span for finer-grained timing, e.g. action download. Parents to the
+        // given step (when the operation runs inside one, e.g. "Set up job"), else the job.
+        void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0);
         // OTel log record correlated to a step span (step issues/annotations).
         void RecordStepLog(string stepName, int? stepNumber, string severityText, string message);
         // W3C trace context + OTEL_* to inject into a step's env so in-job tools nest under the step span.
@@ -446,7 +447,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null)
+        public void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0)
         {
             if (!IsEnabled || string.IsNullOrEmpty(name))
             {
@@ -462,13 +463,19 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
+                // Nest under the owning step (e.g. action resolution runs inside "Set up job"),
+                // falling back to the job span when no step is supplied.
+                var parentSpanId = string.IsNullOrEmpty(parentStepName)
+                    ? NewJobSpanID(job.RunId, job.RunAttempt, job.JobName)
+                    : NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, parentStepNumber, parentStepName);
+
                 var startNano = ToUnixNano(startTime);
                 var span = new OTelSpan
                 {
                     TraceId = NewTraceID(job.RunId, job.RunAttempt),
                     // Include start time so repeated same-named operations don't collide.
                     SpanId = NewSpanIDFromString($"{spanType}-{job.RunId}-{job.RunAttempt}-{job.JobName}-{name}-{startNano}"),
-                    ParentSpanId = NewJobSpanID(job.RunId, job.RunAttempt, job.JobName),
+                    ParentSpanId = parentSpanId,
                     Name = name,
                     Kind = 1,
                     StartTimeUnixNano = startNano,

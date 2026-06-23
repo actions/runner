@@ -496,12 +496,31 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
 
             var span = SpanAt(exporter, 0);
-            Assert.Equal("81606d47848a59c0", span.GetProperty("parentSpanId").GetString()); // job span
+            Assert.Equal("81606d47848a59c0", span.GetProperty("parentSpanId").GetString()); // job span (no parent step given)
             var attrs = ReadAttrs(span);
             Assert.Equal("action_download", attrs["type"]);
             Assert.Equal("actions/checkout", attrs["github.action"]);
             // Action-resolution spans now carry a result like every other task span.
             Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecordSpan_ParentsToStep_WhenStepGiven()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            // Action resolution happens during "Set up job", so the span nests under that step.
+            exporter.RecordSpan("Resolve actions/checkout@v4", "action_download", t, t.AddSeconds(1),
+                new System.Collections.Generic.Dictionary<string, string> { ["github.action"] = "actions/checkout" },
+                parentStepName: "Set up job", parentStepNumber: 1);
+
+            var span = SpanAt(exporter, 0);
+            var expected = OTelTraceExporter.NewStepSpanID(99999, 1, "build", 1, "Set up job");
+            Assert.Equal(expected, span.GetProperty("parentSpanId").GetString());
         }
 
         // ---- trace-context propagation (#15) ----

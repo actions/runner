@@ -44,6 +44,9 @@ namespace GitHub.Runner.Worker
         string ScopeName { get; }
         string SiblingScopeName { get; }
         string ContextName { get; }
+        // Timeline display name + order of this step's record (used to key its OTel step span).
+        string StepDisplayName { get; }
+        int StepOrder { get; }
         ActionRunStage Stage { get; }
         Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
@@ -204,6 +207,8 @@ namespace GitHub.Runner.Worker
         public string ScopeName { get; private set; }
         public string SiblingScopeName { get; private set; }
         public string ContextName { get; private set; }
+        public string StepDisplayName => _record.Name;
+        public int StepOrder => _record.Order ?? 0;
         public ActionRunStage Stage { get; private set; }
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
