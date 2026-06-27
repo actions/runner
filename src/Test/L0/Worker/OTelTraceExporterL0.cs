@@ -663,6 +663,38 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("boom: test failed", rec.GetProperty("body").GetProperty("stringValue").GetString());
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StepSpan_CarriesActionStage()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordStepCompletion("Post Checkout", 14, t, t.AddSeconds(1), TaskResult.Succeeded, "node20", "actions/checkout", "v4", stepStage: "Post");
+
+            Assert.Equal("Post", ReadAttrs(SpanAt(exporter, 0))["github.action_stage"]);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecordJobLog_CorrelatesToJobSpan()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordJobLog("Warning", "the runner is shutting down");
+
+            Assert.Equal(1, exporter.PendingLogCountForTest);
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpLogsJsonForTest());
+            var rec = doc.RootElement.GetProperty("resourceLogs")[0].GetProperty("scopeLogs")[0].GetProperty("logRecords")[0];
+            Assert.Equal("81606d47848a59c0", rec.GetProperty("spanId").GetString()); // same as the job span
+            Assert.Equal("WARNING", rec.GetProperty("severityText").GetString());
+            Assert.Equal("the runner is shutting down", rec.GetProperty("body").GetProperty("stringValue").GetString());
+        }
+
         // ---- exception events + PR/task.type (#17/#18) ----
 
         [Fact]

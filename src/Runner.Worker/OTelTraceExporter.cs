@@ -22,7 +22,9 @@ namespace GitHub.Runner.Worker
     {
         void SetResource(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral);
         void SetJobInfo(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled = true, string sha = null, string refName = null, string actor = null, string baseRef = null, string changeId = null);
-        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null);
+        void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null, string stepStage = null);
+        // OTel log record correlated to the JOB span (job-level issues/annotations).
+        void RecordJobLog(string severityText, string message);
         void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0, string errorMessage = null);
         // Generic child span for finer-grained timing, e.g. action download. Parents to the
         // given step (when the operation runs inside one, e.g. "Set up job"), else the job.
@@ -312,7 +314,7 @@ namespace GitHub.Runner.Worker
             if (!string.IsNullOrEmpty(job.Actor)) span.Set("github.actor", job.Actor);
         }
 
-        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null)
+        public void RecordStepCompletion(string stepName, int? stepNumber, DateTime? startTime, DateTime? endTime, TaskResult? conclusion, string stepType, string actionName, string actionRef, bool isEmbedded = false, string errorMessage = null, string stepStage = null)
         {
             // Embedded/composite sub-steps are not top-level timeline steps: their
             // display names aren't unique (would collide as span IDs) and they have no
@@ -351,6 +353,7 @@ namespace GitHub.Runner.Worker
                 span.Set("github.step_number", (long)(stepNumber ?? 0));
                 span.Set("github.conclusion", ghConclusion);
                 if (!string.IsNullOrEmpty(stepType)) span.Set("github.step_type", stepType);
+                if (!string.IsNullOrEmpty(stepStage)) span.Set("github.action_stage", stepStage);
                 if (!string.IsNullOrEmpty(actionName)) span.Set("github.action", actionName);
                 if (!string.IsNullOrEmpty(actionRef)) span.Set("github.action_ref", actionRef);
                 span.Set("cicd.pipeline.task.name", stepName);
@@ -538,6 +541,38 @@ namespace GitHub.Runner.Worker
             catch (Exception ex)
             {
                 Trace.Info($"Skipping OTel span '{name}' (best-effort): {ex.Message}");
+            }
+        }
+
+        public void RecordJobLog(string severityText, string message)
+        {
+            if (!IsEnabled || string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+            try
+            {
+                JobInfo job;
+                lock (_lock) { job = _jobInfo; }
+                if (job == null || job.RunId == 0)
+                {
+                    return;
+                }
+                var log = new OTelLog
+                {
+                    TimeUnixNano = ToUnixNano(DateTime.UtcNow),
+                    SeverityText = string.IsNullOrEmpty(severityText) ? "INFO" : severityText.ToUpperInvariant(),
+                    SeverityNumber = SeverityNumber(severityText),
+                    Body = message,
+                    TraceId = NewTraceID(job.RunId, job.RunAttempt),
+                    SpanId = NewJobSpanID(job.RunId, job.RunAttempt, job.JobName),
+                };
+                log.Attributes.Add(new("cicd.pipeline.task.name", job.JobName));
+                lock (_lock) { AddBounded(_pendingLogs, log, MaxBufferedLogs, ref _droppedLogs); }
+            }
+            catch (Exception ex)
+            {
+                Trace.Info($"Skipping OTel job log (best-effort): {ex.Message}");
             }
         }
 

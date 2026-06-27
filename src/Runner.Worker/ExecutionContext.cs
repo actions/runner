@@ -614,7 +614,8 @@ namespace GitHub.Runner.Worker
                     actionName: StepTelemetry?.Action,
                     actionRef: StepTelemetry?.Ref,
                     isEmbedded: IsEmbedded,
-                    errorMessage: firstError);
+                    errorMessage: firstError,
+                    stepStage: StepTelemetry?.Stage);
 
                 // Mirror this step's errors/warnings as OTel logs correlated to the step span.
                 if (!IsEmbedded)
@@ -627,12 +628,20 @@ namespace GitHub.Runner.Worker
             }
             else if (_record.RecordType == ExecutionContextType.Job)
             {
-                HostContext.GetService<IOTelTraceExporter>().RecordJobCompletion(
+                var jobOtel = HostContext.GetService<IOTelTraceExporter>();
+                jobOtel.RecordJobCompletion(
                     startTime: _record.StartTime,
                     endTime: _record.FinishTime,
                     conclusion: _record.Result,
                     throttlingDelayMs: Interlocked.Read(ref _totalThrottlingDelayInMilliseconds),
                     errorMessage: _record.Issues?.FirstOrDefault(i => i.Type == IssueType.Error)?.Message);
+
+                // Mirror job-level issues/annotations as OTel logs correlated to the job span
+                // (step issues are forwarded above; job-level ones were otherwise dropped).
+                _record.Issues?.ForEach(issue =>
+                {
+                    jobOtel.RecordJobLog(issue.Type.ToString(), issue.Message);
+                });
             }
 
             if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
