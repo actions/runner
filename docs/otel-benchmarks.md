@@ -36,16 +36,33 @@ Results (Release, net8.0, Apple M-series; representative):
 - **Payload: ~1.8 KB/span** of OTLP/JSON, sent as one POST per signal (→ ~18 MB for
   10k spans, uncompressed — motivates gzip + chunking).
 
-## Macro-benchmark (job wall-time, ON vs OFF) — plan
+## Macro-benchmark (job wall-time, ON vs OFF) — measured
 
-Run a workflow of N trivial steps (`run: ":"`) on the local self-hosted runner with
-`ACTIONS_RUNNER_OTLP_ENDPOINT` (a) unset, (b) → fast collector, (c) → dead port; ≥5
-reps, compare median **added job wall-time** (from runner `_diag` job span timestamps),
-**peak RSS** (`/usr/bin/time -l`, bytes on macOS), and **CPU** (user+sys).
+A 50-trivial-step workflow (`run: ":"`) on the local self-hosted runner, OTel ON
+(healthy collector) vs OFF (endpoint unset → exporter disabled), job wall-time from
+the GitHub job `started_at`→`completed_at`:
 
-Expected from the micro numbers: emit adds < 1 ms even at 200 steps; the only real
-wall-time is the flush POST(s) at job end (≤ 2 s/signal cap, ~6 s worst case only when
-the collector is unreachable — best-effort, swallowed).
+| | run 1 | run 2 | run 3 |
+|---|---|---|---|
+| **OTel ON**  | 18 s | 25 s | 18 s |
+| **OTel OFF** | 18 s | 25 s | 25 s |
+
+The two distributions **fully overlap**: job-to-job variance (~7 s, from runner
+orchestration/scheduling) dwarfs any OTel signal. **Native OTel adds no measurable
+job wall-time overhead** at 50 steps — consistent with the micro numbers (µs/step
+emit + a single bounded, gzipped flush POST at job end). The only bounded worst case
+is the 4 s overall flush deadline when the collector is unreachable (best-effort,
+swallowed — never fails the job).
+
+## Sampling / scale model
+
+Decision: **server-controlled**. The runner emits every span/metric/log
+unconditionally (gated only by the server feature flag + the operator's endpoint
+opt-in). Sampling and metric-cardinality control are the **collector's / server's**
+responsibility (tail sampling, cardinality limits, rate limiting) — not the runner's.
+This keeps the runner simple, preserves tail visibility (all failures), and matches
+how export is already gated. Memory is bounded at the source by the per-buffer caps
+(see code: `MaxBufferedSpans/Logs/TaskMetrics`).
 
 ## Acceptable-overhead thresholds (proposed)
 - Disabled (common case): job wall-time delta < 0.1 %; RSS delta within noise.
