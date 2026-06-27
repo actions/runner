@@ -83,6 +83,25 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Buffers_AreCappedToBoundMemory()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var over = OTelTraceExporter.MaxBufferedSpans + 50;
+            for (var i = 0; i < over; i++)
+            {
+                exporter.RecordStepCompletion($"step {i}", i, t, t.AddSeconds(1), TaskResult.Succeeded, "node20", null, null);
+            }
+            // A runaway job can't grow the buffer past the cap; excess is dropped + counted.
+            Assert.Equal(OTelTraceExporter.MaxBufferedSpans, exporter.PendingSpanCountForTest);
+            Assert.True(exporter.DroppedSpanCountForTest >= 50, $"expected >=50 dropped, got {exporter.DroppedSpanCountForTest}");
+        }
+
         // ---- shared deterministic ID contract (golden values mirrored in otel-explorer) ----
 
         [Fact]

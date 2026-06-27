@@ -59,6 +59,16 @@ namespace GitHub.Runner.Worker
         private readonly object _lock = new();
         private readonly List<OTelSpan> _pendingSpans = new();
         private readonly List<OTelLog> _pendingLogs = new();
+        // Hard caps so a pathological job (e.g. unbounded ::warning:: annotations) can't
+        // grow these buffers without limit and OOM the worker — the export must never
+        // affect the job. ~4 KB/span retained until flush (see docs/otel-benchmarks.md);
+        // 10k keeps worst-case retention bounded to tens of MB. Excess is dropped + counted.
+        internal const int MaxBufferedSpans = 10000;
+        internal const int MaxBufferedLogs = 10000;
+        internal const int MaxBufferedTaskMetrics = 10000;
+        private long _droppedSpans;
+        private long _droppedLogs;
+        private long _droppedTaskMetrics;
         private string _endpoint;
         private string _baseUrl;
         private string _tracesUrl;
@@ -365,7 +375,11 @@ namespace GitHub.Runner.Worker
                     DurationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0),
                 };
 
-                lock (_lock) { _pendingSpans.Add(span); _taskMetrics.Add(stepMetric); }
+                lock (_lock)
+                {
+                    AddBounded(_pendingSpans, span, MaxBufferedSpans, ref _droppedSpans);
+                    AddBounded(_taskMetrics, stepMetric, MaxBufferedTaskMetrics, ref _droppedTaskMetrics);
+                }
             }
             catch (Exception ex)
             {
@@ -461,9 +475,9 @@ namespace GitHub.Runner.Worker
 
                 lock (_lock)
                 {
-                    _pendingSpans.Add(span);
+                    AddBounded(_pendingSpans, span, MaxBufferedSpans, ref _droppedSpans);
                     _jobMetrics = metrics;
-                    _taskMetrics.Add(jobMetric);
+                    AddBounded(_taskMetrics, jobMetric, MaxBufferedTaskMetrics, ref _droppedTaskMetrics);
                 }
             }
             catch (Exception ex)
@@ -517,7 +531,7 @@ namespace GitHub.Runner.Worker
                         span.Set(kv.Key, kv.Value);
                     }
                 }
-                lock (_lock) { _pendingSpans.Add(span); }
+                lock (_lock) { AddBounded(_pendingSpans, span, MaxBufferedSpans, ref _droppedSpans); }
             }
             catch (Exception ex)
             {
@@ -549,7 +563,7 @@ namespace GitHub.Runner.Worker
                     SpanId = NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, stepNumber ?? 0, stepName),
                 };
                 log.Attributes.Add(new("cicd.pipeline.task.name", stepName));
-                lock (_lock) { _pendingLogs.Add(log); }
+                lock (_lock) { AddBounded(_pendingLogs, log, MaxBufferedLogs, ref _droppedLogs); }
             }
             catch (Exception ex)
             {
@@ -596,6 +610,17 @@ namespace GitHub.Runner.Worker
             };
         }
 
+        // Append under a buffer cap; excess is dropped and counted (call under _lock).
+        private static void AddBounded<T>(List<T> list, T item, int cap, ref long dropped)
+        {
+            if (list.Count >= cap)
+            {
+                dropped++;
+                return;
+            }
+            list.Add(item);
+        }
+
         public async Task FlushAsync(CancellationToken cancellationToken = default)
         {
             if (!IsEnabled)
@@ -612,17 +637,27 @@ namespace GitHub.Runner.Worker
                 JobMetrics metrics;
                 List<TaskMetric> tasks;
                 List<KeyValuePair<string, object>> resource;
+                long droppedSpans, droppedLogs, droppedTasks;
                 lock (_lock)
                 {
                     spans = new List<OTelSpan>(_pendingSpans);
                     logs = new List<OTelLog>(_pendingLogs);
                     metrics = _jobMetrics;
                     tasks = new List<TaskMetric>(_taskMetrics);
+                    droppedSpans = _droppedSpans;
+                    droppedLogs = _droppedLogs;
+                    droppedTasks = _droppedTaskMetrics;
                     _pendingSpans.Clear();
                     _pendingLogs.Clear();
                     _jobMetrics = null;
                     _taskMetrics.Clear();
+                    _droppedSpans = _droppedLogs = _droppedTaskMetrics = 0;
                     resource = _resource;
+                }
+
+                if (droppedSpans + droppedLogs + droppedTasks > 0)
+                {
+                    Trace.Info($"OTel dropped over buffer cap (best-effort): {droppedSpans} span(s), {droppedLogs} log(s), {droppedTasks} task-metric(s)");
                 }
 
                 if (spans.Count > 0)
@@ -1276,6 +1311,11 @@ namespace GitHub.Runner.Worker
         internal int PendingSpanCountForTest
         {
             get { lock (_lock) { return _pendingSpans.Count; } }
+        }
+
+        internal long DroppedSpanCountForTest
+        {
+            get { lock (_lock) { return _droppedSpans; } }
         }
 
         internal int PendingLogCountForTest
