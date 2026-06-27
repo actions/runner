@@ -163,6 +163,25 @@ namespace GitHub.Runner.Worker
             await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
         }
 
+        // Sub-span for a container operation (pull/create), nested under the
+        // "Initialize containers" step so per-container image-pull/create latency is visible.
+        private void RecordContainerSpan(IExecutionContext executionContext, string name, DateTime start, int exitCode, string image)
+        {
+            HostContext.GetService<IOTelTraceExporter>().RecordSpan(
+                name,
+                "container",
+                start,
+                DateTime.UtcNow,
+                new Dictionary<string, string>
+                {
+                    ["container.image.name"] = image,
+                    ["process.exit_code"] = exitCode.ToString(),
+                    ["cicd.pipeline.task.run.result"] = exitCode == 0 ? "success" : "failure",
+                },
+                parentStepName: executionContext.StepDisplayName,
+                parentStepNumber: executionContext.StepOrder);
+        }
+
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             Trace.Entering();
@@ -196,6 +215,7 @@ namespace GitHub.Runner.Worker
             var configLocation = await ContainerRegistryLogin(executionContext, container);
 
             // Pull down docker image with retry up to 3 times
+            var pullStart = DateTime.UtcNow;
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
@@ -219,6 +239,7 @@ namespace GitHub.Runner.Worker
 
             // Remove credentials after pulling
             ContainerRegistryLogout(configLocation);
+            RecordContainerSpan(executionContext, $"pull image: {container.ContainerImage}", pullStart, pullExitCode, container.ContainerImage);
 
             if (retryCount == 3 && pullExitCode != 0)
             {
@@ -230,11 +251,13 @@ namespace GitHub.Runner.Worker
                 MountWellKnownDirectories(executionContext, container);
             }
 
+            var createStart = DateTime.UtcNow;
             container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);
             ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
 
             // Start container
             int startExitCode = await _dockerManager.DockerStart(executionContext, container.ContainerId);
+            RecordContainerSpan(executionContext, $"create container: {container.ContainerImage}", createStart, startExitCode, container.ContainerImage);
             if (startExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker start fail with exit code {startExitCode}");
