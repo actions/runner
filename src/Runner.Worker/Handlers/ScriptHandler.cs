@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -347,7 +348,11 @@ namespace GitHub.Runner.Worker.Handlers
                 StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
                 // Execute
-                int exitCode = await StepHost.ExecuteAsync(ExecutionContext,
+                var processStart = DateTime.UtcNow;
+                int exitCode = -1;
+                try
+                {
+                    exitCode = await StepHost.ExecuteAsync(ExecutionContext,
                                             workingDirectory: StepHost.ResolvePathForStepHost(ExecutionContext, workingDirectory),
                                             fileName: fileName,
                                             arguments: arguments,
@@ -358,6 +363,25 @@ namespace GitHub.Runner.Worker.Handlers
                                             inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
                                             standardInInput: standardInInput,
                                             cancellationToken: ExecutionContext.CancellationToken);
+                }
+                finally
+                {
+                    // Sub-span for the actual command process, nested under the step span —
+                    // splits real command time from runner overhead within the step.
+                    HostContext.GetService<IOTelTraceExporter>().RecordSpan(
+                        $"process: {Path.GetFileName(fileName)}",
+                        "process",
+                        processStart,
+                        DateTime.UtcNow,
+                        new Dictionary<string, string>
+                        {
+                            ["process.executable.name"] = Path.GetFileName(fileName),
+                            ["process.exit_code"] = exitCode.ToString(),
+                            ["cicd.pipeline.task.run.result"] = exitCode == 0 ? "success" : "failure",
+                        },
+                        parentStepName: ExecutionContext.StepDisplayName,
+                        parentStepNumber: ExecutionContext.StepOrder);
+                }
 
                 // Error
                 if (exitCode != 0)
