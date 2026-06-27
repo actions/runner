@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -660,17 +662,23 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"OTel dropped over buffer cap (best-effort): {droppedSpans} span(s), {droppedLogs} log(s), {droppedTasks} task-metric(s)");
                 }
 
+                // One overall deadline across all signals (incl. retries) so flush never
+                // delays job completion by more than this, even if the collector is slow.
+                using var flushCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                flushCts.CancelAfter(TimeSpan.FromSeconds(4));
+                var flushToken = flushCts.Token;
+
                 if (spans.Count > 0)
                 {
-                    await PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", cancellationToken);
+                    await PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", flushToken);
                 }
                 if (logs.Count > 0)
                 {
-                    await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", cancellationToken);
+                    await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", flushToken);
                 }
                 if (metrics != null || tasks.Count > 0)
                 {
-                    await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", cancellationToken);
+                    await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", flushToken);
                 }
             }
             catch (Exception ex)
@@ -679,22 +687,55 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        // gzip the OTLP/JSON body. A job's spans/logs are highly repetitive, so this
+        // typically shrinks the payload ~10x (see otel-benchmarks.md) — less bandwidth and
+        // faster posts. CompressionLevel.Fastest keeps CPU negligible.
+        internal static byte[] GzipUtf8(string s)
+        {
+            var raw = Encoding.UTF8.GetBytes(s);
+            using var ms = new MemoryStream();
+            using (var gz = new GZipStream(ms, CompressionLevel.Fastest, leaveOpen: true))
+            {
+                gz.Write(raw, 0, raw.Length);
+            }
+            return ms.ToArray();
+        }
+
+        private static bool IsTransientStatus(int status) =>
+            status == 408 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504;
+
         private async Task PostAsync(string url, string json, string what, CancellationToken cancellationToken)
         {
             try
             {
-                using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                // Keep job completion snappy even when the collector is slow/unreachable.
-                cts.CancelAfter(TimeSpan.FromSeconds(2));
-                using var response = await _httpClient.PostAsync(url, content, cts.Token);
-                if (response.IsSuccessStatusCode)
+                var body = GzipUtf8(json);
+                // One retry on a transient failure, bounded by the caller's flush deadline.
+                for (var attempt = 1; attempt <= 2; attempt++)
                 {
-                    Trace.Info($"Exported {what} to {url}");
-                }
-                else
-                {
-                    Trace.Info($"OTel export rejected by collector (best-effort, ignored): HTTP {(int)response.StatusCode}");
+                    try
+                    {
+                        using var content = new ByteArrayContent(body);
+                        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                        content.Headers.ContentEncoding.Add("gzip");
+                        using var response = await _httpClient.PostAsync(url, content, cancellationToken);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Trace.Info($"Exported {what} to {url} ({body.Length} B gzip)");
+                            return;
+                        }
+                        if (attempt < 2 && IsTransientStatus((int)response.StatusCode) && !cancellationToken.IsCancellationRequested)
+                        {
+                            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+                            continue;
+                        }
+                        Trace.Info($"OTel export rejected by collector (best-effort, ignored): HTTP {(int)response.StatusCode}");
+                        return;
+                    }
+                    catch (Exception ex) when (attempt < 2 && ex is not OperationCanceledException && !cancellationToken.IsCancellationRequested)
+                    {
+                        Trace.Info($"OTel export attempt {attempt} failed, retrying: {ex.Message}");
+                        await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+                    }
                 }
             }
             catch (Exception ex)

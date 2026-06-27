@@ -102,6 +102,23 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.True(exporter.DroppedSpanCountForTest >= 50, $"expected >=50 dropped, got {exporter.DroppedSpanCountForTest}");
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void GzipUtf8_RoundTripsAndCompresses()
+        {
+            // Repetitive payload like real OTLP/JSON spans.
+            var json = string.Concat(System.Linq.Enumerable.Repeat(
+                "{\"key\":\"cicd.pipeline.task.name\",\"value\":{\"stringValue\":\"Build\"}},", 500));
+            var gz = OTelTraceExporter.GzipUtf8(json);
+
+            Assert.True(gz.Length < System.Text.Encoding.UTF8.GetByteCount(json) / 2, "expected >2x compression");
+            using var ms = new System.IO.MemoryStream(gz);
+            using var gs = new System.IO.Compression.GZipStream(ms, System.IO.Compression.CompressionMode.Decompress);
+            using var sr = new System.IO.StreamReader(gs);
+            Assert.Equal(json, sr.ReadToEnd());
+        }
+
         // ---- shared deterministic ID contract (golden values mirrored in otel-explorer) ----
 
         [Fact]
