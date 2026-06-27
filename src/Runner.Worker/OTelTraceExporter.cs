@@ -359,6 +359,7 @@ namespace GitHub.Runner.Worker
                     Name = stepName,
                     Type = "step",
                     Result = ToSemconvResult(ghConclusion),
+                    Attempt = job.RunAttemptRaw,
                     StartNano = span.StartTimeUnixNano,
                     EndNano = span.EndTimeUnixNano,
                     DurationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0),
@@ -443,6 +444,7 @@ namespace GitHub.Runner.Worker
                     EndNano = span.EndTimeUnixNano,
                     DurationSeconds = durationSeconds,
                     PipelineName = job.Workflow,
+                    Attempt = job.RunAttemptRaw,
                     Result = ToSemconvResult(ghConclusion),
                     Errors = ghConclusion == "failure" ? 1 : 0,
                 };
@@ -451,6 +453,7 @@ namespace GitHub.Runner.Worker
                     Name = job.JobName,
                     Type = "job",
                     Result = ToSemconvResult(ghConclusion),
+                    Attempt = job.RunAttemptRaw,
                     StartNano = span.StartTimeUnixNano,
                     EndNano = span.EndTimeUnixNano,
                     DurationSeconds = durationSeconds,
@@ -572,10 +575,10 @@ namespace GitHub.Runner.Worker
             env["TRACEPARENT"] = $"00-{traceId}-{spanId}-01";
             // Base endpoint (the OTel SDK appends /v1/traces, /v1/logs itself).
             env["OTEL_EXPORTER_OTLP_ENDPOINT"] = _baseUrl;
-            if (!string.IsNullOrEmpty(_rawHeaders))
-            {
-                env["OTEL_EXPORTER_OTLP_HEADERS"] = _rawHeaders;
-            }
+            // NOTE: deliberately do NOT propagate OTEL_EXPORTER_OTLP_HEADERS. It carries the
+            // collector credential; handing it to user step processes lets any step read and
+            // exfiltrate it. Steps that need to authenticate to the collector must be given a
+            // separate, scoped credential out of band.
             env["OTEL_RESOURCE_ATTRIBUTES"] =
                 $"service.name=github-actions-job,github.run_id={job.RunIdRaw},github.run_attempt={job.RunAttemptRaw},github.job={job.JobKey},github.repository={job.Repository}";
             return env;
@@ -600,35 +603,44 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
-            List<OTelSpan> spans;
-            List<OTelLog> logs;
-            JobMetrics metrics;
-            List<TaskMetric> tasks;
-            List<KeyValuePair<string, object>> resource;
-            lock (_lock)
+            // Export is best-effort and must NEVER affect the job: serialization or any
+            // other failure here is contained so it can't escape into job completion.
+            try
             {
-                spans = new List<OTelSpan>(_pendingSpans);
-                logs = new List<OTelLog>(_pendingLogs);
-                metrics = _jobMetrics;
-                tasks = new List<TaskMetric>(_taskMetrics);
-                _pendingSpans.Clear();
-                _pendingLogs.Clear();
-                _jobMetrics = null;
-                _taskMetrics.Clear();
-                resource = _resource;
-            }
+                List<OTelSpan> spans;
+                List<OTelLog> logs;
+                JobMetrics metrics;
+                List<TaskMetric> tasks;
+                List<KeyValuePair<string, object>> resource;
+                lock (_lock)
+                {
+                    spans = new List<OTelSpan>(_pendingSpans);
+                    logs = new List<OTelLog>(_pendingLogs);
+                    metrics = _jobMetrics;
+                    tasks = new List<TaskMetric>(_taskMetrics);
+                    _pendingSpans.Clear();
+                    _pendingLogs.Clear();
+                    _jobMetrics = null;
+                    _taskMetrics.Clear();
+                    resource = _resource;
+                }
 
-            if (spans.Count > 0)
-            {
-                await PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", cancellationToken);
+                if (spans.Count > 0)
+                {
+                    await PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", cancellationToken);
+                }
+                if (logs.Count > 0)
+                {
+                    await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", cancellationToken);
+                }
+                if (metrics != null || tasks.Count > 0)
+                {
+                    await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", cancellationToken);
+                }
             }
-            if (logs.Count > 0)
+            catch (Exception ex)
             {
-                await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", cancellationToken);
-            }
-            if (metrics != null || tasks.Count > 0)
-            {
-                await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", cancellationToken);
+                Trace.Info($"OTel flush failed (best-effort, ignored): {ex.Message}");
             }
         }
 
@@ -1057,6 +1069,7 @@ namespace GitHub.Runner.Worker
             public long EndNano;
             public double DurationSeconds;
             public string PipelineName;
+            public string Attempt;
             public string Result;
             public int Errors;
         }
@@ -1067,6 +1080,7 @@ namespace GitHub.Runner.Worker
             public string Name;
             public string Type;   // "job" | "step"
             public string Result; // semconv result (success|failure|skip|...)
+            public string Attempt;
             public double DurationSeconds;
             public long StartNano;
             public long EndNano;
@@ -1109,6 +1123,7 @@ namespace GitHub.Runner.Worker
                     WriteAttributes(w, new List<KeyValuePair<string, object>>
                     {
                         new("cicd.pipeline.name", m.PipelineName),
+                        new("cicd.pipeline.run.attempt", m.Attempt),
                         new("cicd.pipeline.result", m.Result),
                     });
                     w.WriteEndArray();
@@ -1142,6 +1157,7 @@ namespace GitHub.Runner.Worker
                         WriteAttributes(w, new List<KeyValuePair<string, object>>
                         {
                             new("cicd.pipeline.name", m.PipelineName),
+                            new("cicd.pipeline.run.attempt", m.Attempt),
                             new("error.type", "failure"),
                         });
                         w.WriteEndArray();
@@ -1172,6 +1188,7 @@ namespace GitHub.Runner.Worker
                         {
                             new("cicd.pipeline.task.name", task.Name),
                             new("cicd.pipeline.task.run.result", task.Result),
+                            new("cicd.pipeline.run.attempt", task.Attempt),
                             new("type", task.Type),
                         });
                         w.WriteEndArray();

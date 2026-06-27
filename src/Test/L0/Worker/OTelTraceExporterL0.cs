@@ -12,13 +12,16 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private const string EndpointEnv = "ACTIONS_RUNNER_OTLP_ENDPOINT";
         private const string PropagateEnv = "ACTIONS_RUNNER_OTLP_PROPAGATE";
+        private const string HeadersEnv = "ACTIONS_RUNNER_OTLP_HEADERS";
         private readonly string _originalEndpoint = Environment.GetEnvironmentVariable(EndpointEnv);
         private readonly string _originalPropagate = Environment.GetEnvironmentVariable(PropagateEnv);
+        private readonly string _originalHeaders = Environment.GetEnvironmentVariable(HeadersEnv);
 
         public void Dispose()
         {
             Environment.SetEnvironmentVariable(EndpointEnv, _originalEndpoint);
             Environment.SetEnvironmentVariable(PropagateEnv, _originalPropagate);
+            Environment.SetEnvironmentVariable(HeadersEnv, _originalHeaders);
         }
 
         private OTelTraceExporter Enabled(TestHostContext hc, string endpoint = "http://localhost:4318")
@@ -29,6 +32,55 @@ namespace GitHub.Runner.Common.Tests.Worker
             var exporter = new OTelTraceExporter();
             exporter.Initialize(hc);
             return exporter;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StepPropagationEnv_DoesNotLeakAuthHeaders()
+        {
+            Environment.SetEnvironmentVariable(HeadersEnv, "authorization=Bearer super-secret-token");
+            Environment.SetEnvironmentVariable(PropagateEnv, "true");
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+
+            var env = exporter.StepPropagationEnv("Build", 1);
+
+            // The trace context + endpoint are safe to hand to step processes.
+            Assert.True(env.ContainsKey("TRACEPARENT"));
+            Assert.True(env.ContainsKey("OTEL_EXPORTER_OTLP_ENDPOINT"));
+            // The collector auth header is a credential and must NOT reach user step env.
+            Assert.False(env.ContainsKey("OTEL_EXPORTER_OTLP_HEADERS"));
+            Assert.DoesNotContain(env.Values, v => v != null && v.Contains("super-secret-token"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Metrics_CarryRunAttempt()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "2", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordStepCompletion("Build", 1, t, t.AddSeconds(2), TaskResult.Succeeded, "node20", null, null);
+            exporter.RecordJobCompletion(t, t.AddSeconds(9), TaskResult.Succeeded);
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
+            var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
+            foreach (var m in metrics.EnumerateArray())
+            {
+                var name = m.GetProperty("name").GetString();
+                var pts = m.TryGetProperty("histogram", out var h) ? h.GetProperty("dataPoints")
+                        : m.GetProperty("sum").GetProperty("dataPoints");
+                foreach (var dp in pts.EnumerateArray())
+                {
+                    var a = ReadAttrsFrom(dp);
+                    Assert.True(a.ContainsKey("cicd.pipeline.run.attempt"), $"{name} missing run.attempt");
+                    Assert.Equal("2", a["cicd.pipeline.run.attempt"]);
+                }
+            }
         }
 
         // ---- shared deterministic ID contract (golden values mirrored in otel-explorer) ----
