@@ -87,7 +87,7 @@ namespace GitHub.Runner.Worker
         // operator's endpoint opt-in works on self-hosted/GHES where the flag isn't
         // provisioned; GitHub can send false to disable export fleet-wide.
         private bool _featureEnabled = true;
-        private HttpClient _httpClient;
+        private OTelHttpTransport _transport;
         private JobInfo _jobInfo;
         private List<KeyValuePair<string, object>> _resource = DefaultResource();
 
@@ -141,11 +141,10 @@ namespace GitHub.Runner.Worker
                 handler.ServerCertificateCustomValidationCallback =
                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             }
-            _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
-
             // Optional collector auth headers, e.g.
             //   ACTIONS_RUNNER_OTLP_HEADERS="authorization=Bearer xyz,x-api-key=abc"
             _rawHeaders = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders);
+            var headers = new List<KeyValuePair<string, string>>();
             if (!string.IsNullOrEmpty(_rawHeaders))
             {
                 foreach (var pair in _rawHeaders.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -158,9 +157,10 @@ namespace GitHub.Runner.Worker
                     var value = pair.Substring(eq + 1).Trim();
                     // Header values are commonly auth tokens; register so they're masked if ever logged.
                     HostContext.SecretMasker.AddValue(value);
-                    _httpClient.DefaultRequestHeaders.TryAddWithoutValidation(pair.Substring(0, eq).Trim(), value);
+                    headers.Add(new KeyValuePair<string, string>(pair.Substring(0, eq).Trim(), value));
                 }
             }
+            _transport = new OTelHttpTransport(handler, headers, msg => Trace.Info(msg));
             Trace.Info($"Native OTel export enabled, endpoint: {_endpoint}");
         }
 
@@ -703,118 +703,20 @@ namespace GitHub.Runner.Worker
 
                 if (spans.Count > 0)
                 {
-                    await PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", flushToken);
+                    await _transport.PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", flushToken);
                 }
                 if (logs.Count > 0)
                 {
-                    await PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", flushToken);
+                    await _transport.PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", flushToken);
                 }
                 if (metrics != null || tasks.Count > 0)
                 {
-                    await PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", flushToken);
+                    await _transport.PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", flushToken);
                 }
             }
             catch (Exception ex)
             {
                 Trace.Info($"OTel flush failed (best-effort, ignored): {ex.Message}");
-            }
-        }
-
-        // gzip the OTLP/JSON body. A job's spans/logs are highly repetitive, so this
-        // typically shrinks the payload ~10x (see otel-benchmarks.md) — less bandwidth and
-        // faster posts. CompressionLevel.Fastest keeps CPU negligible.
-        internal static byte[] GzipUtf8(string s)
-        {
-            var raw = Encoding.UTF8.GetBytes(s);
-            using var ms = new MemoryStream();
-            using (var gz = new GZipStream(ms, CompressionLevel.Fastest, leaveOpen: true))
-            {
-                gz.Write(raw, 0, raw.Length);
-            }
-            return ms.ToArray();
-        }
-
-        // OTLP partial success: a 200 response may carry
-        // {"partialSuccess":{"rejectedSpans":"N",...,"errorMessage":"..."}}. Returns a
-        // short description when items were rejected, else null. Best-effort; never throws.
-        internal static string DescribePartialSuccess(string responseBody)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(responseBody) || !responseBody.Contains("partialSuccess")) return null;
-                using var doc = JsonDocument.Parse(responseBody);
-                if (!doc.RootElement.TryGetProperty("partialSuccess", out var ps)) return null;
-                long rejected = 0;
-                foreach (var key in new[] { "rejectedSpans", "rejectedDataPoints", "rejectedLogRecords" })
-                {
-                    if (ps.TryGetProperty(key, out var v))
-                    {
-                        if (v.ValueKind == JsonValueKind.Number) rejected += v.GetInt64();
-                        else if (v.ValueKind == JsonValueKind.String && long.TryParse(v.GetString(), out var n)) rejected += n;
-                    }
-                }
-                var msg = ps.TryGetProperty("errorMessage", out var em) ? em.GetString() : null;
-                if (rejected > 0 || !string.IsNullOrEmpty(msg)) return $"{rejected} rejected: {msg}";
-                return null;
-            }
-            catch { return null; }
-        }
-
-        private static async Task<string> ReadPartialSuccessAsync(HttpResponseMessage response, CancellationToken ct)
-        {
-            try { return DescribePartialSuccess(await response.Content.ReadAsStringAsync(ct)); }
-            catch { return null; }
-        }
-
-        private static bool IsTransientStatus(int status) =>
-            status == 408 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504;
-
-        private async Task PostAsync(string url, string json, string what, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var body = GzipUtf8(json);
-                // One retry on a transient failure, bounded by the caller's flush deadline.
-                for (var attempt = 1; attempt <= 2; attempt++)
-                {
-                    try
-                    {
-                        using var content = new ByteArrayContent(body);
-                        content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                        content.Headers.ContentEncoding.Add("gzip");
-                        using var response = await _httpClient.PostAsync(url, content, cancellationToken);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            // OTLP partial success: a 200 can still report rejected items.
-                            var partial = await ReadPartialSuccessAsync(response, cancellationToken);
-                            if (!string.IsNullOrEmpty(partial))
-                            {
-                                Trace.Info($"OTel export partially rejected (best-effort, ignored): {partial}");
-                            }
-                            else
-                            {
-                                Trace.Info($"Exported {what} to {url} ({body.Length} B gzip)");
-                            }
-                            return;
-                        }
-                        if (attempt < 2 && IsTransientStatus((int)response.StatusCode) && !cancellationToken.IsCancellationRequested)
-                        {
-                            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
-                            continue;
-                        }
-                        Trace.Info($"OTel export rejected by collector (best-effort, ignored): HTTP {(int)response.StatusCode}");
-                        return;
-                    }
-                    catch (Exception ex) when (attempt < 2 && ex is not OperationCanceledException && !cancellationToken.IsCancellationRequested)
-                    {
-                        Trace.Info($"OTel export attempt {attempt} failed, retrying: {ex.Message}");
-                        await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Info($"OTel export failed (best-effort, ignored): {ex.Message}");
             }
         }
 

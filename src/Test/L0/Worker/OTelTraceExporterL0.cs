@@ -135,7 +135,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Repetitive payload like real OTLP/JSON spans.
             var json = string.Concat(System.Linq.Enumerable.Repeat(
                 "{\"key\":\"cicd.pipeline.task.name\",\"value\":{\"stringValue\":\"Build\"}},", 500));
-            var gz = OTelTraceExporter.GzipUtf8(json);
+            var gz = OTelHttpTransport.GzipUtf8(json);
 
             Assert.True(gz.Length < System.Text.Encoding.UTF8.GetByteCount(json) / 2, "expected >2x compression");
             using var ms = new System.IO.MemoryStream(gz);
@@ -162,9 +162,9 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void DescribePartialSuccess_FlagsRejectedItems()
         {
-            Assert.Null(OTelTraceExporter.DescribePartialSuccess("{}"));
-            Assert.Null(OTelTraceExporter.DescribePartialSuccess("{\"partialSuccess\":{}}"));
-            var s = OTelTraceExporter.DescribePartialSuccess("{\"partialSuccess\":{\"rejectedSpans\":\"3\",\"errorMessage\":\"bad batch\"}}");
+            Assert.Null(OTelHttpTransport.DescribePartialSuccess("{}"));
+            Assert.Null(OTelHttpTransport.DescribePartialSuccess("{\"partialSuccess\":{}}"));
+            var s = OTelHttpTransport.DescribePartialSuccess("{\"partialSuccess\":{\"rejectedSpans\":\"3\",\"errorMessage\":\"bad batch\"}}");
             Assert.NotNull(s);
             Assert.Contains("3 rejected", s);
         }
