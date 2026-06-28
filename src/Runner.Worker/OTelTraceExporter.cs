@@ -1197,8 +1197,40 @@ namespace GitHub.Runner.Worker
             public long EndNano;
         }
 
-        // OTLP/JSON metrics: cicd.pipeline.run.duration (histogram) + cicd.pipeline.run.errors
-        // (counter) + cicd.pipeline.task.duration (histogram, one point per job/step).
+        // Explicit duration buckets (seconds) so the collector can aggregate real
+        // percentiles across runs, instead of an empty-bounds (single implicit bucket)
+        // histogram. Mirrors what the collector's spanmetrics connector would emit.
+        private static readonly double[] s_durationBucketsSeconds = { 1, 2.5, 5, 10, 30, 60, 120, 300, 600, 1800 };
+
+        // Write a histogram dataPoint body for ONE duration observation: places it in the
+        // right explicit bucket so cumulative aggregation in the collector is meaningful.
+        private static void WriteSingleObservationHistogram(Utf8JsonWriter w, double seconds, long startNano, long endNano)
+        {
+            var bounds = s_durationBucketsSeconds;
+            var bucket = bounds.Length; // overflow bucket unless an upper bound matches
+            for (var i = 0; i < bounds.Length; i++)
+            {
+                if (seconds <= bounds[i]) { bucket = i; break; }
+            }
+            w.WriteString("startTimeUnixNano", startNano.ToString(CultureInfo.InvariantCulture));
+            w.WriteString("timeUnixNano", endNano.ToString(CultureInfo.InvariantCulture));
+            w.WriteString("count", "1");
+            w.WriteNumber("sum", seconds);
+            w.WriteStartArray("bucketCounts");
+            for (var i = 0; i <= bounds.Length; i++) { w.WriteStringValue(i == bucket ? "1" : "0"); }
+            w.WriteEndArray();
+            w.WriteStartArray("explicitBounds");
+            foreach (var b in bounds) { w.WriteNumberValue(b); }
+            w.WriteEndArray();
+            w.WriteNumber("min", seconds);
+            w.WriteNumber("max", seconds);
+        }
+
+        // OTLP/JSON metrics: github.pipeline.run.duration (histogram) + github.pipeline.run.errors
+        // (counter) + github.pipeline.task.duration (histogram, one point per job/step). Vendor
+        // (github.*) namespace deliberately — these are not registered cicd.* semconv metrics.
+        // CUMULATIVE temporality is valid: each per-run process exports one point with its own
+        // startTimeUnixNano; the collector aggregates across runs.
         private string BuildOTLPMetricsJson(JobMetrics m, List<TaskMetric> tasks, List<KeyValuePair<string, object>> resource)
         {
             using var stream = new MemoryStream();
@@ -1222,9 +1254,9 @@ namespace GitHub.Runner.Worker
 
                 if (m != null)
                 {
-                    // cicd.pipeline.run.duration — histogram with a single observation.
+                    // github.pipeline.run.duration — histogram with a single observation.
                     w.WriteStartObject();
-                    w.WriteString("name", "cicd.pipeline.run.duration");
+                    w.WriteString("name", "github.pipeline.run.duration");
                     w.WriteString("unit", "s");
                     w.WriteStartObject("histogram");
                     w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
@@ -1234,21 +1266,11 @@ namespace GitHub.Runner.Worker
                     WriteAttributes(w, new List<KeyValuePair<string, object>>
                     {
                         new("cicd.pipeline.name", m.PipelineName),
-                        new("cicd.pipeline.run.attempt", m.Attempt),
+                        new("github.run_attempt", m.Attempt),
                         new("cicd.pipeline.result", m.Result),
                     });
                     w.WriteEndArray();
-                    w.WriteString("startTimeUnixNano", m.StartNano.ToString(CultureInfo.InvariantCulture));
-                    w.WriteString("timeUnixNano", m.EndNano.ToString(CultureInfo.InvariantCulture));
-                    w.WriteString("count", "1");
-                    w.WriteNumber("sum", m.DurationSeconds);
-                    w.WriteStartArray("bucketCounts");
-                    w.WriteStringValue("1");
-                    w.WriteEndArray();
-                    w.WriteStartArray("explicitBounds");
-                    w.WriteEndArray();
-                    w.WriteNumber("min", m.DurationSeconds);
-                    w.WriteNumber("max", m.DurationSeconds);
+                    WriteSingleObservationHistogram(w, m.DurationSeconds, m.StartNano, m.EndNano);
                     w.WriteEndObject();
                     w.WriteEndArray();
                     w.WriteEndObject(); // histogram
@@ -1257,7 +1279,7 @@ namespace GitHub.Runner.Worker
                     if (m.Errors > 0)
                     {
                         w.WriteStartObject();
-                        w.WriteString("name", "cicd.pipeline.run.errors");
+                        w.WriteString("name", "github.pipeline.run.errors");
                         w.WriteString("unit", "{error}");
                         w.WriteStartObject("sum");
                         w.WriteNumber("aggregationTemporality", 2);
@@ -1268,7 +1290,7 @@ namespace GitHub.Runner.Worker
                         WriteAttributes(w, new List<KeyValuePair<string, object>>
                         {
                             new("cicd.pipeline.name", m.PipelineName),
-                            new("cicd.pipeline.run.attempt", m.Attempt),
+                            new("github.run_attempt", m.Attempt),
                             new("error.type", "failure"),
                         });
                         w.WriteEndArray();
@@ -1282,11 +1304,11 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                // cicd.pipeline.task.duration — histogram with one observation per job/step.
+                // github.pipeline.task.duration — histogram with one observation per job/step.
                 if (tasks != null && tasks.Count > 0)
                 {
                     w.WriteStartObject();
-                    w.WriteString("name", "cicd.pipeline.task.duration");
+                    w.WriteString("name", "github.pipeline.task.duration");
                     w.WriteString("unit", "s");
                     w.WriteStartObject("histogram");
                     w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
@@ -1299,21 +1321,11 @@ namespace GitHub.Runner.Worker
                         {
                             new("cicd.pipeline.task.name", task.Name),
                             new("cicd.pipeline.task.run.result", task.Result),
-                            new("cicd.pipeline.run.attempt", task.Attempt),
-                            new("type", task.Type),
+                            new("github.run_attempt", task.Attempt),
+                            new("github.record_type", task.Type),
                         });
                         w.WriteEndArray();
-                        w.WriteString("startTimeUnixNano", task.StartNano.ToString(CultureInfo.InvariantCulture));
-                        w.WriteString("timeUnixNano", task.EndNano.ToString(CultureInfo.InvariantCulture));
-                        w.WriteString("count", "1");
-                        w.WriteNumber("sum", task.DurationSeconds);
-                        w.WriteStartArray("bucketCounts");
-                        w.WriteStringValue("1");
-                        w.WriteEndArray();
-                        w.WriteStartArray("explicitBounds");
-                        w.WriteEndArray();
-                        w.WriteNumber("min", task.DurationSeconds);
-                        w.WriteNumber("max", task.DurationSeconds);
+                        WriteSingleObservationHistogram(w, task.DurationSeconds, task.StartNano, task.EndNano);
                         w.WriteEndObject();
                     }
                     w.WriteEndArray();

@@ -77,10 +77,35 @@ namespace GitHub.Runner.Common.Tests.Worker
                 foreach (var dp in pts.EnumerateArray())
                 {
                     var a = ReadAttrsFrom(dp);
-                    Assert.True(a.ContainsKey("cicd.pipeline.run.attempt"), $"{name} missing run.attempt");
-                    Assert.Equal("2", a["cicd.pipeline.run.attempt"]);
+                    Assert.True(a.ContainsKey("github.run_attempt"), $"{name} missing run.attempt");
+                    Assert.Equal("2", a["github.run_attempt"]);
                 }
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void DurationHistogram_HasExplicitBucketsNotEmptyBounds()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordJobCompletion(t, t.AddSeconds(9), TaskResult.Succeeded); // 9s -> (5,10] bucket
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
+            var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
+            Assert.Equal("github.pipeline.run.duration", metrics[0].GetProperty("name").GetString());
+            var dp = metrics[0].GetProperty("histogram").GetProperty("dataPoints")[0];
+            var bounds = dp.GetProperty("explicitBounds");
+            var buckets = dp.GetProperty("bucketCounts");
+            Assert.True(bounds.GetArrayLength() > 0, "duration histogram must have explicit bounds (not empty)");
+            Assert.Equal(bounds.GetArrayLength() + 1, buckets.GetArrayLength()); // OTLP histogram invariant
+            var total = 0;
+            foreach (var b in buckets.EnumerateArray()) total += int.Parse(b.GetString());
+            Assert.Equal(1, total);                                   // the single observation, bucketed
+            Assert.Equal(9.0, dp.GetProperty("sum").GetDouble());
         }
 
         [Fact]
@@ -758,7 +783,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
             var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
             var dur = metrics[0];
-            Assert.Equal("cicd.pipeline.run.duration", dur.GetProperty("name").GetString());
+            Assert.Equal("github.pipeline.run.duration", dur.GetProperty("name").GetString());
             var dp = dur.GetProperty("histogram").GetProperty("dataPoints")[0];
             Assert.Equal(9.0, dp.GetProperty("sum").GetDouble());
             var durAttrs = ReadAttrsFrom(dp);
@@ -766,7 +791,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("CI", durAttrs["cicd.pipeline.name"]);
 
             var err = metrics[1];
-            Assert.Equal("cicd.pipeline.run.errors", err.GetProperty("name").GetString());
+            Assert.Equal("github.pipeline.run.errors", err.GetProperty("name").GetString());
             Assert.Equal("1", err.GetProperty("sum").GetProperty("dataPoints")[0].GetProperty("asInt").GetString());
         }
 
@@ -784,8 +809,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
             // run.duration + the job's task.duration (no errors counter on success).
             Assert.Equal(2, metrics.GetArrayLength());
-            Assert.Equal("cicd.pipeline.run.duration", metrics[0].GetProperty("name").GetString());
-            Assert.Equal("cicd.pipeline.task.duration", metrics[1].GetProperty("name").GetString());
+            Assert.Equal("github.pipeline.run.duration", metrics[0].GetProperty("name").GetString());
+            Assert.Equal("github.pipeline.task.duration", metrics[1].GetProperty("name").GetString());
         }
 
         [Fact]
@@ -806,15 +831,15 @@ namespace GitHub.Runner.Common.Tests.Worker
             JsonElement taskDur = default; var found = false;
             foreach (var m in metrics.EnumerateArray())
             {
-                if (m.GetProperty("name").GetString() == "cicd.pipeline.task.duration") { taskDur = m; found = true; }
+                if (m.GetProperty("name").GetString() == "github.pipeline.task.duration") { taskDur = m; found = true; }
             }
-            Assert.True(found, "expected cicd.pipeline.task.duration metric");
+            Assert.True(found, "expected github.pipeline.task.duration metric");
 
             var byName = new System.Collections.Generic.Dictionary<string, (string type, string result, double sum)>();
             foreach (var dp in taskDur.GetProperty("histogram").GetProperty("dataPoints").EnumerateArray())
             {
                 var a = ReadAttrsFrom(dp);
-                byName[a["cicd.pipeline.task.name"]] = (a["type"], a["cicd.pipeline.task.run.result"], dp.GetProperty("sum").GetDouble());
+                byName[a["cicd.pipeline.task.name"]] = (a["github.record_type"], a["cicd.pipeline.task.run.result"], dp.GetProperty("sum").GetDouble());
             }
             Assert.Equal(3, byName.Count);                       // 2 steps + the job
             Assert.Equal(("step", "success", 2.0), byName["Build"]);
