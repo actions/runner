@@ -1107,7 +1107,8 @@ namespace GitHub.Runner.Worker
                     },
                     // Action resolution runs inside this step (e.g. "Set up job") — nest under it.
                     parentStepName: executionContext.StepDisplayName,
-                    parentStepNumber: executionContext.StepOrder);
+                    parentStepNumber: executionContext.StepOrder,
+                    spanKind: 3); // CLIENT — a network download
             }
         }
 

@@ -179,7 +179,8 @@ namespace GitHub.Runner.Worker
                     ["cicd.pipeline.task.run.result"] = exitCode == 0 ? "success" : "failure",
                 },
                 parentStepName: executionContext.StepDisplayName,
-                parentStepNumber: executionContext.StepOrder);
+                parentStepNumber: executionContext.StepOrder,
+                spanKind: 3); // CLIENT — container registry/daemon ops
         }
 
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)

@@ -28,7 +28,7 @@ namespace GitHub.Runner.Worker
         void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0, string errorMessage = null);
         // Generic child span for finer-grained timing, e.g. action download. Parents to the
         // given step (when the operation runs inside one, e.g. "Set up job"), else the job.
-        void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0);
+        void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0, int spanKind = 1);
         // OTel log record correlated to a step span (step issues/annotations).
         void RecordStepLog(string stepName, int? stepNumber, string severityText, string message);
         // W3C trace context + OTEL_* to inject into a step's env so in-job tools nest under the step span.
@@ -46,12 +46,10 @@ namespace GitHub.Runner.Worker
     /// POSTed to {endpoint}/v1/traces. Export is best-effort — failures are logged
     /// and swallowed, never affecting job execution.
     ///
-    /// Shared ID contract (mirrored in otel-explorer pkg/githubapi/ids.go):
-    ///   traceID  = sha256("{run_id}-{run_attempt}")                                  (16 bytes)
-    ///   workflow = bigendian(run_id)                                              (8 bytes)
-    ///   job      = sha256("job-{run_id}-{run_attempt}-{job_name}")[:8]               (8 bytes)
-    ///   step     = sha256("step-{run_id}-{run_attempt}-{job_name}-{step_name}")[:8]  (8 bytes)
-    /// Parent links: step -> job -> workflow.
+    /// The job span is the trace root; steps are its children. The deterministic-ID
+    /// contract (SHA-256 of run/job/step identifiers, truncated to 16/8 bytes) is
+    /// specified normatively in docs/otel-id-contract.md so consumers can reconstruct
+    /// and de-dupe the same trace; otel-explorer is one example consumer.
     /// </summary>
     public sealed class OTelTraceExporter : RunnerService, IOTelTraceExporter
     {
@@ -348,7 +346,7 @@ namespace GitHub.Runner.Worker
                 var runUrl = $"{job.ServerUrl}/{job.Repository}/actions/runs/{job.RunIdRaw}";
                 var stepUrl = $"{runUrl}/attempts/{job.RunAttemptRaw}#step:{stepNumber ?? 0}:1";
 
-                span.Set("type", "step");
+                span.Set("github.record_type", "step");
                 AddCommonContext(span, job);
                 span.Set("github.step_number", (long)(stepNumber ?? 0));
                 span.Set("github.conclusion", ghConclusion);
@@ -436,7 +434,7 @@ namespace GitHub.Runner.Worker
                     EndTimeUnixNano = ToUnixNano(endTime ?? DateTime.UtcNow),
                 };
 
-                span.Set("type", "job");
+                span.Set("github.record_type", "job");
                 AddInboundParentLink(span);
                 AddCommonContext(span, job);
                 span.Set("github.conclusion", ghConclusion);
@@ -491,7 +489,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0)
+        public void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0, int spanKind = 1)
         {
             if (!IsEnabled || string.IsNullOrEmpty(name))
             {
@@ -521,11 +519,11 @@ namespace GitHub.Runner.Worker
                     SpanId = NewSpanIDFromString($"{spanType}-{job.RunId}-{job.RunAttempt}-{job.JobName}-{name}-{startNano}"),
                     ParentSpanId = parentSpanId,
                     Name = name,
-                    Kind = 1,
+                    Kind = spanKind,
                     StartTimeUnixNano = startNano,
                     EndTimeUnixNano = ToUnixNano(endTime),
                 };
-                span.Set("type", spanType);
+                span.Set("github.record_type", spanType);
                 AddCommonContext(span, job);
                 // task.name marks this as a child task (not a root pipeline) for enrichers.
                 span.Set("cicd.pipeline.task.name", name);
@@ -736,6 +734,38 @@ namespace GitHub.Runner.Worker
             return ms.ToArray();
         }
 
+        // OTLP partial success: a 200 response may carry
+        // {"partialSuccess":{"rejectedSpans":"N",...,"errorMessage":"..."}}. Returns a
+        // short description when items were rejected, else null. Best-effort; never throws.
+        internal static string DescribePartialSuccess(string responseBody)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(responseBody) || !responseBody.Contains("partialSuccess")) return null;
+                using var doc = JsonDocument.Parse(responseBody);
+                if (!doc.RootElement.TryGetProperty("partialSuccess", out var ps)) return null;
+                long rejected = 0;
+                foreach (var key in new[] { "rejectedSpans", "rejectedDataPoints", "rejectedLogRecords" })
+                {
+                    if (ps.TryGetProperty(key, out var v))
+                    {
+                        if (v.ValueKind == JsonValueKind.Number) rejected += v.GetInt64();
+                        else if (v.ValueKind == JsonValueKind.String && long.TryParse(v.GetString(), out var n)) rejected += n;
+                    }
+                }
+                var msg = ps.TryGetProperty("errorMessage", out var em) ? em.GetString() : null;
+                if (rejected > 0 || !string.IsNullOrEmpty(msg)) return $"{rejected} rejected: {msg}";
+                return null;
+            }
+            catch { return null; }
+        }
+
+        private static async Task<string> ReadPartialSuccessAsync(HttpResponseMessage response, CancellationToken ct)
+        {
+            try { return DescribePartialSuccess(await response.Content.ReadAsStringAsync(ct)); }
+            catch { return null; }
+        }
+
         private static bool IsTransientStatus(int status) =>
             status == 408 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504;
 
@@ -755,7 +785,16 @@ namespace GitHub.Runner.Worker
                         using var response = await _httpClient.PostAsync(url, content, cancellationToken);
                         if (response.IsSuccessStatusCode)
                         {
-                            Trace.Info($"Exported {what} to {url} ({body.Length} B gzip)");
+                            // OTLP partial success: a 200 can still report rejected items.
+                            var partial = await ReadPartialSuccessAsync(response, cancellationToken);
+                            if (!string.IsNullOrEmpty(partial))
+                            {
+                                Trace.Info($"OTel export partially rejected (best-effort, ignored): {partial}");
+                            }
+                            else
+                            {
+                                Trace.Info($"Exported {what} to {url} ({body.Length} B gzip)");
+                            }
                             return;
                         }
                         if (attempt < 2 && IsTransientStatus((int)response.StatusCode) && !cancellationToken.IsCancellationRequested)
@@ -1135,12 +1174,14 @@ namespace GitHub.Runner.Worker
                 w.WriteStartObject();
                 w.WriteStartObject("scope");
                 w.WriteString("name", "github.actions.runner");
+                if (!string.IsNullOrEmpty(_serviceVersion)) w.WriteString("version", _serviceVersion);
                 w.WriteEndObject();
                 w.WriteStartArray("logRecords");
                 foreach (var l in logs)
                 {
                     w.WriteStartObject();
                     w.WriteString("timeUnixNano", l.TimeUnixNano.ToString(CultureInfo.InvariantCulture));
+                    w.WriteString("observedTimeUnixNano", l.TimeUnixNano.ToString(CultureInfo.InvariantCulture));
                     w.WriteNumber("severityNumber", l.SeverityNumber);
                     w.WriteString("severityText", l.SeverityText);
                     w.WriteStartObject("body");
@@ -1154,8 +1195,10 @@ namespace GitHub.Runner.Worker
                     w.WriteEndObject();
                 }
                 w.WriteEndArray();
+                w.WriteString("schemaUrl", SchemaUrl);
                 w.WriteEndObject();
                 w.WriteEndArray();
+                w.WriteString("schemaUrl", SchemaUrl);
                 w.WriteEndObject();
                 w.WriteEndArray();
                 w.WriteEndObject();

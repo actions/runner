@@ -144,6 +144,48 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal(json, sr.ReadToEnd());
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecordSpan_HonorsClientSpanKind()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordSpan("pull image: alpine", "container", t, t.AddSeconds(1), null, spanKind: 3); // CLIENT
+            Assert.Equal(3, SpanAt(exporter, 0).GetProperty("kind").GetInt32());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void DescribePartialSuccess_FlagsRejectedItems()
+        {
+            Assert.Null(OTelTraceExporter.DescribePartialSuccess("{}"));
+            Assert.Null(OTelTraceExporter.DescribePartialSuccess("{\"partialSuccess\":{}}"));
+            var s = OTelTraceExporter.DescribePartialSuccess("{\"partialSuccess\":{\"rejectedSpans\":\"3\",\"errorMessage\":\"bad batch\"}}");
+            Assert.NotNull(s);
+            Assert.Contains("3 rejected", s);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Logs_HaveSchemaUrlAndObservedTime()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordStepLog("Run tests", 3, "Error", "boom");
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpLogsJsonForTest());
+            var scopeLogs = doc.RootElement.GetProperty("resourceLogs")[0].GetProperty("scopeLogs")[0];
+            Assert.Equal("https://opentelemetry.io/schemas/1.29.0", scopeLogs.GetProperty("schemaUrl").GetString());
+            var rec = scopeLogs.GetProperty("logRecords")[0];
+            Assert.True(rec.TryGetProperty("observedTimeUnixNano", out _));
+        }
+
         // ---- shared deterministic ID contract (golden values mirrored in otel-explorer) ----
 
         [Fact]
@@ -253,7 +295,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 foreach (var sp in spans.EnumerateArray())
                 {
                     var a = ReadAttrs(sp);
-                    if (a.TryGetValue("type", out var ty) && ty == "job") { job = sp; found = true; break; }
+                    if (a.TryGetValue("github.record_type", out var ty) && ty == "job") { job = sp; found = true; break; }
                 }
                 Assert.True(found);
                 // The runner's own trace stays deterministic; the upstream context is a LINK.
@@ -345,7 +387,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("Run tests", span.GetProperty("name").GetString());
 
             var attrs = ReadAttrs(span);
-            Assert.Equal("step", attrs["type"]);
+            Assert.Equal("step", attrs["github.record_type"]);
             Assert.False(attrs.ContainsKey("source")); // runner identified by scope, not a custom attr
             Assert.Equal("Run tests", attrs["cicd.pipeline.task.name"]);
             Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
@@ -395,7 +437,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             // The job is the root of the runner's trace: no parentSpanId pointing at a
             // workflow/run span the runner never emits (that was a dangling parent).
             Assert.False(span.TryGetProperty("parentSpanId", out _));
-            Assert.Equal("job", ReadAttrs(span)["type"]);
+            Assert.Equal("job", ReadAttrs(span)["github.record_type"]);
         }
 
         [Fact]
@@ -611,7 +653,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var span = SpanAt(exporter, 0);
             Assert.Equal("81606d47848a59c0", span.GetProperty("parentSpanId").GetString()); // job span (no parent step given)
             var attrs = ReadAttrs(span);
-            Assert.Equal("action_download", attrs["type"]);
+            Assert.Equal("action_download", attrs["github.record_type"]);
             Assert.Equal("actions/checkout", attrs["github.action"]);
             // Action-resolution spans now carry a result like every other task span.
             Assert.Equal("success", attrs["cicd.pipeline.task.run.result"]);
