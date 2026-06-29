@@ -60,7 +60,7 @@ namespace GitHub.Runner.Common
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new();
-        private readonly ISecretMasker _secretMasker = new SecretMasker();
+        private readonly ISecretMasker _secretMasker = new SecretMasker(new RunnerSecretRegistrationNotifier());
         private readonly List<ProductInfoHeaderValue> _userAgents = new() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
         private CancellationTokenSource _runnerShutdownTokenSource = new();
         private object _perfLock = new();
