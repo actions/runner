@@ -5,8 +5,12 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG RUNNER_VERSION
 ARG RUNNER_CONTAINER_HOOKS_VERSION=0.7.0
-ARG DOCKER_VERSION=29.6.0
+ARG DOCKER_VERSION=29.6.1
 ARG BUILDX_VERSION=0.35.0
+# Set to "false" to skip installing the in-image docker CLI/daemon, containerd,
+# runc and buildx. Consumers running ARC with a docker sidecar or host-socket
+# pattern don't need these binaries and otherwise inherit every CVE in them.
+ARG INSTALL_DOCKER_TOOLING=true
 
 RUN apt update -y && apt install curl unzip -y
 
@@ -25,16 +29,20 @@ RUN curl -f -L -o runner-container-hooks.zip https://github.com/actions/runner-c
     && unzip ./runner-container-hooks.zip -d ./k8s-novolume \
     && rm runner-container-hooks.zip
 
-RUN export RUNNER_ARCH=${TARGETARCH} \
-    && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
-    && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
-    && curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
-    && tar zxvf docker.tgz \
-    && rm -rf docker.tgz \
-    && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
-    "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
-    && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+# Always create the target dirs so the later COPY steps succeed even when the
+# docker tooling is skipped (empty dir copies are fine; a missing file is not).
+RUN mkdir -p docker /usr/local/lib/docker/cli-plugins \
+    && if [ "${INSTALL_DOCKER_TOOLING}" = "true" ]; then \
+        export RUNNER_ARCH=${TARGETARCH} ; \
+        if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi ; \
+        if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi ; \
+        curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
+        && tar zxvf docker.tgz \
+        && rm -rf docker.tgz \
+        && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
+        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
+        && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx ; \
+    fi
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-noble
 
@@ -65,8 +73,11 @@ RUN adduser --disabled-password --gecos "" --uid 1001 runner \
 WORKDIR /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
-COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+# Copy the whole cli-plugins dir (always present, possibly empty) rather than a
+# specific file, so the build doesn't fail when docker tooling is skipped.
+COPY --from=build /usr/local/lib/docker/cli-plugins /usr/local/lib/docker/cli-plugins
 
-RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
+RUN if [ -n "$(ls -A docker 2>/dev/null)" ]; then install -o root -g root -m 755 docker/* /usr/bin/ ; fi \
+    && rm -rf docker
 
 USER runner
