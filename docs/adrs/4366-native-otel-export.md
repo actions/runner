@@ -168,6 +168,14 @@ default only matters where the server doesn't know the flag, and there "on" is
 correct. **Export still requires the operator to set an endpoint** — an
 unprovisioned flag alone exports nothing.
 
+**Known convention deviation (needs maintainer sign-off):** every other
+`Constants.Runner.Features` gate in this repo defaults off (`?? false`); this
+is the sole `?? true`, for the reason above. If the conventional polarity is
+required, the equivalent is a negative flag (e.g.
+`actions_runner_otel_export_disabled`, `?? false`) — same behavior everywhere,
+conventional default. We'd rather take that rename in review than silently
+break the self-hosted/GHES opt-in with a positive `?? false`.
+
 ## Alternatives considered: OpenTelemetry .NET SDK
 
 The first question a maintainer will ask is *"why not just use the
