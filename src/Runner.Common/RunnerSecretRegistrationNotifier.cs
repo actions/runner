@@ -75,12 +75,7 @@ namespace GitHub.Runner.Common
                 socket.Connect(new HostVsockEndPoint(2, 9999));
                 return socket;
             }
-            catch (SocketException ex)
-            {
-                socket?.Dispose();
-                return null;
-            }
-            catch (Exception ex)
+            catch
             {
                 socket?.Dispose();
                 return null;
