@@ -28,13 +28,15 @@ signals for each job the runner executes.
 
 | Signal  | Endpoint      | Payload |
 |---------|---------------|---------|
-| Traces  | `/v1/traces`  | One **job span** (trace root) + one **step span** per top-level step + optional generic child spans (e.g. action download). |
+| Traces  | `/v1/traces`  | One **job span** (trace root) + one **step span** per top-level step + child spans for action downloads, per-container pull/create, and the `run:` step's process (with semconv `process.exit.code` as a typed int). Job/step spans are `INTERNAL` (semconv task runs); network-shaped child spans (downloads, registry/daemon ops) are `CLIENT`. |
 | Metrics | `/v1/metrics` | `cicd.pipeline.run.errors` (semconv monotonic counter, failures only), `github.pipeline.job.duration` (histogram), `github.pipeline.task.duration` (histogram, one point per job/step). Semconv names are adopted where the semantics match; the duration metrics stay vendor-namespaced because the worker observes one *job*, not the pipeline run — semconv `cicd.pipeline.run.duration` (whole-run duration by `cicd.pipeline.run.state`) can only be emitted correctly by the control plane, and semconv defines no task-level duration metric. |
 | Logs    | `/v1/logs`    | Job- and step-level annotations (`::warning::` / `::error::` / `::notice::`), each correlated to its span via `traceId`/`spanId`. |
 
 Runner identity is attached once as the OTLP **Resource**:
 `service.name=github-actions-runner`, `service.version`, `host.name`, `host.arch`,
-`os.type`, semconv `cicd.worker.{name,id}` + `cicd.system.component=agent`,
+`os.type` (arch/OS mapped to the semconv enum values — `amd64`/`arm64`,
+`linux`/`darwin`/`windows`), semconv `cicd.worker.{name,id}` +
+`cicd.system.component=agent`,
 `service.instance.id`, and `github.runner.{group,ephemeral}`. The standard
 `OTEL_RESOURCE_ATTRIBUTES` env var is honored and merged (so ARC can attach
 `k8s.*` via the Downward API), with explicitly-set keys taking precedence.
@@ -96,8 +98,12 @@ API-reconstructed trace).
 ### Transport
 
 - **OTLP/JSON over HTTP**, built with `Utf8JsonWriter` (correct escaping — a
-  control char in a step name can't invalidate the batch). No protobuf, no gRPC,
-  no SDK (see *Alternatives* below).
+  control char in a step name can't invalidate the batch). Attribute values are
+  serialized with the correct OTLP `AnyValue` wire types (string/bool/int/
+  double/array/bytes), not stringified. No protobuf, no gRPC, no SDK (see
+  *Alternatives* below). Requests identify themselves with a
+  `GitHubActionsRunner-OTLP-Exporter/{version}` `User-Agent`, so collector
+  operators can attribute and rate-limit the traffic.
 - **gzip** `Content-Encoding`. A job's spans/logs are highly repetitive, so this
   typically shrinks the body ~10x (see `docs/otel-benchmarks.md`);
   `CompressionLevel.Fastest` keeps CPU negligible. Always-on with no opt-out: the
@@ -132,9 +138,10 @@ API-reconstructed trace).
   resource values, log bodies — is run through the runner's `SecretMasker` before
   serialization, the same scrubbing applied to all other off-box telemetry.
   Collector auth-header values from `ACTIONS_RUNNER_OTLP_HEADERS` are registered
-  with the masker too, and the variable itself is scrubbed from the worker's
-  process env right after it is read — host step processes inherit that env, so
-  leaving it set would hand the raw credential to every step.
+  with the masker too (deliberately with **no minimum-length floor** — a short
+  credential is still a credential), and the variable itself is scrubbed from
+  the worker's process env right after it is read — host step processes inherit
+  that env, so leaving it set would hand the raw credential to every step.
 
 ### Lifecycle
 
@@ -230,10 +237,14 @@ Sub-alternatives rejected:
   deadline** across all three signals (including the retry), so a hung or
   unreachable collector can delay job completion by at most that (fast-fail
   errors like connection-refused cost far less); healthy-path cost is
-  milliseconds. It is **best-effort**: it cannot throw and cannot fail the job
-  (every failure path is caught and logged via `Trace`). A worker crash before
-  flush loses that job's un-flushed telemetry — acceptable, since telemetry must
-  never gate or fail real work.
+  milliseconds. It is **best-effort**: every exporter entry point
+  (`Initialize`, `SetResource`, `SetJobInfo`, `Record*`, `StepPropagationEnv`,
+  `FlushAsync`) is guarded — telemetry can never throw into the job. Failure is
+  not silent either: when any export POST fails or buffered data is dropped at
+  the caps, one end-of-job **Warning** summary says exactly what was lost, so
+  operators grep one line instead of correlating per-signal `_diag` entries. A
+  worker crash before flush loses that job's un-flushed telemetry — acceptable,
+  since telemetry must never gate or fail real work.
 - **(b) Sampling/cardinality is server/collector-controlled.** The runner emits
   **everything** for an enabled job (no client-side sampling); volume is governed
   by the server feature flag + the operator's endpoint opt-in, and any
@@ -309,6 +320,7 @@ export ACTIONS_RUNNER_OTLP_ENDPOINT=http://localhost:4318
   lands in trace `sha256("{run_id}-{N}")[:16]`, the same trace the API path
   reconstructs for that attempt.
 - The exporter is self-contained: if the OTLP wire format must evolve, only
-  `OTelTraceExporter` changes — no dependency churn.
+  `OTelTraceExporter` (serialization) and `OTelHttpTransport` (the extracted,
+  wire-tested HTTP component) change — no dependency churn.
 - The runner stays dependency-free of the OTel SDK, preserving its trim/AOT and
   supply-chain posture.
