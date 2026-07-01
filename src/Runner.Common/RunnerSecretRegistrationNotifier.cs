@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using Microsoft.Win32.SafeHandles;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using GitHub.DistributedTask.Logging;
 
 namespace GitHub.Runner.Common
 {
@@ -17,7 +15,6 @@ namespace GitHub.Runner.Common
         internal bool IsLinux { get; }
         private readonly Socket _vsock;
         private readonly object _vsockSendLock = new object();
-        private static readonly object _debugFileLock = new object();
 
         public RunnerSecretRegistrationNotifier()
         {
