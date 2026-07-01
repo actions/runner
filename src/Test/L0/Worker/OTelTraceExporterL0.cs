@@ -609,6 +609,26 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var ex = await Record.ExceptionAsync(() => exporter.FlushAsync(default));
             Assert.Null(ex);
+            // Failure is not silent: one end-of-job summary (logged at Warning) says
+            // what was lost, so a fleet operator can grep it instead of correlating
+            // per-signal Info lines across _diag files.
+            Assert.NotNull(exporter.LastFlushSummaryForTest);
+            Assert.Contains("failed", exporter.LastFlushSummaryForTest);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ExportSummary_NullWhenCleanAndDescriptiveOnLoss()
+        {
+            // Clean flush -> no summary line at all.
+            Assert.Null(OTelTraceExporter.BuildExportSummary(3, 0, 0, 0, 0));
+            // Failed POSTs and cap-drops each produce the single summary.
+            var s = OTelTraceExporter.BuildExportSummary(3, 2, 7, 0, 1);
+            Assert.Contains("2/3", s);
+            Assert.Contains("7 span(s)", s);
+            Assert.Contains("1 task-metric(s)", s);
+            Assert.NotNull(OTelTraceExporter.BuildExportSummary(3, 0, 0, 5, 0)); // drops alone warn too
         }
 
         // ---- TLS: custom CA trust (the safe primitive for self-signed collectors) ----

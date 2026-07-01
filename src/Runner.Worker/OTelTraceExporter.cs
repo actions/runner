@@ -106,6 +106,10 @@ namespace GitHub.Runner.Worker
         private bool _featureEnabled = true;
         private OTelHttpTransport _transport;
         private JobInfo _jobInfo;
+        // Last flush's loss summary (null when everything was delivered); also
+        // logged at Warning so fleet operators see export failure without diffing
+        // per-signal Info lines.
+        private string _lastFlushSummary;
         private List<KeyValuePair<string, object>> _resource = DefaultResource();
 
         private sealed class JobInfo
@@ -875,16 +879,22 @@ namespace GitHub.Runner.Worker
                     resource = _resource;
                 }
 
-                if (droppedSpans + droppedLogs + droppedTasks > 0)
-                {
-                    Trace.Info($"OTel dropped over buffer cap (best-effort): {droppedSpans} span(s), {droppedLogs} log(s), {droppedTasks} task-metric(s)");
-                }
-
                 // One overall deadline across all signals (incl. retries) so flush never
                 // delays job completion by more than this, even if the collector is slow.
                 using var flushCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 flushCts.CancelAfter(TimeSpan.FromSeconds(4));
                 var flushToken = flushCts.Token;
+
+                var totalPosts = 0;
+                var failedPosts = 0;
+                async Task PostCountedAsync(string url, byte[] payload, string what)
+                {
+                    totalPosts++;
+                    if (!await _transport.PostAsync(url, payload, what, flushToken))
+                    {
+                        failedPosts++;
+                    }
+                }
 
                 // Chunked POSTs: a whole job in one request can exceed a collector's
                 // body limit (413 is non-retryable per OTLP — the entire signal would
@@ -892,22 +902,44 @@ namespace GitHub.Runner.Worker
                 for (var i = 0; i < spans.Count; i += MaxItemsPerPost)
                 {
                     var batch = spans.GetRange(i, Math.Min(MaxItemsPerPost, spans.Count - i));
-                    await _transport.PostAsync(_tracesUrl, BuildOTLPSpansJson(batch, resource), $"{batch.Count} span(s)", flushToken);
+                    await PostCountedAsync(_tracesUrl, BuildOTLPSpansJson(batch, resource), $"{batch.Count} span(s)");
                 }
                 for (var i = 0; i < logs.Count; i += MaxItemsPerPost)
                 {
                     var batch = logs.GetRange(i, Math.Min(MaxItemsPerPost, logs.Count - i));
-                    await _transport.PostAsync(_logsUrl, BuildOTLPLogsJson(batch, resource), $"{batch.Count} log(s)", flushToken);
+                    await PostCountedAsync(_logsUrl, BuildOTLPLogsJson(batch, resource), $"{batch.Count} log(s)");
                 }
                 if (metrics != null || tasks.Count > 0)
                 {
-                    await _transport.PostAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics", flushToken);
+                    await PostCountedAsync(_metricsUrl, BuildOTLPMetricsJson(metrics, tasks, resource), "metrics");
+                }
+
+                // ONE end-of-job summary at Warning when anything was lost (failed POSTs
+                // or cap-drops) — greppable at fleet scale, unlike per-signal Info lines.
+                var summary = BuildExportSummary(totalPosts, failedPosts, droppedSpans, droppedLogs, droppedTasks);
+                if (summary != null)
+                {
+                    _lastFlushSummary = summary;
+                    Trace.Warning(summary);
                 }
             }
             catch (Exception ex)
             {
-                Trace.Info($"OTel flush failed (best-effort, ignored): {ex.Message}");
+                _lastFlushSummary = $"OTel export summary: flush failed entirely ({ex.Message}) — this job's telemetry was lost (best-effort, job unaffected)";
+                Trace.Warning(_lastFlushSummary);
             }
+        }
+
+        // Null when everything was delivered and nothing was dropped; otherwise one
+        // operator-facing line describing exactly what was lost.
+        internal static string BuildExportSummary(int totalPosts, int failedPosts, long droppedSpans, long droppedLogs, long droppedTasks)
+        {
+            if (failedPosts == 0 && droppedSpans + droppedLogs + droppedTasks == 0)
+            {
+                return null;
+            }
+            return $"OTel export summary: {failedPosts}/{totalPosts} POST(s) failed; dropped over buffer cap: "
+                + $"{droppedSpans} span(s), {droppedLogs} log(s), {droppedTasks} task-metric(s) (best-effort, job unaffected)";
         }
 
         // ---- shared deterministic ID contract (pure, mirrored in otel-explorer) ----
@@ -1122,6 +1154,8 @@ namespace GitHub.Runner.Worker
             }
             return HostContext?.SecretMasker?.MaskSecrets(s) ?? s;
         }
+
+        internal string LastFlushSummaryForTest => _lastFlushSummary;
 
         internal int PendingSpanCountForTest
         {
