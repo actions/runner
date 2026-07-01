@@ -127,6 +127,16 @@ namespace GitHub.Runner.Worker
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            // Capture the collector credential, then scrub it from the process env
+            // immediately: host step processes inherit the worker env (ProcessInvoker
+            // copies it), so leaving it set would hand the raw header to every
+            // untrusted step — the exact leak StepPropagationEnv deliberately avoids.
+            // Same pattern as CommandSettings removing env-provided config after read.
+            _rawHeaders = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders);
+            if (!string.IsNullOrEmpty(_rawHeaders))
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders, null);
+            }
             _endpoint = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpEndpoint)?.TrimEnd('/');
             _enabled = !string.IsNullOrEmpty(_endpoint);
             if (!_enabled)
@@ -155,9 +165,8 @@ namespace GitHub.Runner.Worker
                 handler.ServerCertificateCustomValidationCallback =
                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             }
-            // Optional collector auth headers, e.g.
+            // Optional collector auth headers (read + scrubbed above), e.g.
             //   ACTIONS_RUNNER_OTLP_HEADERS="authorization=Bearer xyz,x-api-key=abc"
-            _rawHeaders = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpHeaders);
             var headers = new List<KeyValuePair<string, string>>();
             if (!string.IsNullOrEmpty(_rawHeaders))
             {

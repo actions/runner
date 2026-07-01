@@ -65,6 +65,37 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Initialize_ScrubsOtlpHeadersFromProcessEnv()
+        {
+            // Host step processes inherit the worker's env (ProcessInvoker copies it),
+            // so leaving the raw collector credential in the process env would hand it
+            // to every untrusted step — the exact leak StepPropagationEnv guards against.
+            Environment.SetEnvironmentVariable(HeadersEnv, "authorization=Bearer super-secret-token");
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            Assert.Null(Environment.GetEnvironmentVariable(HeadersEnv));
+            // ... and the exporter still captured the header before scrubbing.
+            Assert.True(exporter.IsEnabled);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Initialize_ScrubsOtlpHeaders_EvenWhenExportDisabled()
+        {
+            // A credential configured without an endpoint is inert for export but
+            // still a credential — it must not linger for step processes to inherit.
+            Environment.SetEnvironmentVariable(EndpointEnv, null);
+            Environment.SetEnvironmentVariable(HeadersEnv, "authorization=Bearer super-secret-token");
+            using var hc = new TestHostContext(this);
+            var exporter = new OTelTraceExporter();
+            exporter.Initialize(hc);
+            Assert.Null(Environment.GetEnvironmentVariable(HeadersEnv));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Metrics_CarryRunAttempt()
         {
             using var hc = new TestHostContext(this);

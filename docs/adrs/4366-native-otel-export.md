@@ -124,7 +124,9 @@ API-reconstructed trace).
   resource values, log bodies — is run through the runner's `SecretMasker` before
   serialization, the same scrubbing applied to all other off-box telemetry.
   Collector auth-header values from `ACTIONS_RUNNER_OTLP_HEADERS` are registered
-  with the masker too.
+  with the masker too, and the variable itself is scrubbed from the worker's
+  process env right after it is read — host step processes inherit that env, so
+  leaving it set would hand the raw credential to every step.
 
 ### Lifecycle
 
