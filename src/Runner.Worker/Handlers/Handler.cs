@@ -202,6 +202,25 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
         }
 
+        protected void AddOTelPropagationToEnvironment()
+        {
+            // Propagate W3C trace context + OTEL_* so OTel-instrumented tools in this
+            // step emit spans/logs parented to the step span (opt-in, no-op otherwise).
+            // Workflow-set env always wins: a step that configures its own TRACEPARENT
+            // or OTEL_* (e.g. for its application's telemetry) is never clobbered.
+            var otelStepEnv = ExecutionContext.GetOTelStepEnv();
+            if (otelStepEnv != null)
+            {
+                foreach (var kv in otelStepEnv)
+                {
+                    if (!Environment.ContainsKey(kv.Key))
+                    {
+                        Environment[kv.Key] = kv.Value;
+                    }
+                }
+            }
+        }
+
         protected void AddPrependPathToEnvironment()
         {
             // Validate args.

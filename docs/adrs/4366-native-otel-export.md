@@ -251,7 +251,9 @@ config a workflow's own steps may rely on for their application telemetry.
 
 ### Step propagation (`StepPropagationEnv`)
 
-When `ACTIONS_RUNNER_OTLP_PROPAGATE=true`, each step's env is given:
+When `ACTIONS_RUNNER_OTLP_PROPAGATE=true`, each step's env is given
+(`run:` script steps, JS actions, and Docker container actions; composite
+actions receive it through their embedded steps):
 
 - `TRACEPARENT = 00-{traceId}-{stepSpanId}-01` (matches the exporter's IDs, so
   in-job OTel tools nest under the correct step span),
@@ -259,6 +261,11 @@ When `ACTIONS_RUNNER_OTLP_PROPAGATE=true`, each step's env is given:
   — `user:token@` — stripped; the userinfo is also registered with the secret
   masker so it can never appear raw in diag logs),
 - `OTEL_RESOURCE_ATTRIBUTES` (run/job/repo identity).
+
+**Precedence: workflow wins.** Each variable is injected only when the step's
+env does not already define it — a step that sets its own `TRACEPARENT` or
+`OTEL_*` (for its application's telemetry) is never clobbered by the runner
+(guarded by `OTelPropagation_NeverClobbersWorkflowSetEnv`).
 
 The endpoint is propagated from the **runner host's perspective**: for
 `container:` jobs and container actions the collector must be reachable from
