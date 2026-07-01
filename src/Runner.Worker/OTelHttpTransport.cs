@@ -48,8 +48,10 @@ namespace GitHub.Runner.Worker
             return ms.ToArray();
         }
 
+        // Exactly the OTLP/HTTP failures table: 429, 502, 503, 504 SHOULD be retried;
+        // "All other 4xx or 5xx response status codes MUST NOT be retried" (so no 408/500).
         private static bool IsTransientStatus(int status) =>
-            status == 408 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504;
+            status == 429 || status == 502 || status == 503 || status == 504;
 
         // OTLP partial success: a 200 response may carry
         // {"partialSuccess":{"rejectedSpans":"N",...,"errorMessage":"..."}}. Returns a

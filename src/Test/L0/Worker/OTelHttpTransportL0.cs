@@ -93,6 +93,24 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Single(handler.Requests); // 4xx is not retried
         }
 
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData(HttpStatusCode.RequestTimeout)]       // 408
+        [InlineData(HttpStatusCode.InternalServerError)]  // 500
+        public async Task Post_DoesNotRetryNonRetryableStatuses(HttpStatusCode code)
+        {
+            // OTLP/HTTP failures table: only 429/502/503/504 are retryable;
+            // all other 4xx/5xx MUST NOT be retried.
+            var handler = new FakeHandler(() => Resp(code));
+            using var transport = new OTelHttpTransport(handler);
+
+            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+
+            Assert.False(ok);
+            Assert.Single(handler.Requests);
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]

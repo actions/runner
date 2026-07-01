@@ -98,9 +98,9 @@ API-reconstructed trace).
 - **gzip** `Content-Encoding`. A job's spans/logs are highly repetitive, so this
   typically shrinks the body ~10x (see `docs/otel-benchmarks.md`);
   `CompressionLevel.Fastest` keeps CPU negligible.
-- **One retry** on a transient failure (HTTP 408/429/5xx or a transport
-  exception), 200 ms apart, bounded by the flush deadline. Per-request HTTP
-  timeout is 5 s.
+- **One retry** on a transient failure (exactly the OTLP/HTTP retryable codes —
+  429/502/503/504 — or a transport exception), 200 ms apart, bounded by the
+  flush deadline. Per-request HTTP timeout is 5 s.
 - Sent over the runner's **proxy-aware** `HostContext.CreateHttpClientHandler()`,
   honoring the runner's existing proxy config. `ACTIONS_RUNNER_OTLP_INSECURE=true`
   skips TLS verification for self-signed collectors.
