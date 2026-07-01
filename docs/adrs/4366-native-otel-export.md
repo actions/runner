@@ -246,8 +246,15 @@ When `ACTIONS_RUNNER_OTLP_PROPAGATE=true`, each step's env is given:
 
 - `TRACEPARENT = 00-{traceId}-{stepSpanId}-01` (matches the exporter's IDs, so
   in-job OTel tools nest under the correct step span),
-- `OTEL_EXPORTER_OTLP_ENDPOINT` (the base URL),
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (the base URL, with any URL userinfo credential
+  — `user:token@` — stripped; the userinfo is also registered with the secret
+  masker so it can never appear raw in diag logs),
 - `OTEL_RESOURCE_ATTRIBUTES` (run/job/repo identity).
+
+The endpoint is propagated from the **runner host's perspective**: for
+`container:` jobs and container actions the collector must be reachable from
+inside the job container — `http://localhost:4318` on the host does not resolve
+there (use a host-gateway or cluster-reachable address instead).
 
 It **deliberately does not** propagate `OTEL_EXPORTER_OTLP_HEADERS`: that header
 carries the collector credential, and handing it to user step processes would let

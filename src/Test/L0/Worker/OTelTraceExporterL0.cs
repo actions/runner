@@ -891,6 +891,39 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Contains("github.run_id=99999", env["OTEL_RESOURCE_ATTRIBUTES"]);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StripUserInfo_RemovesUrlCredentials()
+        {
+            Assert.Equal("http://localhost:4318", OTelTraceExporter.StripUserInfo("http://localhost:4318"));
+            Assert.Equal("http://localhost:4318", OTelTraceExporter.StripUserInfo("http://user:t0ps3cret@localhost:4318"));
+            Assert.Equal("https://otlp.example.com/custom", OTelTraceExporter.StripUserInfo("https://user@otlp.example.com/custom"));
+            Assert.Equal("not a url", OTelTraceExporter.StripUserInfo("not a url")); // pass-through
+            Assert.Null(OTelTraceExporter.StripUserInfo(null));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StepPropagationEnv_StripsEndpointUserinfo()
+        {
+            // Basic-auth-in-URL collectors put a credential in the endpoint itself;
+            // it must never reach untrusted step processes (headers are already withheld).
+            Environment.SetEnvironmentVariable(PropagateEnv, "true");
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc, "http://runner:t0ps3cret@localhost:4318");
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+
+            var env = exporter.StepPropagationEnv("Run tests", 3);
+            Assert.Equal("http://localhost:4318", env["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+            Assert.DoesNotContain(env.Values, v => v != null && v.Contains("t0ps3cret"));
+
+            // ... and the credential is registered with the masker so the endpoint
+            // can never appear raw in diag/transport logs.
+            Assert.DoesNotContain("t0ps3cret", hc.SecretMasker.MaskSecrets("posting to http://runner:t0ps3cret@localhost:4318/v1/traces"));
+        }
+
         // ---- OTel logs (#16) ----
 
         [Fact]

@@ -87,6 +87,9 @@ namespace GitHub.Runner.Worker
         private long _droppedTaskMetrics;
         private string _endpoint;
         private string _baseUrl;
+        // _baseUrl with any URL userinfo (user:password@) removed — the only form
+        // that may be handed to step processes or written to logs.
+        private string _propagationBaseUrl;
         private string _tracesUrl;
         private string _logsUrl;
         private string _metricsUrl;
@@ -153,6 +156,20 @@ namespace GitHub.Runner.Worker
                 : _endpoint;
             _logsUrl = $"{_baseUrl}/v1/logs";
             _metricsUrl = $"{_baseUrl}/v1/metrics";
+            // A basic-auth-in-URL collector (https://user:token@...) embeds a credential
+            // in the endpoint. Register it with the masker (so diag/transport log lines
+            // can never carry it raw) and keep a stripped base URL for step propagation —
+            // the same non-leak posture as withholding OTLP headers from steps.
+            if (Uri.TryCreate(_endpoint, UriKind.Absolute, out var endpointUri) && !string.IsNullOrEmpty(endpointUri.UserInfo))
+            {
+                HostContext.SecretMasker.AddValue(endpointUri.UserInfo);
+                var colon = endpointUri.UserInfo.IndexOf(':');
+                if (colon >= 0 && colon < endpointUri.UserInfo.Length - 1)
+                {
+                    HostContext.SecretMasker.AddValue(endpointUri.UserInfo.Substring(colon + 1));
+                }
+            }
+            _propagationBaseUrl = StripUserInfo(_baseUrl);
             _propagate = StringUtil.ConvertToBoolean(
                 Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpPropagate));
 
@@ -185,7 +202,7 @@ namespace GitHub.Runner.Worker
             }
             _transport = new OTelHttpTransport(handler, headers, msg => Trace.Info(msg),
                 userAgent: $"GitHubActionsRunner-OTLP-Exporter/{BuildConstants.RunnerPackage.Version}");
-            Trace.Info($"Native OTel export enabled, endpoint: {_endpoint}");
+            Trace.Info($"Native OTel export enabled, endpoint: {StripUserInfo(_endpoint)}");
         }
 
         public bool IsEnabled => _enabled && _featureEnabled;
@@ -240,6 +257,23 @@ namespace GitHub.Runner.Worker
             {
                 _resource = attrs;
             }
+        }
+
+        // Remove URL userinfo (user:password@) from an absolute URL; returns non-URL
+        // strings unchanged. Used before an endpoint is propagated to step env or logged.
+        internal static string StripUserInfo(string url)
+        {
+            if (string.IsNullOrEmpty(url) || !url.Contains('@'))
+            {
+                return url;
+            }
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.UserInfo))
+            {
+                return url;
+            }
+            var stripped = uri.GetComponents(UriComponents.AbsoluteUri & ~UriComponents.UserInfo, UriFormat.UriEscaped);
+            // Uri normalization appends "/" to an empty path; keep the caller's shape.
+            return url.EndsWith("/", StringComparison.Ordinal) ? stripped : stripped.TrimEnd('/');
         }
 
         // Map VarUtil.OS ("Linux"/"macOS"/"Windows") to the semconv os.type enum, which is
@@ -680,8 +714,9 @@ namespace GitHub.Runner.Worker
             var traceId = NewTraceID(job.RunId, job.RunAttempt);
             var spanId = NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, stepNumber ?? 0, stepName);
             env["TRACEPARENT"] = $"00-{traceId}-{spanId}-01";
-            // Base endpoint (the OTel SDK appends /v1/traces, /v1/logs itself).
-            env["OTEL_EXPORTER_OTLP_ENDPOINT"] = _baseUrl;
+            // Base endpoint (the OTel SDK appends /v1/traces, /v1/logs itself),
+            // with any URL userinfo credential stripped.
+            env["OTEL_EXPORTER_OTLP_ENDPOINT"] = _propagationBaseUrl;
             // NOTE: deliberately do NOT propagate OTEL_EXPORTER_OTLP_HEADERS. It carries the
             // collector credential; handing it to user step processes lets any step read and
             // exfiltrate it. Steps that need to authenticate to the collector must be given a
