@@ -236,7 +236,11 @@ namespace GitHub.Runner.Worker
                         continue;
                     }
                     var value = pair.Substring(eq + 1).Trim();
-                    // Header values are commonly auth tokens; register so they're masked if ever logged.
+                    // Header values are commonly auth tokens; register so they're masked if
+                    // ever logged. Deliberately no name filter or length floor (same fail-safe
+                    // posture as the add-mask command): a heuristic would leave short tokens or
+                    // non-standard auth headers unmasked, and over-masking a short non-secret
+                    // value only cosmetically redacts logs on this one runner.
                     HostContext.SecretMasker.AddValue(value);
                     headers.Add(new KeyValuePair<string, string>(pair.Substring(0, eq).Trim(), value));
                 }
