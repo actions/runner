@@ -427,23 +427,12 @@ namespace GitHub.Runner.Worker
         /// sub-actions individually, with no cross-depth deduplication.
         /// Used when the BatchActionResolution feature flag is disabled.
         /// </summary>
-        private async Task<PrepareActionsState> PrepareActionsRecursiveLegacyAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid), string dollarSelfRepoName = null, string dollarSelfRepoRef = null)
+        private async Task<PrepareActionsState> PrepareActionsRecursiveLegacyAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
             {
                 throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
-            }
-
-            // Resolve dollar-self ($/path) references before processing
-            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DollarSelfReference) == true)
-            {
-                if (string.IsNullOrEmpty(dollarSelfRepoName))
-                {
-                    dollarSelfRepoName = executionContext.JobContext?.WorkflowRepository;
-                    dollarSelfRepoRef = executionContext.JobContext?.WorkflowSha;
-                }
-                ResolveDollarSelfReferences(executionContext, actions, dollarSelfRepoName, dollarSelfRepoRef);
             }
 
             var repositoryActions = new List<Pipelines.ActionStep>();
@@ -570,18 +559,7 @@ namespace GitHub.Runner.Worker
                     }
                     else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        // Determine dollar-self resolution context for child steps
-                        string childRepoName = dollarSelfRepoName;
-                        string childRepoRef = dollarSelfRepoRef;
-                        var parentRef = action.Reference as Pipelines.RepositoryPathReference;
-                        if (parentRef != null &&
-                            string.Equals(parentRef.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
-                        {
-                            childRepoName = parentRef.Name;
-                            childRepoRef = parentRef.Ref;
-                        }
-
-                        state = await PrepareActionsRecursiveLegacyAsync(executionContext, state, setupInfo.Steps, depth + 1, action.Id, childRepoName, childRepoRef);
+                        state = await PrepareActionsRecursiveLegacyAsync(executionContext, state, setupInfo.Steps, depth + 1, action.Id);
                     }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)

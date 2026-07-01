@@ -3539,6 +3539,8 @@ runs:
         [Trait("Category", "Worker")]
         public async void PrepareActions_DollarSelf_ResolvesAtDepthZero()
         {
+            // Dollar-self is only supported via run service (batch resolution path)
+            Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
                 // Arrange
@@ -3601,6 +3603,7 @@ runs:
             }
             finally
             {
+                Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
                 Teardown();
             }
         }
@@ -3725,78 +3728,6 @@ runs:
             finally
             {
                 Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", null);
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_ResolvesNestedInComposite_LegacyPath()
-        {
-            // Same as above but exercises the legacy (non-batch) path.
-            try
-            {
-                // Arrange
-                Setup();
-                const string RepoName = "my-org/my-repo";
-                const string RepoSha = "abc123def456";
-                _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
-                _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
-                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
-                var jobContext = new JobContext();
-                jobContext.WorkflowRepository = RepoName;
-                jobContext.WorkflowSha = RepoSha;
-                _ec.Setup(x => x.JobContext).Returns(jobContext);
-
-                string actionsDir = Path.Combine(_workFolder, Constants.Path.ActionsDirectory);
-                string destDir = Path.Combine(actionsDir, RepoName.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), RepoSha);
-                Directory.CreateDirectory(Path.Combine(destDir, "actions", "parent"));
-                File.WriteAllText(Path.Combine(destDir, "actions", "parent", Constants.Path.ActionManifestYmlFile), @"
-name: 'Parent'
-description: 'Composite parent'
-runs:
-  using: 'composite'
-  steps:
-    - uses: $/actions/child
-");
-                Directory.CreateDirectory(Path.Combine(destDir, "actions", "child"));
-                File.WriteAllText(Path.Combine(destDir, "actions", "child", Constants.Path.ActionManifestYmlFile), @"
-name: 'Child'
-description: 'Node child'
-runs:
-  using: 'node20'
-  main: 'index.js'
-");
-                File.WriteAllText($"{destDir}.completed", string.Empty);
-
-                var rootStepId = Guid.NewGuid();
-                var actions = new List<Pipelines.ActionStep>
-                {
-                    new Pipelines.ActionStep()
-                    {
-                        Name = "action",
-                        Id = Guid.NewGuid(),
-                        Reference = new Pipelines.RepositoryPathReference()
-                        {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
-                            Path = "actions/parent"
-                        }
-                    }
-                };
-
-                // Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions, rootStepId);
-
-                // Assert
-                var topRef = actions[0].Reference as Pipelines.RepositoryPathReference;
-                Assert.Equal(Pipelines.RepositoryTypes.GitHub, topRef.RepositoryType);
-                Assert.Equal(RepoName, topRef.Name);
-                Assert.Equal(RepoSha, topRef.Ref);
-            }
-            finally
-            {
                 Teardown();
             }
         }
