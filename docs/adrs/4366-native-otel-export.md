@@ -29,7 +29,7 @@ signals for each job the runner executes.
 | Signal  | Endpoint      | Payload |
 |---------|---------------|---------|
 | Traces  | `/v1/traces`  | One **job span** (trace root) + one **step span** per top-level step + optional generic child spans (e.g. action download). |
-| Metrics | `/v1/metrics` | `github.pipeline.run.duration` (histogram), `github.pipeline.run.errors` (monotonic counter, failures only), `github.pipeline.task.duration` (histogram, one point per job/step). |
+| Metrics | `/v1/metrics` | `cicd.pipeline.run.errors` (semconv monotonic counter, failures only), `github.pipeline.job.duration` (histogram), `github.pipeline.task.duration` (histogram, one point per job/step). Semconv names are adopted where the semantics match; the duration metrics stay vendor-namespaced because the worker observes one *job*, not the pipeline run — semconv `cicd.pipeline.run.duration` (whole-run duration by `cicd.pipeline.run.state`) can only be emitted correctly by the control plane, and semconv defines no task-level duration metric. |
 | Logs    | `/v1/logs`    | Job- and step-level annotations (`::warning::` / `::error::` / `::notice::`), each correlated to its span via `traceId`/`spanId`. |
 
 Runner identity is attached once as the OTLP **Resource**:

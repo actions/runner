@@ -300,9 +300,15 @@ namespace GitHub.Runner.Worker
             w.WriteNumber("max", seconds);
         }
 
-        // OTLP/JSON metrics: github.pipeline.run.duration (histogram) + github.pipeline.run.errors
-        // (counter) + github.pipeline.task.duration (histogram, one point per job/step). Vendor
-        // (github.*) namespace deliberately — these are not registered cicd.* semconv metrics.
+        // OTLP/JSON metrics: cicd.pipeline.run.errors (semconv counter, failures only) +
+        // github.pipeline.job.duration + github.pipeline.task.duration (histograms).
+        // Naming: semconv names are adopted where the semantics match — a failed job IS
+        // "an error encountered in a pipeline run" (cicd.pipeline.run.errors). The duration
+        // metrics keep the vendor (github.*) namespace because the worker observes only its
+        // own JOB: semconv cicd.pipeline.run.duration means the whole run's duration grouped
+        // by cicd.pipeline.run.state (queued/executing/finalizing), which only the control
+        // plane can emit correctly (a 10-job run would otherwise contribute 10 bogus "run
+        // duration" points), and semconv defines no task-level duration metric.
         // CUMULATIVE temporality is valid: each per-run process exports one point with its own
         // startTimeUnixNano; the collector aggregates across runs.
         private byte[] BuildOTLPMetricsJson(JobMetrics m, List<TaskMetric> tasks, List<KeyValuePair<string, object>> resource)
@@ -328,9 +334,9 @@ namespace GitHub.Runner.Worker
 
                 if (m != null)
                 {
-                    // github.pipeline.run.duration — histogram with a single observation.
+                    // github.pipeline.job.duration — histogram with a single observation.
                     w.WriteStartObject();
-                    w.WriteString("name", "github.pipeline.run.duration");
+                    w.WriteString("name", "github.pipeline.job.duration");
                     w.WriteString("unit", "s");
                     w.WriteStartObject("histogram");
                     w.WriteNumber("aggregationTemporality", 2); // CUMULATIVE
@@ -353,7 +359,7 @@ namespace GitHub.Runner.Worker
                     if (m.Errors > 0)
                     {
                         w.WriteStartObject();
-                        w.WriteString("name", "github.pipeline.run.errors");
+                        w.WriteString("name", "cicd.pipeline.run.errors");
                         w.WriteString("unit", "{error}");
                         w.WriteStartObject("sum");
                         w.WriteNumber("aggregationTemporality", 2);

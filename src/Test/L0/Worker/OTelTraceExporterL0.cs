@@ -134,7 +134,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
             var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
-            Assert.Equal("github.pipeline.run.duration", metrics[0].GetProperty("name").GetString());
+            Assert.Equal("github.pipeline.job.duration", metrics[0].GetProperty("name").GetString());
             var dp = metrics[0].GetProperty("histogram").GetProperty("dataPoints")[0];
             var bounds = dp.GetProperty("explicitBounds");
             var buckets = dp.GetProperty("bucketCounts");
@@ -1224,7 +1224,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
             var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
             var dur = metrics[0];
-            Assert.Equal("github.pipeline.run.duration", dur.GetProperty("name").GetString());
+            // Vendor name: the worker observes one JOB's wall time, not the pipeline
+            // run's, so semconv cicd.pipeline.run.duration would be semantically wrong.
+            Assert.Equal("github.pipeline.job.duration", dur.GetProperty("name").GetString());
             var dp = dur.GetProperty("histogram").GetProperty("dataPoints")[0];
             Assert.Equal(9.0, dp.GetProperty("sum").GetDouble());
             var durAttrs = ReadAttrsFrom(dp);
@@ -1232,8 +1234,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("CI", durAttrs["cicd.pipeline.name"]);
 
             var err = metrics[1];
-            Assert.Equal("github.pipeline.run.errors", err.GetProperty("name").GetString());
-            Assert.Equal("1", err.GetProperty("sum").GetProperty("dataPoints")[0].GetProperty("asInt").GetString());
+            // semconv name: a failed job IS "an error encountered in a pipeline run".
+            Assert.Equal("cicd.pipeline.run.errors", err.GetProperty("name").GetString());
+            var errDp = err.GetProperty("sum").GetProperty("dataPoints")[0];
+            Assert.Equal("1", errDp.GetProperty("asInt").GetString());
+            var errAttrs = ReadAttrsFrom(errDp);
+            Assert.Equal("CI", errAttrs["cicd.pipeline.name"]);   // required by semconv
+            Assert.Equal("failure", errAttrs["error.type"]);      // required by semconv
         }
 
         [Fact]
@@ -1248,9 +1255,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpMetricsJsonForTest());
             var metrics = doc.RootElement.GetProperty("resourceMetrics")[0].GetProperty("scopeMetrics")[0].GetProperty("metrics");
-            // run.duration + the job's task.duration (no errors counter on success).
+            // job.duration + the job's task.duration (no errors counter on success).
             Assert.Equal(2, metrics.GetArrayLength());
-            Assert.Equal("github.pipeline.run.duration", metrics[0].GetProperty("name").GetString());
+            Assert.Equal("github.pipeline.job.duration", metrics[0].GetProperty("name").GetString());
             Assert.Equal("github.pipeline.task.duration", metrics[1].GetProperty("name").GetString());
         }
 
