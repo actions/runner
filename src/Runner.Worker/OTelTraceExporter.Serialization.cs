@@ -116,24 +116,71 @@ namespace GitHub.Runner.Worker
             {
                 w.WriteStartObject();
                 w.WriteString("key", kv.Key);
-                w.WriteStartObject("value");
-                switch (kv.Value)
-                {
-                    case bool b:
-                        w.WriteBoolean("boolValue", b);
-                        break;
-                    case long l:
-                        w.WriteString("intValue", l.ToString(CultureInfo.InvariantCulture));
-                        break;
-                    case int n:
-                        w.WriteString("intValue", n.ToString(CultureInfo.InvariantCulture));
-                        break;
-                    default:
-                        w.WriteString("stringValue", Mask(kv.Value?.ToString()) ?? "");
-                        break;
-                }
+                WriteAnyValue(w, "value", kv.Value);
                 w.WriteEndObject();
-                w.WriteEndObject();
+            }
+        }
+
+        // OTLP AnyValue: each CLR type must land on its own wire type — silently
+        // stringifying a double (or an array) gives downstream numeric queries the
+        // wrong type with no error anywhere. Strings are masked; genuinely
+        // unsupported types fall back to their masked string form (documented,
+        // not silent: this is the only stringify arm).
+        private void WriteAnyValue(Utf8JsonWriter w, string propertyName, object value)
+        {
+            w.WriteStartObject(propertyName);
+            switch (value)
+            {
+                case string s: // before IEnumerable — string is IEnumerable<char>
+                    w.WriteString("stringValue", Mask(s) ?? "");
+                    break;
+                case byte[] bytes:
+                    w.WriteString("bytesValue", Convert.ToBase64String(bytes));
+                    break;
+                case System.Collections.IEnumerable items:
+                    w.WriteStartObject("arrayValue");
+                    w.WriteStartArray("values");
+                    foreach (var item in items)
+                    {
+                        w.WriteStartObject();
+                        WriteScalarAnyValueBody(w, item);
+                        w.WriteEndObject();
+                    }
+                    w.WriteEndArray();
+                    w.WriteEndObject();
+                    break;
+                default:
+                    WriteScalarAnyValueBody(w, value);
+                    break;
+            }
+            w.WriteEndObject();
+        }
+
+        // Scalar AnyValue fields, written into the current object (also used for
+        // arrayValue elements, which have no wrapper key). Nested arrays are
+        // stringified — one level is all the attribute API promises.
+        private void WriteScalarAnyValueBody(Utf8JsonWriter w, object value)
+        {
+            switch (value)
+            {
+                case bool b:
+                    w.WriteBoolean("boolValue", b);
+                    break;
+                case long l:
+                    w.WriteString("intValue", l.ToString(CultureInfo.InvariantCulture));
+                    break;
+                case int n:
+                    w.WriteString("intValue", n.ToString(CultureInfo.InvariantCulture));
+                    break;
+                case double d:
+                    w.WriteNumber("doubleValue", d);
+                    break;
+                case float f:
+                    w.WriteNumber("doubleValue", f);
+                    break;
+                default:
+                    w.WriteString("stringValue", Mask(value?.ToString()) ?? "");
+                    break;
             }
         }
 

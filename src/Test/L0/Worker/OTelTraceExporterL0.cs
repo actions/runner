@@ -278,6 +278,45 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Attributes_SerializeWithCorrectAnyValueWireTypes()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordSpan("pull image: alpine", "container", t, t.AddSeconds(1), new Dictionary<string, object>
+            {
+                ["d"] = 0.75,           // double -> doubleValue, NOT stringValue
+                ["f"] = 0.5f,           // float -> doubleValue
+                ["b"] = true,
+                ["l"] = 42L,
+                ["s"] = "text",
+                ["arr"] = new object[] { "a", 1L, 2.5 }, // array -> arrayValue with typed elements
+            });
+
+            var raw = new Dictionary<string, JsonElement>();
+            foreach (var a in SpanAt(exporter, 0).GetProperty("attributes").EnumerateArray())
+            {
+                raw[a.GetProperty("key").GetString()] = a.GetProperty("value").Clone();
+            }
+
+            // OTLP AnyValue: each CLR type must land on its own wire type — a double
+            // silently coerced to stringValue breaks numeric queries downstream.
+            Assert.Equal(0.75, raw["d"].GetProperty("doubleValue").GetDouble());
+            Assert.Equal(0.5, raw["f"].GetProperty("doubleValue").GetDouble());
+            Assert.True(raw["b"].GetProperty("boolValue").GetBoolean());
+            Assert.Equal("42", raw["l"].GetProperty("intValue").GetString());
+            Assert.Equal("text", raw["s"].GetProperty("stringValue").GetString());
+            var values = raw["arr"].GetProperty("arrayValue").GetProperty("values");
+            Assert.Equal(3, values.GetArrayLength());
+            Assert.Equal("a", values[0].GetProperty("stringValue").GetString());
+            Assert.Equal("1", values[1].GetProperty("intValue").GetString());
+            Assert.Equal(2.5, values[2].GetProperty("doubleValue").GetDouble());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void DescribePartialSuccess_FlagsRejectedItems()
         {
             Assert.Null(OTelHttpTransport.DescribePartialSuccess("{}"));
