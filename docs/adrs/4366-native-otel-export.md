@@ -117,7 +117,9 @@ API-reconstructed trace).
 - **Per-buffer memory caps** (`MaxBufferedSpans`/`Logs`/`TaskMetrics` = 10 000
   each). A pathological job (e.g. unbounded `::warning::` annotations) can't grow
   the buffers without bound; excess is dropped and counted, never OOMing the
-  worker.
+  worker. The job span — the trace root, recorded last — bypasses the span cap
+  (one per job, worst case cap+1): dropping it would orphan every exported step
+  span, which all parent to its deterministic ID.
 - **Secret masking at flush.** Every exported string — span names, attribute and
   resource values, log bodies — is run through the runner's `SecretMasker` before
   serialization, the same scrubbing applied to all other off-box telemetry.

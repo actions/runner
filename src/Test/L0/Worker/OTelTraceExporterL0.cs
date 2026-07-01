@@ -134,6 +134,29 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.True(exporter.DroppedSpanCountForTest >= 50, $"expected >=50 dropped, got {exporter.DroppedSpanCountForTest}");
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void JobRootSpan_IsNeverDroppedAtBufferCap()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            for (var i = 0; i < OTelTraceExporter.MaxBufferedSpans; i++)
+            {
+                exporter.RecordStepCompletion($"step {i}", i, t, t.AddSeconds(1), TaskResult.Succeeded, "node20", null, null);
+            }
+            Assert.Equal(OTelTraceExporter.MaxBufferedSpans, exporter.PendingSpanCountForTest);
+
+            // The job span is the trace ROOT and is recorded LAST. If the cap evicted
+            // it, every exported step span would parent to a span that never arrives.
+            exporter.RecordJobCompletion(t, t.AddSeconds(9), TaskResult.Succeeded);
+
+            Assert.Equal(OTelTraceExporter.MaxBufferedSpans + 1, exporter.PendingSpanCountForTest);
+            Assert.Contains("\"spanId\":\"81606d47848a59c0\"", exporter.BuildPendingOtlpJsonForTest()); // job root present
+        }
+
         // Captures OTLP POSTs at the HttpClientHandler layer — exactly what the
         // exporter's transport puts on the wire.
         private sealed class CapturingClientHandler : HttpClientHandler

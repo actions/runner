@@ -523,7 +523,11 @@ namespace GitHub.Runner.Worker
 
                 lock (_lock)
                 {
-                    AddBounded(_pendingSpans, span, MaxBufferedSpans, ref _droppedSpans);
+                    // The job span is the trace ROOT and is recorded last: at the buffer
+                    // cap the drop-newest policy would evict exactly it, orphaning every
+                    // already-buffered step span (they all parent to its deterministic
+                    // ID). One root per job, so it bypasses the cap (worst case cap+1).
+                    _pendingSpans.Add(span);
                     _jobMetrics = metrics;
                     AddBounded(_taskMetrics, jobMetric, MaxBufferedTaskMetrics, ref _droppedTaskMetrics);
                 }
