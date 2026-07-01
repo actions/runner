@@ -180,6 +180,7 @@ namespace GitHub.Runner.Common
                 public static readonly string BatchActionResolution = "actions_batch_action_resolution";
                 public static readonly string UseBearerTokenForCodeload = "actions_use_bearer_token_for_codeload";
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
+                public static readonly string DollarSelfReference = "actions_dollar_self_reference";
             }
 
             // Node version migration related constants

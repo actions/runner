@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace GitHub.Actions.WorkflowParser
 {
@@ -29,6 +29,11 @@ namespace GitHub.Actions.WorkflowParser
         /// Alias for the self repository.
         /// </summary>
         internal const String SelfAlias = "self";
+
+        /// <summary>
+        /// Alias for dollar-self references ($/path).
+        /// </summary>
+        internal const String DollarSelfAlias = "dollar-self";
 
         public static class PermissionsPolicy
         {

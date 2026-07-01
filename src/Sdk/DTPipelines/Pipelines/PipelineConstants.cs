@@ -43,6 +43,33 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly String SelfAlias = "self";
 
         /// <summary>
+        /// Alias for dollar-self references ($/path).
+        /// Resolves to "this repo, at this SHA" based on the containing YAML file.
+        /// </summary>
+        public static readonly String DollarSelfAlias = "dollar-self";
+
+        /// <summary>
+        /// The prefix for dollar-self references in uses: values.
+        /// </summary>
+        public const String DollarSelfPrefix = "$/";
+
+        /// <summary>
+        /// Returns true if the uses value is a dollar-self reference (starts with $/),
+        /// and outputs the subpath after the prefix.
+        /// </summary>
+        public static bool TryParseDollarSelfReference(string usesValue, out string path)
+        {
+            if (usesValue != null && usesValue.StartsWith(DollarSelfPrefix, StringComparison.Ordinal))
+            {
+                path = usesValue.Substring(DollarSelfPrefix.Length);
+                return true;
+            }
+
+            path = null;
+            return false;
+        }
+
+        /// <summary>
         /// Error code during graph validation.
         /// </summary>
         internal const String DependencyNotFound = nameof(DependencyNotFound);
