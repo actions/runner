@@ -591,10 +591,38 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("my-runner", resourceAttrs["cicd.worker.name"]); // semconv (no github.runner.name dupe)
             Assert.False(resourceAttrs.ContainsKey("github.runner.name"));
             Assert.Equal("2.333.0", resourceAttrs["service.version"]);
-            Assert.Equal("Linux", resourceAttrs["os.type"]);
-            Assert.Equal("X64", resourceAttrs["host.arch"]);
+            Assert.Equal("linux", resourceAttrs["os.type"]);   // semconv enum value
+            Assert.Equal("amd64", resourceAttrs["host.arch"]); // semconv enum value
             Assert.Equal("true", resourceAttrs["github.runner.ephemeral"]); // boolValue
             Assert.Equal("agent", resourceAttrs["cicd.system.component"]); // semconv: runner is the agent
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Resource_OsTypeAndHostArch_UseSemconvEnumValues()
+        {
+            // semconv os.type enum is lowercase and has no "macOS" (Apple is "darwin");
+            // host.arch enum is amd64|arm32|arm64|x86 — not the runner's "X64"/"ARM" names.
+            Assert.Equal("linux", OTelTraceExporter.ToSemconvOsType("Linux"));
+            Assert.Equal("darwin", OTelTraceExporter.ToSemconvOsType("macOS"));
+            Assert.Equal("windows", OTelTraceExporter.ToSemconvOsType("Windows"));
+            Assert.Equal("amd64", OTelTraceExporter.ToSemconvHostArch("X64"));
+            Assert.Equal("x86", OTelTraceExporter.ToSemconvHostArch("X86"));
+            Assert.Equal("arm32", OTelTraceExporter.ToSemconvHostArch("ARM"));
+            Assert.Equal("arm64", OTelTraceExporter.ToSemconvHostArch("ARM64"));
+
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetResource("my-runner", "42", "default", "2.333.0", "macOS", "ARM64", "host-1", ephemeral: false);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordJobCompletion(DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded);
+
+            using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpJsonForTest());
+            var resourceAttrs = ReadAttrsFrom(doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("resource"));
+            Assert.Equal("darwin", resourceAttrs["os.type"]);
+            Assert.Equal("arm64", resourceAttrs["host.arch"]);
+            Assert.Equal("macOS", resourceAttrs["os.name"]); // raw value preserved (os.name is free-form)
         }
 
         [Fact]

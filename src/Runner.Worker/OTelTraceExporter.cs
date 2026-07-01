@@ -188,8 +188,10 @@ namespace GitHub.Runner.Worker
             _serviceVersion = runnerVersion ?? "";
             Add("service.version", runnerVersion);
             Add("host.name", machineName);
-            Add("host.arch", arch);
-            Add("os.type", osType);
+            Add("host.arch", ToSemconvHostArch(arch));
+            Add("os.type", ToSemconvOsType(osType));
+            // os.name is free-form (unlike the os.type enum); keep the runner's raw value.
+            Add("os.name", osType);
             // semconv cicd.worker.* identifies the executor (no bespoke github.runner.name/id
             // dupes); group/ephemeral have no semconv equivalent so they stay github.runner.*.
             Add("cicd.worker.name", runnerName);
@@ -222,6 +224,34 @@ namespace GitHub.Runner.Worker
             {
                 _resource = attrs;
             }
+        }
+
+        // Map VarUtil.OS ("Linux"/"macOS"/"Windows") to the semconv os.type enum, which is
+        // lowercase and has no macOS value — Apple platforms are "darwin". Standard
+        // dashboards filter on these exact values, so the raw names would never match.
+        internal static string ToSemconvOsType(string os)
+        {
+            return os switch
+            {
+                "Linux" => "linux",
+                "macOS" => "darwin",
+                "Windows" => "windows",
+                _ => os?.ToLowerInvariant(),
+            };
+        }
+
+        // Map VarUtil.OSArchitecture ("X86"/"X64"/"ARM"/"ARM64") to the semconv
+        // host.arch enum (x86|amd64|arm32|arm64).
+        internal static string ToSemconvHostArch(string arch)
+        {
+            return arch switch
+            {
+                "X64" => "amd64",
+                "X86" => "x86",
+                "ARM" => "arm32",
+                "ARM64" => "arm64",
+                _ => arch?.ToLowerInvariant(),
+            };
         }
 
         // ParseOtelResourceAttributes parses the W3C-Baggage-style value of the standard
