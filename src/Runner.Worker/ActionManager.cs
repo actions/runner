@@ -1098,7 +1098,7 @@ namespace GitHub.Runner.Worker
                     "action_download",
                     start,
                     DateTime.UtcNow,
-                    new Dictionary<string, string>
+                    new Dictionary<string, object>
                     {
                         ["github.action"] = downloadInfo.NameWithOwner,
                         ["github.action_ref"] = downloadInfo.Ref,

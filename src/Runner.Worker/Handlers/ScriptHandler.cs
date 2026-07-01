@@ -373,10 +373,11 @@ namespace GitHub.Runner.Worker.Handlers
                         "process",
                         processStart,
                         DateTime.UtcNow,
-                        new Dictionary<string, string>
+                        new Dictionary<string, object>
                         {
                             ["process.executable.name"] = Path.GetFileName(fileName),
-                            ["process.exit_code"] = exitCode.ToString(),
+                            // semconv registers process.exit.code (dots) as an int attribute.
+                            ["process.exit.code"] = (long)exitCode,
                             ["cicd.pipeline.task.run.result"] = exitCode == 0 ? "success" : "failure",
                         },
                         parentStepName: ExecutionContext.StepDisplayName,

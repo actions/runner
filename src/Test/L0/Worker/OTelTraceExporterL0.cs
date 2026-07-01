@@ -736,7 +736,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
             var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             exporter.RecordSpan("Resolve actions/checkout@v4", "action_download", t, t.AddSeconds(1),
-                new System.Collections.Generic.Dictionary<string, string>
+                new System.Collections.Generic.Dictionary<string, object>
                 {
                     ["github.action"] = "actions/checkout",
                     ["cicd.pipeline.task.run.result"] = "success",
@@ -762,12 +762,46 @@ namespace GitHub.Runner.Common.Tests.Worker
             var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             // Action resolution happens during "Set up job", so the span nests under that step.
             exporter.RecordSpan("Resolve actions/checkout@v4", "action_download", t, t.AddSeconds(1),
-                new System.Collections.Generic.Dictionary<string, string> { ["github.action"] = "actions/checkout" },
+                new System.Collections.Generic.Dictionary<string, object> { ["github.action"] = "actions/checkout" },
                 parentStepName: "Set up job", parentStepNumber: 1);
 
             var span = SpanAt(exporter, 0);
             var expected = OTelTraceExporter.NewStepSpanID(99999, 1, "build", 1, "Set up job");
             Assert.Equal(expected, span.GetProperty("parentSpanId").GetString());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RecordSpan_ProcessExitCode_IsSemconvIntAttribute()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            // Same shape as the ScriptHandler/ContainerOperationProvider hook sites:
+            // the registered semconv key is process.exit.code (dots, type int) — a
+            // negative exit code must serialize culture-invariantly as an intValue.
+            exporter.RecordSpan("process: bash", "process", t, t.AddSeconds(1),
+                new System.Collections.Generic.Dictionary<string, object>
+                {
+                    ["process.executable.name"] = "bash",
+                    ["process.exit.code"] = (long)-1,
+                });
+
+            var span = SpanAt(exporter, 0);
+            var found = false;
+            foreach (var a in span.GetProperty("attributes").EnumerateArray())
+            {
+                if (a.GetProperty("key").GetString() == "process.exit.code")
+                {
+                    found = true;
+                    // OTLP/JSON int64 is a string-encoded intValue, never a stringValue.
+                    Assert.Equal("-1", a.GetProperty("value").GetProperty("intValue").GetString());
+                    Assert.False(a.GetProperty("value").TryGetProperty("stringValue", out _));
+                }
+            }
+            Assert.True(found, "expected process.exit.code attribute");
         }
 
         // ---- trace-context propagation (#15) ----

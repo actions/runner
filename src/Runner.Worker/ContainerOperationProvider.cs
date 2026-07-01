@@ -172,10 +172,11 @@ namespace GitHub.Runner.Worker
                 "container",
                 start,
                 DateTime.UtcNow,
-                new Dictionary<string, string>
+                new Dictionary<string, object>
                 {
                     ["container.image.name"] = image,
-                    ["process.exit_code"] = exitCode.ToString(),
+                    // semconv registers process.exit.code (dots) as an int attribute.
+                    ["process.exit.code"] = (long)exitCode,
                     ["cicd.pipeline.task.run.result"] = exitCode == 0 ? "success" : "failure",
                 },
                 parentStepName: executionContext.StepDisplayName,

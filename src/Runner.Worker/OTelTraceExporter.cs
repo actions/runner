@@ -28,7 +28,9 @@ namespace GitHub.Runner.Worker
         void RecordJobCompletion(DateTime? startTime, DateTime? endTime, TaskResult? conclusion, long throttlingDelayMs = 0, string errorMessage = null);
         // Generic child span for finer-grained timing, e.g. action download. Parents to the
         // given step (when the operation runs inside one, e.g. "Set up job"), else the job.
-        void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0, int spanKind = 1);
+        // Attribute values keep their type on the wire: bool/int/long serialize as
+        // boolValue/intValue (semconv int attributes like process.exit.code), else stringValue.
+        void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, object> attributes = null, string parentStepName = null, int parentStepNumber = 0, int spanKind = 1);
         // OTel log record correlated to a step span (step issues/annotations).
         void RecordStepLog(string stepName, int? stepNumber, string severityText, string message);
         // W3C trace context + OTEL_* to inject into a step's env so in-job tools nest under the step span.
@@ -527,7 +529,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, string> attributes = null, string parentStepName = null, int parentStepNumber = 0, int spanKind = 1)
+        public void RecordSpan(string name, string spanType, DateTime startTime, DateTime endTime, IDictionary<string, object> attributes = null, string parentStepName = null, int parentStepNumber = 0, int spanKind = 1)
         {
             if (!IsEnabled || string.IsNullOrEmpty(name))
             {
