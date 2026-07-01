@@ -18,6 +18,12 @@ namespace GitHub.Runner.Common.Tests
     {
         private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new();
         private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new();
+        // See GetService<T>: only these types auto-instantiate their ServiceLocator
+        // default when unregistered; everything else keeps the fail-loud throw.
+        private static readonly HashSet<Type> _serviceLocatorFallbackAllowlist = new()
+        {
+            typeof(GitHub.Runner.Worker.IOTelTraceExporter),
+        };
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
         private readonly SecretMasker _secretMasker;
@@ -133,10 +139,15 @@ namespace GitHub.Runner.Common.Tests
             object service;
             if (!_serviceSingletons.TryGetValue(typeof(T), out service))
             {
-                // Otherwise mirror HostContext: instantiate the ServiceLocator default so
-                // tests that exercise production code resolving a leaf service don't each
-                // have to register it. Interfaces without a default still throw.
-                var defaultType = GetServiceLocatorDefault(typeof(T));
+                // Unregistered services fail loud: a test that forgets to mock a
+                // dependency must throw here, not silently run the real implementation.
+                // The only exception is a short allowlist of leaf telemetry services
+                // that production code resolves lazily on many paths and that are inert
+                // unless explicitly configured via env vars; those mirror HostContext
+                // and instantiate their ServiceLocator default.
+                var defaultType = _serviceLocatorFallbackAllowlist.Contains(typeof(T))
+                    ? GetServiceLocatorDefault(typeof(T))
+                    : null;
                 if (defaultType == null)
                 {
                     throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
