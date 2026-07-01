@@ -90,6 +90,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main", "action.yml");
                 Assert.True(File.Exists(actionYamlFile));
+
+                var telemetryMessages = GetTelemetryMessages();
+                Assert.True(ContainsTelemetry(telemetryMessages, "resolve_actions"));
+                Assert.True(ContainsTelemetry(telemetryMessages, "succeeded"));
+                Assert.True(ContainsTelemetry(telemetryMessages, "download_action"));
                 _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
             }
             finally
@@ -148,6 +153,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Act + Assert
                 await Assert.ThrowsAsync<InvalidActionArchiveException>(async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions));
+
+                var telemetryMessages = GetTelemetryMessages();
+                Assert.True(ContainsTelemetry(telemetryMessages, "resolve_actions"));
+                Assert.True(ContainsTelemetry(telemetryMessages, "download_action"));
+                Assert.True(ContainsTelemetry(telemetryMessages, "InvalidActionArchiveException"));
             }
             finally
             {
@@ -208,6 +218,51 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main", "action.yml");
                 Assert.False(File.Exists(actionYamlFile));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_ResolveActionDownloadInfo_RecordsTelemetry_OnFailure()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Variables.System.JobRequestType, "RunnerJobRequest");
+
+                _launchServer
+                    .Setup(x => x.ResolveActionsDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>(), It.IsAny<bool>()))
+                    .ThrowsAsync(new Exception("resolve failed"));
+
+                var actions = new List<Pipelines.JobStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/checkout",
+                            Ref = "v4",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                // Act + Assert
+                await Assert.ThrowsAsync<FailedToResolveActionDownloadInfoException>(async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions));
+
+                var telemetryMessages = GetTelemetryMessages();
+                Assert.Equal(1, telemetryMessages.Count(message =>
+                    message.Contains("resolve_actions", StringComparison.OrdinalIgnoreCase)
+                    && !message.Contains("\"result\":\"succeeded\"", StringComparison.OrdinalIgnoreCase)));
+                Assert.False(ContainsTelemetry(telemetryMessages, "resolve_actions\",\"result\":\"succeeded"));
             }
             finally
             {
@@ -3331,6 +3386,16 @@ runs:
             {
                 Directory.Delete(_workFolder, recursive: true);
             }
+        }
+
+        private IList<string> GetTelemetryMessages()
+        {
+            return _ec.Object.Global.JobTelemetry.Select(x => x.Message).ToList();
+        }
+
+        private static bool ContainsTelemetry(IList<string> telemetryMessages, string expectedFragment)
+        {
+            return telemetryMessages.Any(message => message.Contains(expectedFragment, StringComparison.OrdinalIgnoreCase));
         }
 
         [Fact]
