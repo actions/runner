@@ -57,7 +57,12 @@ namespace GitHub.Runner.Worker
     {
         private static readonly JsonWriterOptions s_jsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         // Declares which semantic-convention version this telemetry conforms to.
-        private const string SchemaUrl = "https://opentelemetry.io/schemas/1.29.0";
+        // Attribute set audited against the v1.34.0 registry: it is the earliest
+        // release that defines every emitted key (vcs.provider.name, vcs.owner.name,
+        // vcs.repository.name, cicd.worker.id/name, cicd.system.component,
+        // cicd.pipeline.run.url.full, cicd.pipeline.task.run.result,
+        // cicd.pipeline.result, process.exit.code, ...). Bump only after re-auditing.
+        private const string SchemaUrl = "https://opentelemetry.io/schemas/1.34.0";
         private string _serviceVersion = "";
 
         private readonly object _lock = new();

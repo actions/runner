@@ -245,7 +245,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             using var doc = JsonDocument.Parse(exporter.BuildPendingOtlpLogsJsonForTest());
             var scopeLogs = doc.RootElement.GetProperty("resourceLogs")[0].GetProperty("scopeLogs")[0];
-            Assert.Equal("https://opentelemetry.io/schemas/1.29.0", scopeLogs.GetProperty("schemaUrl").GetString());
+            // 1.34.0 is the earliest semconv release defining every emitted attribute
+            // (vcs.provider.name, cicd.worker.*, cicd.pipeline.task.run.result, ...);
+            // declaring an older schema would misdirect schema-aware transformations.
+            Assert.Equal("https://opentelemetry.io/schemas/1.34.0", scopeLogs.GetProperty("schemaUrl").GetString());
             var rec = scopeLogs.GetProperty("logRecords")[0];
             Assert.True(rec.TryGetProperty("observedTimeUnixNano", out _));
         }

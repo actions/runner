@@ -215,7 +215,7 @@ Sub-alternatives rejected:
   puts the cost/volume policy where the operator controls it.
 - **(c) The CICD + VCS semantic conventions are experimental.** The `cicd.*` and
   `vcs.*` attributes are **Development/experimental** in semconv and subject to
-  breaking change. `schema_url` is **pinned** (`…/schemas/1.29.0`) on every
+  breaking change. `schema_url` is **pinned** (`…/schemas/1.34.0`, audited so every emitted attribute exists in that release) on every
   resource/scope so consumers can detect the version and adapt.
 - **(d) Flag default + endpoint requirement.** The feature flag defaults **on**
   when unprovisioned, but export still requires an operator-set endpoint, so the
