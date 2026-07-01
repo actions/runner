@@ -213,13 +213,19 @@ Sub-alternatives rejected:
 
 ## Trade-offs (review-flagged, documented honestly)
 
-- **(a) Flush is on the job-completion critical path.** `FlushAsync` is awaited in
-  `CompleteJobAsync`. It is bounded to a **4 s overall deadline** across all three
-  signals (including the retry) so a slow/unreachable collector can delay job
-  completion by at most that. It is **best-effort**: it cannot throw and cannot
-  fail the job (every failure path is caught and logged via `Trace`). A worker
-  crash before flush loses that job's un-flushed telemetry — acceptable, since
-  telemetry must never gate or fail real work.
+- **(a) Flush is on the job-completion critical path — by design.** `FlushAsync`
+  is awaited *before* the completion report. Reordering (flush after, or racing
+  the two) was considered and rejected: the completion report is what lets
+  ephemeral runners (e.g. ARC) tear the worker down, so flushing after it races
+  pod deletion and nondeterministically drops the job's telemetry — on exactly
+  the fleets this feature targets. The cost is bounded to a **4 s overall
+  deadline** across all three signals (including the retry), so a hung or
+  unreachable collector can delay job completion by at most that (fast-fail
+  errors like connection-refused cost far less); healthy-path cost is
+  milliseconds. It is **best-effort**: it cannot throw and cannot fail the job
+  (every failure path is caught and logged via `Trace`). A worker crash before
+  flush loses that job's un-flushed telemetry — acceptable, since telemetry must
+  never gate or fail real work.
 - **(b) Sampling/cardinality is server/collector-controlled.** The runner emits
   **everything** for an enabled job (no client-side sampling); volume is governed
   by the server feature flag + the operator's endpoint opt-in, and any

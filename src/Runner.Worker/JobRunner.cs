@@ -334,7 +334,11 @@ namespace GitHub.Runner.Worker
                 telemetry = jobContext.Global.JobTelemetry.Select(x => new Telemetry { Type = x.Type.ToString(), Message = x.Message, }).ToList();
             }
 
-            // Flush OTel spans before reporting job completion
+            // Flush OTel spans BEFORE reporting job completion — deliberately.
+            // Completion is the signal that lets ephemeral runners (e.g. ARC) tear
+            // this worker down; flushing after it races pod deletion and drops the
+            // job's telemetry. Cost is bounded: no-op when OTel is off, and a hard
+            // 4 s overall flush deadline when the collector is down (see ADR 4366).
             await HostContext.GetService<IOTelTraceExporter>().FlushAsync(default);
 
             Trace.Info($"Raising job completed against run service");
@@ -418,7 +422,8 @@ namespace GitHub.Runner.Worker
             // Make sure we don't submit secrets as telemetry
             MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
-            // Flush OTel spans before reporting job completion
+            // Flush OTel spans BEFORE reporting job completion — deliberately; see
+            // the comment on the run-service path above (ephemeral teardown race).
             await HostContext.GetService<IOTelTraceExporter>().FlushAsync(default);
 
             Trace.Info($"Raising job completed event");
