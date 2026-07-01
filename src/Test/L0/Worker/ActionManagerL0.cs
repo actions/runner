@@ -3894,5 +3894,152 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_DollarSelf_ResolvesAtDepthZero_LegacyPath()
+        {
+            // Same as ResolvesAtDepthZero but on the legacy (non-batch) path
+            try
+            {
+                // Arrange
+                Setup();
+                const string RepoName = "my-org/my-repo";
+                const string RepoSha = "abc123def456";
+                _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
+                _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                var jobContext = new JobContext();
+                jobContext.WorkflowRepository = RepoName;
+                jobContext.WorkflowSha = RepoSha;
+                _ec.Setup(x => x.JobContext).Returns(jobContext);
+
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            Path = "actions/my-action"
+                        }
+                    }
+                };
+
+                string archiveFile = await CreateRepoArchive();
+                using var stream = File.OpenRead(archiveFile);
+                string archiveLink = GetLinkToActionArchive("https://api.github.com", RepoName, RepoSha);
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(archiveLink)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
+
+                // Act
+                try
+                {
+                    await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("Can't find"))
+                {
+                    // Expected: test archive lacks the action.yml at the resolved subpath
+                }
+
+                // Assert — the reference should be resolved to a GitHub repo reference
+                var repoRef = actions[0].Reference as Pipelines.RepositoryPathReference;
+                Assert.Equal(Pipelines.RepositoryTypes.GitHub, repoRef.RepositoryType);
+                Assert.Equal(RepoName, repoRef.Name);
+                Assert.Equal(RepoSha, repoRef.Ref);
+                Assert.Equal("actions/my-action", repoRef.Path);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_DollarSelf_ResolvesNestedInComposite_LegacyPath()
+        {
+            // Same as ResolvesNestedInComposite but on the legacy (non-batch) path.
+            // Verifies that $/ resolution works when batch action resolution is disabled.
+            try
+            {
+                // Arrange
+                Setup();
+                const string RepoName = "my-org/my-repo";
+                const string RepoSha = "abc123def456";
+                _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
+                _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
+                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                var jobContext = new JobContext();
+                jobContext.WorkflowRepository = RepoName;
+                jobContext.WorkflowSha = RepoSha;
+                _ec.Setup(x => x.JobContext).Returns(jobContext);
+
+                // Stage parent action on disk as a composite that uses $/actions/child.
+                string actionsDir = Path.Combine(_workFolder, Constants.Path.ActionsDirectory);
+                string destDir = Path.Combine(actionsDir, RepoName.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), RepoSha);
+                Directory.CreateDirectory(Path.Combine(destDir, "actions", "parent"));
+                File.WriteAllText(Path.Combine(destDir, "actions", "parent", Constants.Path.ActionManifestYmlFile), @"
+name: 'Parent'
+description: 'Composite parent'
+runs:
+  using: 'composite'
+  steps:
+    - uses: $/actions/child
+");
+                // Stage child action too (as a leaf node action)
+                Directory.CreateDirectory(Path.Combine(destDir, "actions", "child"));
+                File.WriteAllText(Path.Combine(destDir, "actions", "child", Constants.Path.ActionManifestYmlFile), @"
+name: 'Child'
+description: 'Node child'
+runs:
+  using: 'node20'
+  main: 'index.js'
+");
+                // Write watermark
+                File.WriteAllText($"{destDir}.completed", string.Empty);
+
+                var rootStepId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            Path = "actions/parent"
+                        }
+                    }
+                };
+
+                // Act — should resolve $/ and not throw InvalidOperationException
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions, rootStepId);
+
+                // Assert — top-level $/ resolved
+                var topRef = actions[0].Reference as Pipelines.RepositoryPathReference;
+                Assert.Equal(Pipelines.RepositoryTypes.GitHub, topRef.RepositoryType);
+                Assert.Equal(RepoName, topRef.Name);
+                Assert.Equal(RepoSha, topRef.Ref);
+                Assert.Equal("actions/parent", topRef.Path);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
     }
 }
