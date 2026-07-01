@@ -114,6 +114,73 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async Task Post_HonorsRetryAfterOnThrottle()
+        {
+            // OTLP spec SHOULD: wait as long as the server's Retry-After before retrying.
+            var handler = new FakeHandler(
+                () =>
+                {
+                    var r = Resp(HttpStatusCode.TooManyRequests);
+                    r.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1));
+                    return r;
+                },
+                () => Resp(HttpStatusCode.OK));
+            using var transport = new OTelHttpTransport(handler);
+            var delays = new List<TimeSpan>();
+            transport.DelayAsync = (d, _) => { delays.Add(d); return Task.CompletedTask; };
+
+            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+
+            Assert.True(ok);
+            Assert.Equal(2, handler.Requests.Count);
+            Assert.Equal(TimeSpan.FromSeconds(1), delays.Single());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task Post_SkipsRetryWhenRetryAfterExceedsFlushDeadline()
+        {
+            // A Retry-After the 4 s flush deadline can't honor: don't burn the retry.
+            var handler = new FakeHandler(() =>
+            {
+                var r = Resp(HttpStatusCode.TooManyRequests);
+                r.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(30));
+                return r;
+            });
+            using var transport = new OTelHttpTransport(handler);
+            var delays = new List<TimeSpan>();
+            transport.DelayAsync = (d, _) => { delays.Add(d); return Task.CompletedTask; };
+
+            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+
+            Assert.False(ok);
+            Assert.Single(handler.Requests);
+            Assert.Empty(delays);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task Post_JittersRetryDelayWithoutRetryAfter()
+        {
+            // No Retry-After -> short jittered delay (100-400 ms), not a fixed interval,
+            // so a fleet of runners flushing at once doesn't retry in lockstep.
+            var handler = new FakeHandler(() => Resp(HttpStatusCode.ServiceUnavailable), () => Resp(HttpStatusCode.OK));
+            using var transport = new OTelHttpTransport(handler);
+            var delays = new List<TimeSpan>();
+            transport.DelayAsync = (d, _) => { delays.Add(d); return Task.CompletedTask; };
+
+            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+
+            Assert.True(ok);
+            Assert.Equal(2, handler.Requests.Count);
+            Assert.InRange(delays.Single().TotalMilliseconds, 100, 400);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task Post_PartialSuccessIsDeliveredAndLogged()
         {
             var handler = new FakeHandler(() => Resp(HttpStatusCode.OK, "{\"partialSuccess\":{\"rejectedSpans\":\"2\",\"errorMessage\":\"dropped\"}}"));

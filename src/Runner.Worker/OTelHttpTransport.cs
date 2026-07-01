@@ -22,6 +22,9 @@ namespace GitHub.Runner.Worker
         private readonly HttpClient _httpClient;
         private readonly Action<string> _log;
 
+        // Test seam: lets retry-timing tests observe delays instead of sleeping for real.
+        internal Func<TimeSpan, CancellationToken, Task> DelayAsync = Task.Delay;
+
         public OTelHttpTransport(HttpMessageHandler handler, IReadOnlyList<KeyValuePair<string, string>> headers = null, Action<string> log = null)
         {
             _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
@@ -52,6 +55,44 @@ namespace GitHub.Runner.Worker
         // "All other 4xx or 5xx response status codes MUST NOT be retried" (so no 408/500).
         private static bool IsTransientStatus(int status) =>
             status == 429 || status == 502 || status == 503 || status == 504;
+
+        // Longest Retry-After the transport will honor: flush runs under a hard 4 s
+        // overall deadline, so a server asking to wait longer than this can't be
+        // satisfied in time — the retry is skipped instead of thrown at a collector
+        // that just said it's overloaded.
+        internal static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(2);
+
+        // 100-400 ms random delay so a fleet of runners flushing at once doesn't
+        // retry in lockstep against the same collector.
+        private static TimeSpan Jitter() => TimeSpan.FromMilliseconds(Random.Shared.Next(100, 401));
+
+        // Delay before the single retry. Honors Retry-After (OTLP spec SHOULD) when the
+        // server sent one; without it, falls back to a short jittered delay — under the
+        // deliberate one-retry bound (see the ADR transport section) the spec's
+        // exponential-backoff SHOULD degenerates to this single jittered wait. Returns
+        // false when Retry-After is longer than the flush deadline could honor: that
+        // retry would be wasted, so it is skipped entirely.
+        internal static bool TryGetRetryDelay(HttpResponseMessage response, out TimeSpan delay)
+        {
+            var retryAfter = response?.Headers?.RetryAfter;
+            var requested = retryAfter?.Delta;
+            if (requested == null && retryAfter?.Date != null)
+            {
+                requested = retryAfter.Date.Value - DateTimeOffset.UtcNow;
+            }
+            if (requested == null)
+            {
+                delay = Jitter();
+                return true;
+            }
+            if (requested.Value > MaxRetryAfter)
+            {
+                delay = default;
+                return false;
+            }
+            delay = requested.Value > TimeSpan.Zero ? requested.Value : TimeSpan.Zero;
+            return true;
+        }
 
         // OTLP partial success: a 200 response may carry
         // {"partialSuccess":{"rejectedSpans":"N",...,"errorMessage":"..."}}. Returns a
@@ -110,8 +151,13 @@ namespace GitHub.Runner.Worker
                         }
                         if (attempt < 2 && IsTransientStatus((int)response.StatusCode) && !cancellationToken.IsCancellationRequested)
                         {
-                            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
-                            continue;
+                            if (TryGetRetryDelay(response, out var delay))
+                            {
+                                await DelayAsync(delay, cancellationToken);
+                                continue;
+                            }
+                            _log($"OTel export throttled, Retry-After exceeds flush deadline (best-effort, ignored): HTTP {(int)response.StatusCode}");
+                            return false;
                         }
                         _log($"OTel export rejected by collector (best-effort, ignored): HTTP {(int)response.StatusCode}");
                         return false;
@@ -119,7 +165,7 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex) when (attempt < 2 && ex is not OperationCanceledException && !cancellationToken.IsCancellationRequested)
                     {
                         _log($"OTel export attempt {attempt} failed, retrying: {ex.Message}");
-                        await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+                        await DelayAsync(Jitter(), cancellationToken);
                     }
                 }
             }

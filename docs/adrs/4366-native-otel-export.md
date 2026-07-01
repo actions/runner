@@ -99,8 +99,12 @@ API-reconstructed trace).
   typically shrinks the body ~10x (see `docs/otel-benchmarks.md`);
   `CompressionLevel.Fastest` keeps CPU negligible.
 - **One retry** on a transient failure (exactly the OTLP/HTTP retryable codes —
-  429/502/503/504 — or a transport exception), 200 ms apart, bounded by the
-  flush deadline. Per-request HTTP timeout is 5 s.
+  429/502/503/504 — or a transport exception), bounded by the flush deadline.
+  The server's `Retry-After` is honored when it fits the deadline (skipping the
+  retry when it can't); otherwise the delay is a jittered 100–400 ms so fleets
+  don't retry in lockstep. With this deliberate single-retry bound, the spec's
+  exponential-backoff SHOULD degenerates to that one jittered wait. Per-request
+  HTTP timeout is 5 s.
 - Sent over the runner's **proxy-aware** `HostContext.CreateHttpClientHandler()`,
   honoring the runner's existing proxy config. `ACTIONS_RUNNER_OTLP_INSECURE=true`
   skips TLS verification for self-signed collectors.
