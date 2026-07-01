@@ -25,10 +25,16 @@ namespace GitHub.Runner.Worker
         // Test seam: lets retry-timing tests observe delays instead of sleeping for real.
         internal Func<TimeSpan, CancellationToken, Task> DelayAsync = Task.Delay;
 
-        public OTelHttpTransport(HttpMessageHandler handler, IReadOnlyList<KeyValuePair<string, string>> headers = null, Action<string> log = null)
+        public OTelHttpTransport(HttpMessageHandler handler, IReadOnlyList<KeyValuePair<string, string>> headers = null, Action<string> log = null, string userAgent = null)
         {
             _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
             _log = log ?? (_ => { });
+            if (!string.IsNullOrEmpty(userAgent))
+            {
+                // OTLP exporter spec SHOULD: identify the exporter and its version so
+                // collector operators can attribute and police runner-fleet traffic.
+                _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", userAgent);
+            }
             if (headers != null)
             {
                 foreach (var h in headers)
@@ -40,6 +46,8 @@ namespace GitHub.Runner.Worker
 
         // gzip the OTLP/JSON body. A job's spans/logs are highly repetitive, so this
         // typically shrinks the payload ~10x — less bandwidth and faster posts.
+        // Always-on with no opt-out: the OTLP spec requires every server to accept it
+        // ("All server components MUST support ... Gzip compression").
         internal static byte[] GzipUtf8(string s)
         {
             var raw = Encoding.UTF8.GetBytes(s);

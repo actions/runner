@@ -160,7 +160,8 @@ namespace GitHub.Runner.Worker
                     headers.Add(new KeyValuePair<string, string>(pair.Substring(0, eq).Trim(), value));
                 }
             }
-            _transport = new OTelHttpTransport(handler, headers, msg => Trace.Info(msg));
+            _transport = new OTelHttpTransport(handler, headers, msg => Trace.Info(msg),
+                userAgent: $"GitHubActionsRunner-OTLP-Exporter/{BuildConstants.RunnerPackage.Version}");
             Trace.Info($"Native OTel export enabled, endpoint: {_endpoint}");
         }
 

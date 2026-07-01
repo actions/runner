@@ -68,6 +68,22 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async Task Post_SendsIdentifyingUserAgent()
+        {
+            // OTLP exporter spec SHOULD: a User-Agent identifying the exporter + version,
+            // so collector operators can attribute runner-fleet traffic.
+            var handler = new FakeHandler(() => Resp(HttpStatusCode.OK));
+            using var transport = new OTelHttpTransport(handler, userAgent: "GitHubActionsRunner-OTLP-Exporter/2.333.0");
+
+            await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+
+            Assert.Equal("GitHubActionsRunner-OTLP-Exporter/2.333.0",
+                string.Join(" ", handler.Requests.Single().Headers.GetValues("User-Agent")));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task Post_RetriesOnTransientThenSucceeds()
         {
             var handler = new FakeHandler(() => Resp(HttpStatusCode.ServiceUnavailable), () => Resp(HttpStatusCode.OK));
