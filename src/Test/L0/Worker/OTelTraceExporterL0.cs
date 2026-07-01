@@ -658,6 +658,45 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async System.Threading.Tasks.Task Flush_HangingCollector_BoundedByOverallDeadline()
+        {
+            // Worst case for job-end latency: a collector that ACCEPTS the TCP
+            // connection and then stalls (slow-loris). Nothing fast-fails, so only
+            // the 4 s overall flush deadline bounds the wait — measure that it does.
+            using var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            var held = new List<System.Net.Sockets.TcpClient>();
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                while (true)
+                {
+                    held.Add(await listener.AcceptTcpClientAsync()); // accept, never respond
+                }
+            });
+
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc, $"http://127.0.0.1:{port}");
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, null, null, null);
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var ex = await Record.ExceptionAsync(() => exporter.FlushAsync(default));
+            sw.Stop();
+
+            Assert.Null(ex);
+            // Hard bound: 4 s overall deadline (+ scheduling slack). This is the
+            // measured worst-case job-end delay a hung collector can cause.
+            Assert.True(sw.Elapsed < TimeSpan.FromSeconds(6), $"flush took {sw.Elapsed}, expected < 6 s");
+            Assert.NotNull(exporter.LastFlushSummaryForTest);
+            Assert.Contains("failed", exporter.LastFlushSummaryForTest);
+            listener.Stop();
+            held.ForEach(c => c.Dispose());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void ExportSummary_NullWhenCleanAndDescriptiveOnLoss()
         {
             // Clean flush -> no summary line at all.
