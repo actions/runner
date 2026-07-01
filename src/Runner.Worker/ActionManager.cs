@@ -1544,7 +1544,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 var repoAction = action.Reference as Pipelines.RepositoryPathReference;
-                if (!string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.DollarSelfAlias, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfRepositoryAlias, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -1580,7 +1580,7 @@ namespace GitHub.Runner.Worker
                 return null;
             }
 
-            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.DollarSelfAlias, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfRepositoryAlias, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Unable to resolve self-reference '$/'. Self-references require a server version that supports this syntax. Ensure the workflow is running on a compatible GitHub Actions environment.");
             }

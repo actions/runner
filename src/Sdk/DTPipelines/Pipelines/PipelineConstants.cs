@@ -43,10 +43,10 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly String SelfAlias = "self";
 
         /// <summary>
-        /// Alias for dollar-self references ($/path).
+        /// RepositoryType for self-references ($/path).
         /// Resolves to "this repo, at this SHA" based on the containing YAML file.
         /// </summary>
-        public static readonly String DollarSelfAlias = "dollar-self";
+        public static readonly String SelfRepositoryAlias = "selfRepository";
 
         /// <summary>
         /// The prefix for dollar-self references in uses: values.

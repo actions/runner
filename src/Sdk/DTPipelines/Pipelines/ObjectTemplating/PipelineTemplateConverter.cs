@@ -59,9 +59,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         {
                             name = repositoryReference.Name;
                         }
-                        else if (String.Equals(repositoryReference.RepositoryType, PipelineConstants.DollarSelfAlias, StringComparison.OrdinalIgnoreCase))
+                        else if (String.Equals(repositoryReference.RepositoryType, PipelineConstants.SelfRepositoryAlias, StringComparison.OrdinalIgnoreCase))
                         {
-                            name = PipelineConstants.DollarSelfAlias;
+                            name = PipelineConstants.SelfRepositoryAlias;
                         }
                         else
                         {
@@ -615,7 +615,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     result.Reference = new RepositoryPathReference
                     {
-                        RepositoryType = PipelineConstants.DollarSelfAlias,
+                        RepositoryType = PipelineConstants.SelfRepositoryAlias,
                         Path = dollarSelfPath
                     };
                 }

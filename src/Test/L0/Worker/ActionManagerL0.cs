@@ -3564,7 +3564,7 @@ runs:
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            RepositoryType = Pipelines.PipelineConstants.SelfRepositoryAlias,
                             Path = "actions/my-action"
                         }
                     }
@@ -3630,7 +3630,7 @@ runs:
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            RepositoryType = Pipelines.PipelineConstants.SelfRepositoryAlias,
                             Path = "actions/my-action"
                         }
                     }
@@ -3709,7 +3709,7 @@ runs:
                         Id = Guid.NewGuid(),
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            RepositoryType = Pipelines.PipelineConstants.SelfRepositoryAlias,
                             Path = "actions/parent"
                         }
                     }
@@ -3871,7 +3871,7 @@ runs:
                         Id = Guid.NewGuid(),
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            RepositoryType = Pipelines.PipelineConstants.SelfRepositoryAlias,
                             Path = "a"
                         }
                     }
@@ -3923,7 +3923,7 @@ runs:
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            RepositoryType = Pipelines.PipelineConstants.SelfRepositoryAlias,
                             Path = "actions/my-action"
                         }
                     }
@@ -4019,7 +4019,7 @@ runs:
                         Id = Guid.NewGuid(),
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            RepositoryType = Pipelines.PipelineConstants.DollarSelfAlias,
+                            RepositoryType = Pipelines.PipelineConstants.SelfRepositoryAlias,
                             Path = "actions/parent"
                         }
                     }

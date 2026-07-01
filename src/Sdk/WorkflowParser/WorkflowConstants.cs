@@ -31,9 +31,9 @@ namespace GitHub.Actions.WorkflowParser
         internal const String SelfAlias = "self";
 
         /// <summary>
-        /// Alias for dollar-self references ($/path).
+        /// RepositoryType for self-references ($/path).
         /// </summary>
-        internal const String DollarSelfAlias = "dollar-self";
+        internal const String SelfRepositoryAlias = "selfRepository";
 
         public static class PermissionsPolicy
         {

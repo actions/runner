@@ -1607,7 +1607,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     }
                     else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseDollarSelfReference(action.Uses!.Value, out _))
                     {
-                        id = WorkflowConstants.DollarSelfAlias;
+                        id = WorkflowConstants.SelfRepositoryAlias;
                     }
                     else
                     {
