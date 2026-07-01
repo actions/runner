@@ -611,6 +611,56 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Null(ex);
         }
 
+        // ---- TLS: custom CA trust (the safe primitive for self-signed collectors) ----
+
+        private static System.Security.Cryptography.X509Certificates.X509Certificate2 NewSelfSignedCert(string cn)
+        {
+            using var rsa = System.Security.Cryptography.RSA.Create(2048);
+            var req = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+                $"CN={cn}", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256,
+                System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+            return req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CustomCaTrust_AcceptsOnlyCertsFromTheBundle()
+        {
+            using var collectorCert = NewSelfSignedCert("collector.internal");
+            using var otherCert = NewSelfSignedCert("mitm.example");
+            var trusted = new System.Security.Cryptography.X509Certificates.X509Certificate2Collection { collectorCert };
+
+            // The bundled CA (here: the self-signed collector cert itself) validates ...
+            Assert.True(OTelTraceExporter.ValidateWithCustomTrustRoots(collectorCert, trusted));
+            // ... any other cert — e.g. a MITM's — does not.
+            Assert.False(OTelTraceExporter.ValidateWithCustomTrustRoots(otherCert, trusted));
+            Assert.False(OTelTraceExporter.ValidateWithCustomTrustRoots(null, trusted));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Initialize_LoadsCustomCaBundle()
+        {
+            var caFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"otel-ca-{Guid.NewGuid():N}.pem");
+            var prev = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_OTLP_CERTIFICATE");
+            try
+            {
+                using var cert = NewSelfSignedCert("collector.internal");
+                System.IO.File.WriteAllText(caFile, cert.ExportCertificatePem());
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_OTLP_CERTIFICATE", caFile);
+                using var hc = new TestHostContext(this);
+                var exporter = Enabled(hc);
+                Assert.True(exporter.IsEnabled); // a valid PEM CA bundle loads cleanly
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_OTLP_CERTIFICATE", prev);
+                System.IO.File.Delete(caFile);
+            }
+        }
+
         // ---- secret masking (uses the host's real SecretMasker) ----
 
         [Fact]

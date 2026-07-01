@@ -112,8 +112,13 @@ API-reconstructed trace).
   exponential-backoff SHOULD degenerates to that one jittered wait. Per-request
   HTTP timeout is 5 s.
 - Sent over the runner's **proxy-aware** `HostContext.CreateHttpClientHandler()`,
-  honoring the runner's existing proxy config. `ACTIONS_RUNNER_OTLP_INSECURE=true`
-  skips TLS verification for self-signed collectors.
+  honoring the runner's existing proxy config. For self-signed/private-CA
+  collectors, `ACTIONS_RUNNER_OTLP_CERTIFICATE` points at a PEM CA bundle that
+  is trusted for the collector connection (hostname still checked; a bad bundle
+  fails closed). `ACTIONS_RUNNER_OTLP_INSECURE=true` instead disables **all**
+  server-certificate validation — a MITM can then read the export traffic,
+  including any `ACTIONS_RUNNER_OTLP_HEADERS` credential — so enabling it logs
+  an explicit warning; prefer the CA bundle.
 - **Per-buffer memory caps** (`MaxBufferedSpans`/`Logs`/`TaskMetrics` = 10 000
   each). A pathological job (e.g. unbounded `::warning::` annotations) can't grow
   the buffers without bound; excess is dropped and counted, never OOMing the
@@ -231,7 +236,8 @@ Sub-alternatives rejected:
 |---------|----------|-------------|
 | `ACTIONS_RUNNER_OTLP_ENDPOINT` | Yes | OTLP/HTTP base URL, e.g. `http://collector:4318`. Signals POST to `{endpoint}/v1/{traces,metrics,logs}`. A URL already ending in `/v1/traces` is accepted. |
 | `ACTIONS_RUNNER_OTLP_HEADERS` | No | Comma-separated `key=value` headers for collector auth, e.g. `authorization=Bearer xyz,x-api-key=abc`. Values are registered with the secret masker. |
-| `ACTIONS_RUNNER_OTLP_INSECURE` | No | `true` to skip TLS verification (self-signed collectors). |
+| `ACTIONS_RUNNER_OTLP_CERTIFICATE` | No | Path to a PEM CA bundle trusted for the collector connection (self-signed/private-CA collectors). Mirrors `OTEL_EXPORTER_OTLP_CERTIFICATE`. |
+| `ACTIONS_RUNNER_OTLP_INSECURE` | No | `true` disables **all** TLS certificate validation (not just self-signed) — exposes the connection, including auth headers, to MITM. Logs a warning; prefer `…_OTLP_CERTIFICATE`. |
 | `ACTIONS_RUNNER_OTLP_PROPAGATE` | No | `true` to inject `TRACEPARENT` + `OTEL_*` into each step's env so in-job tools nest under the step span. |
 | `ACTIONS_RUNNER_PARENT_TRACEPARENT` / `…_TRACESTATE` | No | Inbound W3C context from an upstream scheduler; attached to the job span as a link. |
 | `OTEL_RESOURCE_ATTRIBUTES` | No | Standard OTel env var; merged into the Resource (e.g. ARC `k8s.*`). |

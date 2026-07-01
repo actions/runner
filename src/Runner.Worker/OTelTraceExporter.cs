@@ -175,12 +175,33 @@ namespace GitHub.Runner.Worker
 
             var insecure = StringUtil.ConvertToBoolean(
                 Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpInsecure));
+            var caFile = Environment.GetEnvironmentVariable(Constants.Variables.Agent.OtlpCertificate);
             // Proxy-aware handler so export honors the runner's proxy configuration.
             var handler = HostContext.CreateHttpClientHandler();
-            if (insecure)
+            if (!string.IsNullOrEmpty(caFile))
             {
+                // Trust exactly the CA(s) in this PEM bundle for the collector connection —
+                // the safe primitive for self-signed collectors (hostname is still checked).
+                // A bad bundle throws here, which disables export (fail-closed) rather than
+                // silently falling back to weaker validation.
+                var trustedRoots = new System.Security.Cryptography.X509Certificates.X509Certificate2Collection();
+                trustedRoots.ImportFromPemFile(caFile);
+                handler.ServerCertificateCustomValidationCallback =
+                    (request, cert, chain, errors) =>
+                        (errors & System.Net.Security.SslPolicyErrors.RemoteCertificateNameMismatch) == 0
+                        && ValidateWithCustomTrustRoots(cert, trustedRoots);
+            }
+            else if (insecure)
+            {
+                // This flag disables ALL server-certificate validation, not just "allow
+                // self-signed" — any MITM can read the export traffic, including the
+                // ACTIONS_RUNNER_OTLP_HEADERS credential sent on every POST. Never do
+                // this silently; prefer ACTIONS_RUNNER_OTLP_CERTIFICATE (CA bundle).
                 handler.ServerCertificateCustomValidationCallback =
                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                Trace.Warning($"{Constants.Variables.Agent.OtlpInsecure}=true disables ALL TLS certificate validation for OTel export"
+                    + (string.IsNullOrEmpty(_rawHeaders) ? "" : " — the OTLP auth header is exposed to any man-in-the-middle")
+                    + $"; prefer {Constants.Variables.Agent.OtlpCertificate} with a CA bundle.");
             }
             // Optional collector auth headers (read + scrubbed above), e.g.
             //   ACTIONS_RUNNER_OTLP_HEADERS="authorization=Bearer xyz,x-api-key=abc"
@@ -257,6 +278,24 @@ namespace GitHub.Runner.Worker
             {
                 _resource = attrs;
             }
+        }
+
+        // Chain-validate a server certificate against ONLY the supplied trust roots
+        // (ACTIONS_RUNNER_OTLP_CERTIFICATE bundle) — a self-signed collector cert or a
+        // private CA validates; anything else, e.g. a MITM's cert, does not.
+        internal static bool ValidateWithCustomTrustRoots(
+            System.Security.Cryptography.X509Certificates.X509Certificate2 cert,
+            System.Security.Cryptography.X509Certificates.X509Certificate2Collection trustedRoots)
+        {
+            if (cert == null)
+            {
+                return false;
+            }
+            using var chain = new System.Security.Cryptography.X509Certificates.X509Chain();
+            chain.ChainPolicy.TrustMode = System.Security.Cryptography.X509Certificates.X509ChainTrustMode.CustomRootTrust;
+            chain.ChainPolicy.CustomTrustStore.AddRange(trustedRoots);
+            chain.ChainPolicy.RevocationMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck;
+            return chain.Build(cert);
         }
 
         // Remove URL userinfo (user:password@) from an absolute URL; returns non-URL

@@ -317,6 +317,9 @@ namespace GitHub.Runner.Common
                 // Native OpenTelemetry trace export (see docs/adrs/4366-native-otel-export.md).
                 public static readonly string OtlpEndpoint = "ACTIONS_RUNNER_OTLP_ENDPOINT";
                 public static readonly string OtlpHeaders = "ACTIONS_RUNNER_OTLP_HEADERS";
+                // Path to a PEM CA bundle trusted for the collector connection (the safe
+                // primitive for self-signed collectors; mirrors OTEL_EXPORTER_OTLP_CERTIFICATE).
+                public static readonly string OtlpCertificate = "ACTIONS_RUNNER_OTLP_CERTIFICATE";
                 public static readonly string OtlpInsecure = "ACTIONS_RUNNER_OTLP_INSECURE";
                 public static readonly string OtlpPropagate = "ACTIONS_RUNNER_OTLP_PROPAGATE";
                 // Inbound W3C trace context from an upstream scheduler (e.g. ARC): the job
