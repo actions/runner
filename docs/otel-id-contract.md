@@ -104,6 +104,23 @@ runner emits them as `INTERNAL`; the `SERVER` pipeline-run span belongs to the
 API path with the run/workflow span above. Span kind is therefore a structural
 discriminator: `SERVER` = the run, `INTERNAL` = tasks.
 
+## Attribute scope: cicd.worker.*
+
+`cicd.worker.name` and `cicd.worker.id` identify the runner host that executed
+a job. Their OTel **scope** differs between the runner and the ARC listener:
+
+| Component | Scope | Rationale |
+|-----------|-------|-----------|
+| Runner (`OTelTraceExporter.cs`) | **Resource** attribute | One worker process per runner host; the identity is constant for the process lifetime. |
+| ARC listener (`cmd/ghalistener/metrics/otel.go`) | **Span** attribute | One listener process serves many runners; the worker identity varies per job span. |
+
+Both carry the same key names and value semantics. A TraceQL query that must
+match spans from either component should check both scopes:
+
+```
+span.cicd.worker.name != "" || resource.cicd.worker.name != ""
+```
+
 ## On enumerability of trace IDs
 
 Trace IDs derive from the **public, enumerable `run_id`** (a known, guessable
