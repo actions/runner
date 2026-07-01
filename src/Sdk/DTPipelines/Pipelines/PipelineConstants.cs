@@ -61,7 +61,12 @@ namespace GitHub.DistributedTask.Pipelines
         {
             if (usesValue != null && usesValue.StartsWith(DollarSelfPrefix, StringComparison.Ordinal))
             {
-                path = usesValue.Substring(DollarSelfPrefix.Length);
+                path = usesValue.Substring(DollarSelfPrefix.Length).TrimStart('/');
+                if (string.IsNullOrEmpty(path))
+                {
+                    path = null;
+                    return false;
+                }
                 return true;
             }
 

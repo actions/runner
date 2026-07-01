@@ -1582,7 +1582,7 @@ namespace GitHub.Runner.Worker
 
             if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfRepositoryAlias, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Unable to resolve self-reference '$/'. Self-references require a server version that supports this syntax. Ensure the workflow is running on a compatible GitHub Actions environment.");
+                throw new InvalidOperationException($"Unable to resolve self-reference '$/'. This can occur when the server does not support this syntax, the feature flag is disabled, or the workflow context (repository/SHA) is unavailable.");
             }
 
             if (!string.Equals(repositoryReference.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
