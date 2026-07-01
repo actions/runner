@@ -94,6 +94,10 @@ namespace GitHub.Runner.Worker
                     if (s.StatusCode != 0)
                     {
                         w.WriteNumber("code", s.StatusCode);
+                        if (!string.IsNullOrEmpty(s.StatusMessage))
+                        {
+                            w.WriteString("message", Mask(s.StatusMessage));
+                        }
                     }
                     w.WriteEndObject();
                     w.WriteEndObject();
@@ -444,6 +448,7 @@ namespace GitHub.Runner.Worker
             public long StartTimeUnixNano;
             public long EndTimeUnixNano;
             public int StatusCode; // 0 unset, 1 ok, 2 error
+            public string StatusMessage; // error description; only written with an error code
             public readonly List<OTelLink> Links = new();
             public readonly List<KeyValuePair<string, object>> Attributes = new();
             public readonly List<OTelEvent> Events = new();
@@ -453,15 +458,18 @@ namespace GitHub.Runner.Worker
                 Attributes.Add(new KeyValuePair<string, object>(key, value));
             }
 
-            // semconv exception event.
-            public void AddException(string type, string message, long timeNano)
+            // semconv exception event, message-only: a CI conclusion ("failure") is not
+            // an exception class, so exception.type is omitted rather than faked — that
+            // would bucket every failed step into one meaningless error group. Semconv
+            // requires at least one of type/message, so no message means no event.
+            public void AddException(string message, long timeNano)
             {
-                var ev = new OTelEvent { Name = "exception", TimeUnixNano = timeNano };
-                ev.Attributes.Add(new("exception.type", type));
-                if (!string.IsNullOrEmpty(message))
+                if (string.IsNullOrEmpty(message))
                 {
-                    ev.Attributes.Add(new("exception.message", message));
+                    return;
                 }
+                var ev = new OTelEvent { Name = "exception", TimeUnixNano = timeNano };
+                ev.Attributes.Add(new("exception.message", message));
                 Events.Add(ev);
             }
         }

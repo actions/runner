@@ -40,8 +40,11 @@ Runner identity is attached once as the OTLP **Resource**:
 `k8s.*` via the Downward API), with explicitly-set keys taking precedence.
 
 Spans and steps carry GitHub/VCS context (`github.*`, `vcs.*`) and CI/CD
-semantic-convention attributes (`cicd.pipeline.*`), with `error.type` and an
-ERROR status + an `exception` event on failure.
+semantic-convention attributes (`cicd.pipeline.*`). On failure the span gets
+`error.type` (low-cardinality classifier), an ERROR status carrying the error
+message as status `message`, and — when a message exists — a message-only
+`exception` event (a CI conclusion is not an exception class, so
+`exception.type` is omitted rather than faked).
 
 ### Trace shape — the job span is the trace root
 

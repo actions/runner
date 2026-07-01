@@ -538,10 +538,10 @@ namespace GitHub.Runner.Worker
                 var taskType = InferTaskType(stepName, actionName);
                 if (taskType != null) span.Set("cicd.pipeline.task.type", taskType);
 
-                ApplyStatus(span, ghConclusion);
+                ApplyStatus(span, ghConclusion, errorMessage);
                 if (ghConclusion == "failure")
                 {
-                    span.AddException("failure", errorMessage, span.EndTimeUnixNano);
+                    span.AddException(errorMessage, span.EndTimeUnixNano);
                 }
 
                 var stepMetric = new TaskMetric
@@ -625,10 +625,10 @@ namespace GitHub.Runner.Worker
                     span.Set("github.throttling_delay_ms", throttlingDelayMs);
                 }
 
-                ApplyStatus(span, ghConclusion);
+                ApplyStatus(span, ghConclusion, errorMessage);
                 if (ghConclusion == "failure")
                 {
-                    span.AddException("failure", errorMessage, span.EndTimeUnixNano);
+                    span.AddException(errorMessage, span.EndTimeUnixNano);
                 }
 
                 var durationSeconds = Math.Max(0, (span.EndTimeUnixNano - span.StartTimeUnixNano) / 1_000_000_000.0);
@@ -991,12 +991,13 @@ namespace GitHub.Runner.Worker
 
         // ---- helpers ----
 
-        private static void ApplyStatus(OTelSpan span, string ghConclusion)
+        private static void ApplyStatus(OTelSpan span, string ghConclusion, string errorMessage = null)
         {
             if (ghConclusion == "failure")
             {
                 span.StatusCode = 2; // ERROR
-                span.Set("error.type", "failure");
+                span.StatusMessage = errorMessage; // status.message per Recording Errors guidance
+                span.Set("error.type", "failure"); // low-cardinality classifier
             }
         }
 

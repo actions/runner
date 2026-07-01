@@ -1122,7 +1122,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void FailedStep_EmitsExceptionEvent()
+        public void FailedStep_EmitsExceptionEvent_AndStatusMessage()
         {
             using var hc = new TestHostContext(this);
             var exporter = Enabled(hc);
@@ -1130,11 +1130,36 @@ namespace GitHub.Runner.Common.Tests.Worker
             exporter.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Failed, null, null, null,
                 errorMessage: "assertion failed: 2 != 3");
 
-            var ev = SpanAt(exporter, 0).GetProperty("events")[0];
+            var span = SpanAt(exporter, 0);
+            var ev = span.GetProperty("events")[0];
             Assert.Equal("exception", ev.GetProperty("name").GetString());
             var attrs = ReadAttrsFrom(ev);
-            Assert.Equal("failure", attrs["exception.type"]);
+            // A CI conclusion is not an exception class; semconv exception.type must be
+            // a real type or omitted (message-only exception events are valid).
+            Assert.False(attrs.ContainsKey("exception.type"));
             Assert.Equal("assertion failed: 2 != 3", attrs["exception.message"]);
+            // Recording Errors guidance: the error description rides on span status.
+            var status = span.GetProperty("status");
+            Assert.Equal(2, status.GetProperty("code").GetInt32());
+            Assert.Equal("assertion failed: 2 != 3", status.GetProperty("message").GetString());
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void FailedStep_WithoutErrorMessage_HasNoEmptyExceptionEvent()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            exporter.RecordStepCompletion("Run tests", 3, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Failed, null, null, null);
+
+            var span = SpanAt(exporter, 0);
+            // An exception event with neither type nor message is invalid semconv.
+            Assert.False(span.TryGetProperty("events", out _));
+            var status = span.GetProperty("status");
+            Assert.Equal(2, status.GetProperty("code").GetInt32());
+            Assert.False(status.TryGetProperty("message", out _));
         }
 
         [Fact]
