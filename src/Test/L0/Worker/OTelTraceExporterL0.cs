@@ -1189,6 +1189,25 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("main", attrs["vcs.ref.base.name"]);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void JobAndStepSpans_AreInternalTaskRuns()
+        {
+            using var hc = new TestHostContext(this);
+            var exporter = Enabled(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            exporter.RecordStepCompletion("Build", 1, t, t.AddSeconds(2), TaskResult.Succeeded, "node20", null, null);
+            exporter.RecordJobCompletion(t, t.AddSeconds(9), TaskResult.Succeeded);
+
+            // cicd-spans: task-run spans SHOULD be INTERNAL. Both the job and its steps
+            // carry cicd.pipeline.task.* attributes — they are task runs; the SERVER
+            // pipeline-run span belongs to the API-side consumer, not the runner.
+            Assert.Equal(1, SpanAt(exporter, 0).GetProperty("kind").GetInt32()); // step
+            Assert.Equal(1, SpanAt(exporter, 1).GetProperty("kind").GetInt32()); // job
+        }
+
         // ---- metrics (#1) ----
 
         [Fact]

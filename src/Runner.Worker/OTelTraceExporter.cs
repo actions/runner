@@ -606,7 +606,11 @@ namespace GitHub.Runner.Worker
                     // upstream scheduler, when present, is attached as a span link below.
                     ParentSpanId = null,
                     Name = job.JobName,
-                    Kind = 2, // SERVER
+                    // INTERNAL: the job is a cicd task run (it carries cicd.pipeline.task.*),
+                    // and cicd-spans says task-run spans SHOULD be INTERNAL. The SERVER
+                    // pipeline-run span (with cicd.pipeline.result) is the API-side
+                    // consumer's to emit — see the trace-shape note above.
+                    Kind = 1, // INTERNAL
                     StartTimeUnixNano = ToUnixNano(startTime ?? DateTime.UtcNow),
                     EndTimeUnixNano = ToUnixNano(endTime ?? DateTime.UtcNow),
                 };

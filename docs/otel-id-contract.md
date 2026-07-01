@@ -95,6 +95,15 @@ trace  sha256("{run_id}-{run_attempt}")[:16]
 An inbound scheduler `traceparent` (if present) is attached to the job span as a
 **link**, not a parent — it does not change any ID above.
 
+### Span kinds
+
+Per the CI/CD span conventions (cicd-spans), **task-run spans are `INTERNAL`**
+and **pipeline-run spans are `SERVER`** (and carry `cicd.pipeline.result`). The
+runner's job and step spans are task runs (`cicd.pipeline.task.*`), so the
+runner emits them as `INTERNAL`; the `SERVER` pipeline-run span belongs to the
+API path with the run/workflow span above. Span kind is therefore a structural
+discriminator: `SERVER` = the run, `INTERNAL` = tasks.
+
 ## On enumerability of trace IDs
 
 Trace IDs derive from the **public, enumerable `run_id`** (a known, guessable
