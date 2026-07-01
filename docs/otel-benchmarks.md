@@ -33,8 +33,9 @@ Results (Release, net8.0, Apple M-series; representative):
   - This is the case for a per-buffer cap (see below): a pathological job (100k
     steps/annotations) would retain hundreds of MB.
 - **Serialize: ~10 µs/span** (one `Utf8JsonWriter` pass at flush). 11 ms @ 1k, ~100 ms @ 10k.
-- **Payload: ~1.8 KB/span** of OTLP/JSON, sent as one POST per signal (→ ~18 MB for
-  10k spans, uncompressed — motivates gzip + chunking).
+- **Payload: ~1.8 KB/span** of OTLP/JSON, gzipped and chunked into POSTs of at most
+  `MaxItemsPerPost` (1,000) spans/logs each (→ ~4 MB uncompressed per request even
+  at the 10k buffer cap, safely under the OTel Collector's 20 MiB default body limit).
 
 ## Macro-benchmark (job wall-time, ON vs OFF) — measured
 

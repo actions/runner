@@ -11,7 +11,9 @@ namespace GitHub.Runner.Worker
     {
         // OTLP/JSON, serialized with Utf8JsonWriter for correct escaping (a control
         // character in a step name must not be able to invalidate the whole batch).
-        private string BuildOTLPSpansJson(List<OTelSpan> spans, List<KeyValuePair<string, object>> resource)
+        // Builders return the UTF-8 bytes directly — no bytes -> string -> bytes
+        // round-trip — so flush never triple-materializes a large payload.
+        private byte[] BuildOTLPSpansJson(List<OTelSpan> spans, List<KeyValuePair<string, object>> resource)
         {
             using var stream = new MemoryStream();
             using (var w = new Utf8JsonWriter(stream, s_jsonOptions))
@@ -105,7 +107,7 @@ namespace GitHub.Runner.Worker
                 w.WriteEndArray();  // resourceSpans
                 w.WriteEndObject();
             }
-            return Encoding.UTF8.GetString(stream.ToArray());
+            return stream.ToArray();
         }
 
         private void WriteAttributes(Utf8JsonWriter w, List<KeyValuePair<string, object>> attrs)
@@ -135,7 +137,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private string BuildOTLPLogsJson(List<OTelLog> logs, List<KeyValuePair<string, object>> resource)
+        private byte[] BuildOTLPLogsJson(List<OTelLog> logs, List<KeyValuePair<string, object>> resource)
         {
             using var stream = new MemoryStream();
             using (var w = new Utf8JsonWriter(stream, s_jsonOptions))
@@ -181,7 +183,7 @@ namespace GitHub.Runner.Worker
                 w.WriteEndArray();
                 w.WriteEndObject();
             }
-            return Encoding.UTF8.GetString(stream.ToArray());
+            return stream.ToArray();
         }
 
         private sealed class OTelLog
@@ -252,7 +254,7 @@ namespace GitHub.Runner.Worker
         // (github.*) namespace deliberately — these are not registered cicd.* semconv metrics.
         // CUMULATIVE temporality is valid: each per-run process exports one point with its own
         // startTimeUnixNano; the collector aggregates across runs.
-        private string BuildOTLPMetricsJson(JobMetrics m, List<TaskMetric> tasks, List<KeyValuePair<string, object>> resource)
+        private byte[] BuildOTLPMetricsJson(JobMetrics m, List<TaskMetric> tasks, List<KeyValuePair<string, object>> resource)
         {
             using var stream = new MemoryStream();
             using (var w = new Utf8JsonWriter(stream, s_jsonOptions))
@@ -363,7 +365,7 @@ namespace GitHub.Runner.Worker
                 w.WriteEndArray();
                 w.WriteEndObject();
             }
-            return Encoding.UTF8.GetString(stream.ToArray());
+            return stream.ToArray();
         }
 
         private sealed class OTelEvent

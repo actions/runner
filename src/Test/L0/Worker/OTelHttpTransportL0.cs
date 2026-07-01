@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Worker;
@@ -54,7 +55,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var transport = new OTelHttpTransport(handler,
                 new[] { new KeyValuePair<string, string>("authorization", "Bearer xyz") });
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{\"resourceSpans\":[]}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{\"resourceSpans\":[]}"), "spans", default);
 
             Assert.True(ok);
             var req = handler.Requests.Single();
@@ -75,7 +76,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var handler = new FakeHandler(() => Resp(HttpStatusCode.OK));
             using var transport = new OTelHttpTransport(handler, userAgent: "GitHubActionsRunner-OTLP-Exporter/2.333.0");
 
-            await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.Equal("GitHubActionsRunner-OTLP-Exporter/2.333.0",
                 string.Join(" ", handler.Requests.Single().Headers.GetValues("User-Agent")));
@@ -89,7 +90,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var handler = new FakeHandler(() => Resp(HttpStatusCode.ServiceUnavailable), () => Resp(HttpStatusCode.OK));
             using var transport = new OTelHttpTransport(handler);
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.True(ok);
             Assert.Equal(2, handler.Requests.Count); // 503 then retried -> 200
@@ -103,7 +104,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var handler = new FakeHandler(() => Resp(HttpStatusCode.BadRequest));
             using var transport = new OTelHttpTransport(handler);
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.False(ok);
             Assert.Single(handler.Requests); // 4xx is not retried
@@ -121,7 +122,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var handler = new FakeHandler(() => Resp(code));
             using var transport = new OTelHttpTransport(handler);
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.False(ok);
             Assert.Single(handler.Requests);
@@ -145,7 +146,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var delays = new List<TimeSpan>();
             transport.DelayAsync = (d, _) => { delays.Add(d); return Task.CompletedTask; };
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.True(ok);
             Assert.Equal(2, handler.Requests.Count);
@@ -168,7 +169,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var delays = new List<TimeSpan>();
             transport.DelayAsync = (d, _) => { delays.Add(d); return Task.CompletedTask; };
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.False(ok);
             Assert.Single(handler.Requests);
@@ -187,7 +188,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var delays = new List<TimeSpan>();
             transport.DelayAsync = (d, _) => { delays.Add(d); return Task.CompletedTask; };
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.True(ok);
             Assert.Equal(2, handler.Requests.Count);
@@ -203,7 +204,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             string logged = null;
             using var transport = new OTelHttpTransport(handler, null, m => logged = m);
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", default);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", default);
 
             Assert.True(ok);
             Assert.Contains("partially rejected", logged);
@@ -219,7 +220,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using var cts = new CancellationTokenSource();
             cts.Cancel(); // deadline already blown
 
-            var ok = await transport.PostAsync("http://collector/v1/traces", "{}", "spans", cts.Token);
+            var ok = await transport.PostAsync("http://collector/v1/traces", Encoding.UTF8.GetBytes("{}"), "spans", cts.Token);
 
             Assert.False(ok); // best-effort: swallowed, never throws
         }

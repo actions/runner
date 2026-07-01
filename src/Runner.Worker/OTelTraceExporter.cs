@@ -68,6 +68,13 @@ namespace GitHub.Runner.Worker
         internal const int MaxBufferedSpans = 10000;
         internal const int MaxBufferedLogs = 10000;
         internal const int MaxBufferedTaskMetrics = 10000;
+        // Max spans/logs per OTLP POST. At ~4 KB/span (docs/otel-benchmarks.md) each
+        // request stays ~4 MB uncompressed — well under the OTel Collector's 20 MiB
+        // default decompressed-body limit — so one 413 can never drop a whole signal,
+        // and per-POST serialization memory stays bounded. Mirrors OTel SDK batch
+        // sizing (BatchSpanProcessor exports 512-item batches; we trade a few larger
+        // requests for staying inside the single 4 s flush deadline).
+        internal const int MaxItemsPerPost = 1000;
         private long _droppedSpans;
         private long _droppedLogs;
         private long _droppedTaskMetrics;
@@ -702,13 +709,18 @@ namespace GitHub.Runner.Worker
                 flushCts.CancelAfter(TimeSpan.FromSeconds(4));
                 var flushToken = flushCts.Token;
 
-                if (spans.Count > 0)
+                // Chunked POSTs: a whole job in one request can exceed a collector's
+                // body limit (413 is non-retryable per OTLP — the entire signal would
+                // be dropped), and serializing per chunk bounds peak memory at flush.
+                for (var i = 0; i < spans.Count; i += MaxItemsPerPost)
                 {
-                    await _transport.PostAsync(_tracesUrl, BuildOTLPSpansJson(spans, resource), $"{spans.Count} span(s)", flushToken);
+                    var batch = spans.GetRange(i, Math.Min(MaxItemsPerPost, spans.Count - i));
+                    await _transport.PostAsync(_tracesUrl, BuildOTLPSpansJson(batch, resource), $"{batch.Count} span(s)", flushToken);
                 }
-                if (logs.Count > 0)
+                for (var i = 0; i < logs.Count; i += MaxItemsPerPost)
                 {
-                    await _transport.PostAsync(_logsUrl, BuildOTLPLogsJson(logs, resource), $"{logs.Count} log(s)", flushToken);
+                    var batch = logs.GetRange(i, Math.Min(MaxItemsPerPost, logs.Count - i));
+                    await _transport.PostAsync(_logsUrl, BuildOTLPLogsJson(batch, resource), $"{batch.Count} log(s)", flushToken);
                 }
                 if (metrics != null || tasks.Count > 0)
                 {
@@ -951,12 +963,12 @@ namespace GitHub.Runner.Worker
 
         internal string BuildPendingOtlpJsonForTest()
         {
-            lock (_lock) { return BuildOTLPSpansJson(new List<OTelSpan>(_pendingSpans), _resource); }
+            lock (_lock) { return Encoding.UTF8.GetString(BuildOTLPSpansJson(new List<OTelSpan>(_pendingSpans), _resource)); }
         }
 
         internal string BuildPendingOtlpLogsJsonForTest()
         {
-            lock (_lock) { return BuildOTLPLogsJson(new List<OTelLog>(_pendingLogs), _resource); }
+            lock (_lock) { return Encoding.UTF8.GetString(BuildOTLPLogsJson(new List<OTelLog>(_pendingLogs), _resource)); }
         }
 
         internal string BuildPendingOtlpMetricsJsonForTest()
@@ -965,7 +977,7 @@ namespace GitHub.Runner.Worker
             {
                 return _jobMetrics == null && _taskMetrics.Count == 0
                     ? null
-                    : BuildOTLPMetricsJson(_jobMetrics, _taskMetrics, _resource);
+                    : Encoding.UTF8.GetString(BuildOTLPMetricsJson(_jobMetrics, _taskMetrics, _resource));
             }
         }
     }

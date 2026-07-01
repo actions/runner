@@ -48,9 +48,8 @@ namespace GitHub.Runner.Worker
         // typically shrinks the payload ~10x — less bandwidth and faster posts.
         // Always-on with no opt-out: the OTLP spec requires every server to accept it
         // ("All server components MUST support ... Gzip compression").
-        internal static byte[] GzipUtf8(string s)
+        internal static byte[] Gzip(byte[] raw)
         {
-            var raw = Encoding.UTF8.GetBytes(s);
             using var ms = new MemoryStream();
             using (var gz = new GZipStream(ms, CompressionLevel.Fastest, leaveOpen: true))
             {
@@ -58,6 +57,8 @@ namespace GitHub.Runner.Worker
             }
             return ms.ToArray();
         }
+
+        internal static byte[] GzipUtf8(string s) => Gzip(Encoding.UTF8.GetBytes(s));
 
         // Exactly the OTLP/HTTP failures table: 429, 502, 503, 504 SHOULD be retried;
         // "All other 4xx or 5xx response status codes MUST NOT be retried" (so no 408/500).
@@ -134,13 +135,14 @@ namespace GitHub.Runner.Worker
             catch { return null; }
         }
 
-        // POST one OTLP/JSON payload, gzipped, with a single transient retry bounded by the
-        // caller's deadline. Returns true if delivered (incl. partial success), false otherwise.
-        public async Task<bool> PostAsync(string url, string json, string what, CancellationToken cancellationToken)
+        // POST one OTLP/JSON payload (UTF-8 bytes), gzipped, with a single transient retry
+        // bounded by the caller's deadline. Returns true if delivered (incl. partial
+        // success), false otherwise.
+        public async Task<bool> PostAsync(string url, byte[] utf8Json, string what, CancellationToken cancellationToken)
         {
             try
             {
-                var body = GzipUtf8(json);
+                var body = Gzip(utf8Json);
                 for (var attempt = 1; attempt <= 2; attempt++)
                 {
                     try

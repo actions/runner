@@ -1,9 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
+using Moq;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -125,6 +132,63 @@ namespace GitHub.Runner.Common.Tests.Worker
             // A runaway job can't grow the buffer past the cap; excess is dropped + counted.
             Assert.Equal(OTelTraceExporter.MaxBufferedSpans, exporter.PendingSpanCountForTest);
             Assert.True(exporter.DroppedSpanCountForTest >= 50, $"expected >=50 dropped, got {exporter.DroppedSpanCountForTest}");
+        }
+
+        // Captures OTLP POSTs at the HttpClientHandler layer — exactly what the
+        // exporter's transport puts on the wire.
+        private sealed class CapturingClientHandler : HttpClientHandler
+        {
+            public readonly List<(Uri Uri, byte[] Body)> Requests = new();
+
+            protected override async System.Threading.Tasks.Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            {
+                Requests.Add((request.RequestUri, await request.Content.ReadAsByteArrayAsync(ct)));
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            }
+        }
+
+        private static string GunzipString(byte[] body)
+        {
+            using var ms = new System.IO.MemoryStream(body);
+            using var gs = new System.IO.Compression.GZipStream(ms, System.IO.Compression.CompressionMode.Decompress);
+            using var sr = new System.IO.StreamReader(gs);
+            return sr.ReadToEnd();
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async System.Threading.Tasks.Task Flush_ChunksOversizedSignalsAcrossPosts()
+        {
+            using var hc = new TestHostContext(this);
+            var handler = new CapturingClientHandler();
+            var factory = new Mock<IHttpClientHandlerFactory>();
+            factory.Setup(f => f.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(handler);
+            hc.SetSingleton<IHttpClientHandlerFactory>(factory.Object);
+            Environment.SetEnvironmentVariable(EndpointEnv, "http://localhost:4318");
+            var exporter = new OTelTraceExporter();
+            exporter.Initialize(hc);
+            exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+            var t = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var total = OTelTraceExporter.MaxItemsPerPost + 1;
+            for (var i = 0; i < total; i++)
+            {
+                exporter.RecordStepCompletion($"step {i}", i, t, t.AddSeconds(1), TaskResult.Succeeded, "node20", null, null);
+            }
+
+            await exporter.FlushAsync(default);
+
+            // One giant POST can exceed a collector's body limit (413, non-retryable ->
+            // the whole signal silently dropped); bounded chunks keep every request small.
+            var tracePosts = handler.Requests.Where(r => r.Uri.AbsolutePath == "/v1/traces").ToList();
+            Assert.Equal(2, tracePosts.Count);
+            var counts = tracePosts.Select(r =>
+            {
+                using var doc = JsonDocument.Parse(GunzipString(r.Body));
+                return doc.RootElement.GetProperty("resourceSpans")[0].GetProperty("scopeSpans")[0].GetProperty("spans").GetArrayLength();
+            }).ToList();
+            Assert.Equal(total, counts.Sum());                                       // nothing lost across chunks
+            Assert.All(counts, c => Assert.InRange(c, 1, OTelTraceExporter.MaxItemsPerPost));
         }
 
         [Fact]

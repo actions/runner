@@ -97,7 +97,13 @@ API-reconstructed trace).
   no SDK (see *Alternatives* below).
 - **gzip** `Content-Encoding`. A job's spans/logs are highly repetitive, so this
   typically shrinks the body ~10x (see `docs/otel-benchmarks.md`);
-  `CompressionLevel.Fastest` keeps CPU negligible.
+  `CompressionLevel.Fastest` keeps CPU negligible. Always-on with no opt-out: the
+  OTLP spec requires every server component to accept gzip request bodies.
+- **Chunked POSTs.** Spans/logs are sent in batches of at most `MaxItemsPerPost`
+  (1,000) per request — ~4 MB uncompressed even at the 10k buffer cap, safely
+  under the OTel Collector's 20 MiB default decompressed-body limit — so a 413
+  (non-retryable per OTLP) can never drop a whole signal, and per-POST
+  serialization memory stays bounded. All chunks share the one flush deadline.
 - **One retry** on a transient failure (exactly the OTLP/HTTP retryable codes —
   429/502/503/504 — or a transport exception), bounded by the flush deadline.
   The server's `Retry-After` is honored when it fits the deadline (skipping the
