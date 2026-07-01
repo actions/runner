@@ -661,6 +661,36 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Initialize_Failure_DisablesExportInsteadOfThrowing()
+        {
+            // Telemetry must never throw into the job path: Initialize runs before
+            // JobRunner's try block, so a failure here must disable export, not escape.
+            using var hc = new TestHostContext(this);
+            var factory = new Mock<IHttpClientHandlerFactory>();
+            factory.Setup(f => f.CreateClientHandler(It.IsAny<RunnerWebProxy>()))
+                .Throws(new InvalidOperationException("boom"));
+            hc.SetSingleton<IHttpClientHandlerFactory>(factory.Object);
+            Environment.SetEnvironmentVariable(EndpointEnv, "http://localhost:4318");
+            Environment.SetEnvironmentVariable(PropagateEnv, "true");
+
+            var exporter = new OTelTraceExporter();
+            Assert.Null(Record.Exception(() => exporter.Initialize(hc)));
+            Assert.False(exporter.IsEnabled);
+
+            // Every later hook is a safe no-op on the disabled exporter.
+            Assert.Null(Record.Exception(() =>
+            {
+                exporter.SetResource("my-runner", "42", "default", "2.333.0", "Linux", "X64", "host-1", ephemeral: false);
+                exporter.SetJobInfo("99999", "1", "build", "build", "octo/repo", "CI", "push", "https://github.com");
+                exporter.RecordStepCompletion("Build", 1, DateTime.UtcNow, DateTime.UtcNow, TaskResult.Succeeded, "node20", null, null);
+            }));
+            Assert.Empty(exporter.StepPropagationEnv("Build", 1));
+            Assert.Equal(0, exporter.PendingSpanCountForTest);
+        }
+
         // ---- secret masking (uses the host's real SecretMasker) ----
 
         [Fact]

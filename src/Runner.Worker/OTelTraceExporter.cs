@@ -130,6 +130,22 @@ namespace GitHub.Runner.Worker
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            // Telemetry must NEVER throw into the job path. The first GetService()
+            // (which runs Initialize) happens before JobRunner's try block, so any
+            // unexpected failure here must disable export, not escape into the job.
+            try
+            {
+                InitializeInternal();
+            }
+            catch (Exception ex)
+            {
+                _enabled = false;
+                Trace.Info($"OTel export disabled, initialization failed (best-effort): {ex.Message}");
+            }
+        }
+
+        private void InitializeInternal()
+        {
             // Capture the collector credential, then scrub it from the process env
             // immediately: host step processes inherit the worker env (ProcessInvoker
             // copies it), so leaving it set would hand the raw header to every
@@ -229,6 +245,20 @@ namespace GitHub.Runner.Worker
         public bool IsEnabled => _enabled && _featureEnabled;
 
         public void SetResource(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral)
+        {
+            // Best-effort like every other hook: called from JobRunner before its try
+            // block, so a throw here would fail the job for telemetry's sake.
+            try
+            {
+                SetResourceInternal(runnerName, runnerId, runnerGroup, runnerVersion, osType, arch, machineName, ephemeral);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info($"Skipping OTel resource (best-effort): {ex.Message}");
+            }
+        }
+
+        private void SetResourceInternal(string runnerName, string runnerId, string runnerGroup, string runnerVersion, string osType, string arch, string machineName, bool ephemeral)
         {
             var attrs = DefaultResource();
             void Add(string k, object v)
@@ -378,6 +408,18 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
+            try
+            {
+                SetJobInfoInternal(runId, runAttempt, jobName, jobKey, repository, workflow, eventName, serverUrl, featureEnabled, sha, refName, actor, baseRef, changeId);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info($"Skipping OTel job info (best-effort): {ex.Message}");
+            }
+        }
+
+        private void SetJobInfoInternal(string runId, string runAttempt, string jobName, string jobKey, string repository, string workflow, string eventName, string serverUrl, bool featureEnabled, string sha, string refName, string actor, string baseRef, string changeId)
+        {
             long.TryParse(runId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var runIdNum);
             long.TryParse(runAttempt, NumberStyles.Integer, CultureInfo.InvariantCulture, out var runAttemptNum);
             if (runAttemptNum == 0)
@@ -740,29 +782,40 @@ namespace GitHub.Runner.Worker
         public IDictionary<string, string> StepPropagationEnv(string stepName, int? stepNumber)
         {
             var env = new Dictionary<string, string>();
-            if (!IsEnabled || !_propagate)
+            try
             {
+                if (!IsEnabled || !_propagate)
+                {
+                    return env;
+                }
+                JobInfo job;
+                lock (_lock) { job = _jobInfo; }
+                if (job == null || job.RunId == 0 || string.IsNullOrEmpty(stepName))
+                {
+                    return env;
+                }
+                var traceId = NewTraceID(job.RunId, job.RunAttempt);
+                var spanId = NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, stepNumber ?? 0, stepName);
+                env["TRACEPARENT"] = $"00-{traceId}-{spanId}-01";
+                // Base endpoint (the OTel SDK appends /v1/traces, /v1/logs itself),
+                // with any URL userinfo credential stripped.
+                env["OTEL_EXPORTER_OTLP_ENDPOINT"] = _propagationBaseUrl;
+                // NOTE: deliberately do NOT propagate OTEL_EXPORTER_OTLP_HEADERS. It carries the
+                // collector credential; handing it to user step processes lets any step read and
+                // exfiltrate it. Steps that need to authenticate to the collector must be given a
+                // separate, scoped credential out of band.
+                env["OTEL_RESOURCE_ATTRIBUTES"] =
+                    $"service.name=github-actions-job,github.run_id={job.RunIdRaw},github.run_attempt={job.RunAttemptRaw},github.job={job.JobKey},github.repository={job.Repository}";
                 return env;
             }
-            JobInfo job;
-            lock (_lock) { job = _jobInfo; }
-            if (job == null || job.RunId == 0 || string.IsNullOrEmpty(stepName))
+            catch (Exception ex)
             {
+                // Called per step from the handler's run path — never let telemetry
+                // env assembly throw into step execution.
+                Trace.Info($"Skipping OTel step env (best-effort): {ex.Message}");
+                env.Clear();
                 return env;
             }
-            var traceId = NewTraceID(job.RunId, job.RunAttempt);
-            var spanId = NewStepSpanID(job.RunId, job.RunAttempt, job.JobName, stepNumber ?? 0, stepName);
-            env["TRACEPARENT"] = $"00-{traceId}-{spanId}-01";
-            // Base endpoint (the OTel SDK appends /v1/traces, /v1/logs itself),
-            // with any URL userinfo credential stripped.
-            env["OTEL_EXPORTER_OTLP_ENDPOINT"] = _propagationBaseUrl;
-            // NOTE: deliberately do NOT propagate OTEL_EXPORTER_OTLP_HEADERS. It carries the
-            // collector credential; handing it to user step processes lets any step read and
-            // exfiltrate it. Steps that need to authenticate to the collector must be given a
-            // separate, scoped credential out of band.
-            env["OTEL_RESOURCE_ATTRIBUTES"] =
-                $"service.name=github-actions-job,github.run_id={job.RunIdRaw},github.run_attempt={job.RunAttemptRaw},github.job={job.JobKey},github.repository={job.Repository}";
-            return env;
         }
 
         private static int SeverityNumber(string text)
