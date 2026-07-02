@@ -187,7 +187,7 @@ namespace GitHub.Runner.Worker
                 throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
             }
 
-            // Resolve self-reference ($/) references before processing
+            // Resolve self-repository ($/) references before processing
             if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
             {
                 if (string.IsNullOrEmpty(selfRepoName))
@@ -317,41 +317,53 @@ namespace GitHub.Runner.Worker
                 // then recurse per parent (which hits the cache, not the API).
                 if (nextLevel.Count > 0)
                 {
-                    // Pre-compute parent context per group for self-reference
-                    // resolution and recursion. Self-reference refs in nextLevel
-                    // must be resolved BEFORE batch download-info resolution,
-                    // since GetDownloadInfoLookupKey requires concrete refs.
-                    var groups = nextLevel.GroupBy(x => x.parentId).Select(group =>
-                    {
-                        string childRepoName = selfRepoName;
-                        string childRepoRef = selfRepoRef;
-                        var parentAction = repositoryActions.FirstOrDefault(a => a.Id == group.Key);
-                        if (parentAction?.Reference is Pipelines.RepositoryPathReference parentRef &&
-                            string.Equals(parentRef.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
-                        {
-                            childRepoName = parentRef.Name;
-                            childRepoRef = parentRef.Ref;
-                        }
-                        return new { ParentId = group.Key, Actions = group.Select(x => x.action).ToList(), RepoName = childRepoName, RepoRef = childRepoRef };
-                    }).ToList();
-
                     if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
                     {
+                        // Self-repository path: group by parent so each group's
+                        // $/ refs resolve against the correct parent repo context.
+                        var groups = nextLevel.GroupBy(x => x.parentId).Select(group =>
+                        {
+                            string childRepoName = selfRepoName;
+                            string childRepoRef = selfRepoRef;
+                            var parentAction = repositoryActions.FirstOrDefault(a => a.Id == group.Key);
+                            if (parentAction?.Reference is Pipelines.RepositoryPathReference parentRef &&
+                                string.Equals(parentRef.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
+                            {
+                                childRepoName = parentRef.Name;
+                                childRepoRef = parentRef.Ref;
+                            }
+                            return new { ParentId = group.Key, Actions = group.Select(x => x.action).ToList(), RepoName = childRepoName, RepoRef = childRepoRef };
+                        }).ToList();
+
                         foreach (var group in groups)
                         {
                             ResolveSelfReferences(executionContext, group.Actions, group.RepoName, group.RepoRef);
                         }
+
+                        var nextLevelRepoActions = nextLevel
+                            .Where(x => x.action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                            .Select(x => x.action)
+                            .ToList();
+                        await ResolveNewActionsAsync(executionContext, nextLevelRepoActions, resolvedDownloadInfos);
+
+                        foreach (var group in groups)
+                        {
+                            state = await PrepareActionsRecursiveAsync(executionContext, state, group.Actions, resolvedDownloadInfos, depth + 1, group.ParentId, group.RepoName, group.RepoRef);
+                        }
                     }
-
-                    var nextLevelRepoActions = nextLevel
-                        .Where(x => x.action.Reference.Type == Pipelines.ActionSourceType.Repository)
-                        .Select(x => x.action)
-                        .ToList();
-                    await ResolveNewActionsAsync(executionContext, nextLevelRepoActions, resolvedDownloadInfos);
-
-                    foreach (var group in groups)
+                    else
                     {
-                        state = await PrepareActionsRecursiveAsync(executionContext, state, group.Actions, resolvedDownloadInfos, depth + 1, group.ParentId, group.RepoName, group.RepoRef);
+                        // Original path: no self-repository resolution needed.
+                        var nextLevelActions = nextLevel.Select(x => x.action).ToList();
+                        var nextLevelRepoActions = nextLevelActions
+                            .Where(x => x.Reference.Type == Pipelines.ActionSourceType.Repository)
+                            .ToList();
+                        await ResolveNewActionsAsync(executionContext, nextLevelRepoActions, resolvedDownloadInfos);
+
+                        foreach (var grp in nextLevel.GroupBy(x => x.parentId))
+                        {
+                            state = await PrepareActionsRecursiveAsync(executionContext, state, grp.Select(x => x.action).ToList(), resolvedDownloadInfos, depth + 1, grp.Key);
+                        }
                     }
                 }
 
@@ -435,7 +447,7 @@ namespace GitHub.Runner.Worker
                 throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
             }
 
-            // Resolve self-reference ($/) references before processing
+            // Resolve self-repository ($/) references before processing
             if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
             {
                 if (string.IsNullOrEmpty(selfRepoName))
@@ -570,7 +582,7 @@ namespace GitHub.Runner.Worker
                     }
                     else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        // Propagate parent's repo context for nested self-reference resolution
+                        // Propagate parent's repo context for nested self-repository resolution
                         var parentRef = action.Reference as Pipelines.RepositoryPathReference;
                         var childRepoName = selfRepoName;
                         var childRepoRef = selfRepoRef;
@@ -829,10 +841,10 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
-                        // Resolve self-reference refs in composite steps at load time.
+                        // Resolve self-repository refs in composite steps at load time.
                         // During setup, resolution happens on a separate copy of these
                         // step objects. At runtime, action.yml is re-parsed, producing
-                        // fresh self-reference refs that need resolution here.
+                        // fresh self-repository refs that need resolution here.
                         if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
                         {
                             ResolveSelfReferences(executionContext, compositeAction.Steps, repoAction.Name, repoAction.Ref);
@@ -1549,7 +1561,7 @@ namespace GitHub.Runner.Worker
                     continue;
                 }
 
-                Trace.Info($"Resolving self-reference reference '$/{repoAction.Path}' to '{repoName}/{repoAction.Path}@{repoRef}'");
+                Trace.Info($"Resolving self-repository reference reference '$/{repoAction.Path}' to '{repoName}/{repoAction.Path}@{repoRef}'");
                 executionContext.Debug($"Resolving $/{repoAction.Path} → {repoName}/{repoAction.Path}@{repoRef}");
 
                 repoAction.RepositoryType = Pipelines.RepositoryTypes.GitHub;
