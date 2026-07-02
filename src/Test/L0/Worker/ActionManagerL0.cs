@@ -4041,5 +4041,96 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadAction_DotSlashCompositeWithNestedSelfRepository_ResolvesViaWorkflowContext()
+        {
+            // Regression test: when a dot-slash (./) composite action contains a
+            // nested $/actions/child step, LoadAction re-parses the action.yml at
+            // runtime and must resolve the $/ ref. The parent is repositoryType "self"
+            // so its Name and Ref are null — resolution must fall back to
+            // WorkflowRepository/WorkflowSha from the job context. Before the fix,
+            // this path hit a NullReferenceException at repoAction.Name.Replace().
+            try
+            {
+                // Arrange
+                Setup();
+                const string WorkflowRepo = "my-org/my-repo";
+                const string WorkflowSha = "abc123def456";
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfRepository, "true");
+                var jobContext = new JobContext();
+                jobContext.WorkflowRepository = WorkflowRepo;
+                jobContext.WorkflowSha = WorkflowSha;
+                _ec.Setup(x => x.JobContext).Returns(jobContext);
+
+                // Stage the dot-slash composite in the workspace directory.
+                // It contains a nested $/actions/child step.
+                string workspaceDir = Path.Combine(_workFolder, "actions", "actions");
+                string compositeDir = Path.Combine(workspaceDir, "my-composite");
+                Directory.CreateDirectory(compositeDir);
+                File.WriteAllText(Path.Combine(compositeDir, Constants.Path.ActionManifestYmlFile), @"
+name: 'DotSlash Parent'
+description: 'Composite loaded via ./ that nests a $/ ref'
+runs:
+  using: 'composite'
+  steps:
+    - run: echo 'hello'
+      shell: bash
+    - uses: $/actions/child
+");
+
+                // Stage the child action in the actions cache under the workflow repo.
+                string actionsDir = Path.Combine(_workFolder, Constants.Path.ActionsDirectory);
+                string childDir = Path.Combine(actionsDir, WorkflowRepo.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), WorkflowSha, "actions", "child");
+                Directory.CreateDirectory(childDir);
+                File.WriteAllText(Path.Combine(childDir, Constants.Path.ActionManifestYmlFile), @"
+name: 'Child'
+description: 'Leaf action'
+runs:
+  using: 'node20'
+  main: 'index.js'
+");
+
+                // Create dot-slash step with Name = null (the real scenario).
+                var instance = new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    Reference = new Pipelines.RepositoryPathReference()
+                    {
+                        Name = null,
+                        Ref = null,
+                        RepositoryType = Pipelines.PipelineConstants.SelfAlias,
+                        Path = "my-composite"
+                    }
+                };
+
+                // Act — should NOT throw NullReferenceException
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert — loaded the composite successfully
+                Assert.NotNull(definition);
+                Assert.NotNull(definition.Data);
+                Assert.Equal(ActionExecutionType.Composite, definition.Data.Execution.ExecutionType);
+
+                // Assert — the nested $/ step was resolved to the workflow repo
+                var compositeData = definition.Data.Execution as CompositeActionExecutionData;
+                Assert.NotNull(compositeData);
+                var childStep = compositeData.Steps
+                    .OfType<Pipelines.ActionStep>()
+                    .FirstOrDefault(s => s.Reference is Pipelines.RepositoryPathReference r
+                        && r.Path == "actions/child");
+                Assert.NotNull(childStep);
+                var childRef = childStep.Reference as Pipelines.RepositoryPathReference;
+                Assert.Equal(Pipelines.RepositoryTypes.GitHub, childRef.RepositoryType);
+                Assert.Equal(WorkflowRepo, childRef.Name);
+                Assert.Equal(WorkflowSha, childRef.Ref);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
     }
 }

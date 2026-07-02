@@ -704,6 +704,12 @@ namespace GitHub.Runner.Worker
                         actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
                     }
                 }
+                else if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfRepositoryAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Unresolved self-repository reference at load time — this
+                    // shouldn't happen but guard against NRE if it does.
+                    throw new InvalidOperationException($"Self-repository reference '$/{repoAction.Path}' was not resolved before LoadAction. Ensure the '{Constants.Runner.Features.SelfRepository}' feature flag is enabled.");
+                }
                 else
                 {
                     actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repoAction.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repoAction.Ref);
@@ -844,16 +850,20 @@ namespace GitHub.Runner.Worker
                         // During setup, resolution happens on a separate copy of these
                         // step objects. At runtime, action.yml is re-parsed, producing
                         // fresh self-repository refs that need resolution here.
+                        // When the parent is a dot-slash (self local-workspace) action,
+                        // repoAction.Name/Ref are null — fall back to workflow context.
                         if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfRepository) == true)
                         {
-                            ResolveSelfRepositoryReferences(executionContext, compositeAction.Steps, repoAction.Name, repoAction.Ref);
+                            var parentName = repoAction.Name ?? executionContext.JobContext?.WorkflowRepository;
+                            var parentRef = repoAction.Ref ?? executionContext.JobContext?.WorkflowSha;
+                            ResolveSelfRepositoryReferences(executionContext, compositeAction.Steps, parentName, parentRef);
                             if (compositeAction.PreSteps != null)
                             {
-                                ResolveSelfRepositoryReferences(executionContext, compositeAction.PreSteps, repoAction.Name, repoAction.Ref);
+                                ResolveSelfRepositoryReferences(executionContext, compositeAction.PreSteps, parentName, parentRef);
                             }
                             if (compositeAction.PostSteps != null)
                             {
-                                ResolveSelfRepositoryReferences(executionContext, compositeAction.PostSteps, repoAction.Name, repoAction.Ref);
+                                ResolveSelfRepositoryReferences(executionContext, compositeAction.PostSteps, parentName, parentRef);
                             }
                         }
                     }
