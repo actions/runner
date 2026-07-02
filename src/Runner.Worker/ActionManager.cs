@@ -175,7 +175,6 @@ namespace GitHub.Runner.Worker
                 }
 #endif
             }
-
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
@@ -188,7 +187,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Resolve self-repository ($/) references before processing
-            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
+            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfRepository) == true)
             {
                 if (string.IsNullOrEmpty(selfRepoName))
                 {
@@ -199,7 +198,7 @@ namespace GitHub.Runner.Worker
                     selfRepoName = executionContext.JobContext?.WorkflowRepository;
                     selfRepoRef = executionContext.JobContext?.WorkflowSha;
                 }
-                ResolveSelfReferences(executionContext, actions, selfRepoName, selfRepoRef);
+                ResolveSelfRepositoryReferences(executionContext, actions, selfRepoName, selfRepoRef);
             }
 
             var repositoryActions = new List<Pipelines.ActionStep>();
@@ -317,7 +316,7 @@ namespace GitHub.Runner.Worker
                 // then recurse per parent (which hits the cache, not the API).
                 if (nextLevel.Count > 0)
                 {
-                    if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
+                    if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfRepository) == true)
                     {
                         // Self-repository path: group by parent so each group's
                         // $/ refs resolve against the correct parent repo context.
@@ -337,7 +336,7 @@ namespace GitHub.Runner.Worker
 
                         foreach (var group in groups)
                         {
-                            ResolveSelfReferences(executionContext, group.Actions, group.RepoName, group.RepoRef);
+                            ResolveSelfRepositoryReferences(executionContext, group.Actions, group.RepoName, group.RepoRef);
                         }
 
                         var nextLevelRepoActions = nextLevel
@@ -448,14 +447,14 @@ namespace GitHub.Runner.Worker
             }
 
             // Resolve self-repository ($/) references before processing
-            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
+            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfRepository) == true)
             {
                 if (string.IsNullOrEmpty(selfRepoName))
                 {
                     selfRepoName = executionContext.JobContext?.WorkflowRepository;
                     selfRepoRef = executionContext.JobContext?.WorkflowSha;
                 }
-                ResolveSelfReferences(executionContext, actions, selfRepoName, selfRepoRef);
+                ResolveSelfRepositoryReferences(executionContext, actions, selfRepoName, selfRepoRef);
             }
 
             var repositoryActions = new List<Pipelines.ActionStep>();
@@ -845,16 +844,16 @@ namespace GitHub.Runner.Worker
                         // During setup, resolution happens on a separate copy of these
                         // step objects. At runtime, action.yml is re-parsed, producing
                         // fresh self-repository refs that need resolution here.
-                        if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
+                        if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfRepository) == true)
                         {
-                            ResolveSelfReferences(executionContext, compositeAction.Steps, repoAction.Name, repoAction.Ref);
+                            ResolveSelfRepositoryReferences(executionContext, compositeAction.Steps, repoAction.Name, repoAction.Ref);
                             if (compositeAction.PreSteps != null)
                             {
-                                ResolveSelfReferences(executionContext, compositeAction.PreSteps, repoAction.Name, repoAction.Ref);
+                                ResolveSelfRepositoryReferences(executionContext, compositeAction.PreSteps, repoAction.Name, repoAction.Ref);
                             }
                             if (compositeAction.PostSteps != null)
                             {
-                                ResolveSelfReferences(executionContext, compositeAction.PostSteps, repoAction.Name, repoAction.Ref);
+                                ResolveSelfRepositoryReferences(executionContext, compositeAction.PostSteps, repoAction.Name, repoAction.Ref);
                             }
                         }
                     }
@@ -1541,7 +1540,7 @@ namespace GitHub.Runner.Worker
         /// to standard GitHub repository references with the containing repo's
         /// name and ref.
         /// </summary>
-        private void ResolveSelfReferences(IExecutionContext executionContext, IEnumerable<Pipelines.ActionStep> actions, string repoName, string repoRef)
+        private void ResolveSelfRepositoryReferences(IExecutionContext executionContext, IEnumerable<Pipelines.ActionStep> actions, string repoName, string repoRef)
         {
             if (string.IsNullOrEmpty(repoName) || string.IsNullOrEmpty(repoRef))
             {

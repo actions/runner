@@ -52,17 +52,17 @@ namespace GitHub.DistributedTask.Pipelines
         /// <summary>
         /// The prefix for self-repository references in uses: values.
         /// </summary>
-        public const String SelfReferencePrefix = "$/";
+        public const String SelfRepositoryPrefix = "$/";
 
         /// <summary>
         /// Returns true if the uses value is a self-repository reference (starts with $/),
         /// and outputs the subpath after the prefix.
         /// </summary>
-        public static bool TryParseSelfReference(string usesValue, out string path)
+        public static bool TryParseSelfRepository(string usesValue, out string path)
         {
-            if (usesValue != null && usesValue.StartsWith(SelfReferencePrefix, StringComparison.Ordinal))
+            if (usesValue != null && usesValue.StartsWith(SelfRepositoryPrefix, StringComparison.Ordinal))
             {
-                path = usesValue.Substring(SelfReferencePrefix.Length).TrimStart('/');
+                path = usesValue.Substring(SelfRepositoryPrefix.Length).TrimStart('/');
                 if (string.IsNullOrEmpty(path))
                 {
                     path = null;

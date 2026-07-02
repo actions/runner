@@ -1605,7 +1605,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         id = WorkflowConstants.SelfAlias;
                     }
-                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfReference(action.Uses!.Value, out _))
+                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(action.Uses!.Value, out _))
                     {
                         id = WorkflowConstants.SelfRepositoryAlias;
                     }
