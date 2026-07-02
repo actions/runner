@@ -49,19 +49,19 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly String SelfRepositoryAlias = "selfRepository";
 
         /// <summary>
-        /// The prefix for dollar-self references in uses: values.
+        /// The prefix for self-reference references in uses: values.
         /// </summary>
-        public const String DollarSelfPrefix = "$/";
+        public const String SelfReferencePrefix = "$/";
 
         /// <summary>
-        /// Returns true if the uses value is a dollar-self reference (starts with $/),
+        /// Returns true if the uses value is a self-reference reference (starts with $/),
         /// and outputs the subpath after the prefix.
         /// </summary>
-        public static bool TryParseDollarSelfReference(string usesValue, out string path)
+        public static bool TryParseSelfReference(string usesValue, out string path)
         {
-            if (usesValue != null && usesValue.StartsWith(DollarSelfPrefix, StringComparison.Ordinal))
+            if (usesValue != null && usesValue.StartsWith(SelfReferencePrefix, StringComparison.Ordinal))
             {
-                path = usesValue.Substring(DollarSelfPrefix.Length).TrimStart('/');
+                path = usesValue.Substring(SelfReferencePrefix.Length).TrimStart('/');
                 if (string.IsNullOrEmpty(path))
                 {
                     path = null;

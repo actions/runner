@@ -611,12 +611,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         Path = uses.Value
                     };
                 }
-                else if (PipelineConstants.TryParseDollarSelfReference(uses.Value, out var dollarSelfPath))
+                else if (PipelineConstants.TryParseSelfReference(uses.Value, out var selfPath))
                 {
                     result.Reference = new RepositoryPathReference
                     {
                         RepositoryType = PipelineConstants.SelfRepositoryAlias,
-                        Path = dollarSelfPath
+                        Path = selfPath
                     };
                 }
                 else

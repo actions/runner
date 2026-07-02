@@ -3537,9 +3537,9 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_ResolvesAtDepthZero()
+        public async void PrepareActions_SelfReference_ResolvesAtDepthZero()
         {
-            // Dollar-self is only supported via run service (batch resolution path)
+            // Self-references are only supported via run service (batch resolution path)
             Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
@@ -3549,7 +3549,7 @@ runs:
                 const string RepoSha = "abc123def456";
                 _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
                 _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfReference, "true");
                 var jobContext = new JobContext();
                 jobContext.WorkflowRepository = RepoName;
                 jobContext.WorkflowSha = RepoSha;
@@ -3611,7 +3611,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_NotResolvedWhenFeatureFlagDisabled()
+        public async void PrepareActions_SelfReference_NotResolvedWhenFeatureFlagDisabled()
         {
             try
             {
@@ -3636,7 +3636,7 @@ runs:
                     }
                 };
 
-                // Act & Assert — should throw because unresolved dollar-self hits GetDownloadInfoLookupKey
+                // Act & Assert — should throw because unresolved self-reference hits GetDownloadInfoLookupKey
                 await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                     await _actionManager.PrepareActionsAsync(_ec.Object, actions));
             }
@@ -3649,7 +3649,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_ResolvesNestedInComposite()
+        public async void PrepareActions_SelfReference_ResolvesNestedInComposite()
         {
             // Composite action at $/actions/parent uses $/actions/child (same repo).
             // This tests the batch path fix: $/ refs in nextLevel must be resolved
@@ -3668,7 +3668,7 @@ runs:
                 _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
                 _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
                 _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfReference, "true");
                 var jobContext = new JobContext();
                 jobContext.WorkflowRepository = RepoName;
                 jobContext.WorkflowSha = RepoSha;
@@ -3735,7 +3735,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_CrossRepoCompositeResolvesToParentRepo()
+        public async void PrepareActions_SelfReference_CrossRepoCompositeResolvesToParentRepo()
         {
             // External composite (external/foo@v1) uses $/lib/bar.
             // $/lib/bar should resolve to external/foo@v1 (the parent's repo),
@@ -3752,7 +3752,7 @@ runs:
                 _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RootRepoName);
                 _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RootRepoSha);
                 _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfReference, "true");
                 var jobContext = new JobContext();
                 jobContext.WorkflowRepository = RootRepoName;
                 jobContext.WorkflowSha = RootRepoSha;
@@ -3813,7 +3813,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_MultiLevelChain()
+        public async void PrepareActions_SelfReference_MultiLevelChain()
         {
             // $/a → composite → $/b → composite → $/c (three levels, same repo)
             Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
@@ -3826,7 +3826,7 @@ runs:
                 _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
                 _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
                 _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfReference, "true");
                 var jobContext = new JobContext();
                 jobContext.WorkflowRepository = RepoName;
                 jobContext.WorkflowSha = RepoSha;
@@ -3897,7 +3897,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_ResolvesAtDepthZero_LegacyPath()
+        public async void PrepareActions_SelfReference_ResolvesAtDepthZero_LegacyPath()
         {
             // Same as ResolvesAtDepthZero but on the legacy (non-batch) path
             try
@@ -3908,7 +3908,7 @@ runs:
                 const string RepoSha = "abc123def456";
                 _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
                 _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfReference, "true");
                 var jobContext = new JobContext();
                 jobContext.WorkflowRepository = RepoName;
                 jobContext.WorkflowSha = RepoSha;
@@ -3967,7 +3967,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DollarSelf_ResolvesNestedInComposite_LegacyPath()
+        public async void PrepareActions_SelfReference_ResolvesNestedInComposite_LegacyPath()
         {
             // Same as ResolvesNestedInComposite but on the legacy (non-batch) path.
             // Verifies that $/ resolution works when batch action resolution is disabled.
@@ -3980,7 +3980,7 @@ runs:
                 _ec.Setup(x => x.GetGitHubContext("repository")).Returns(RepoName);
                 _ec.Setup(x => x.GetGitHubContext("sha")).Returns(RepoSha);
                 _ec.Setup(x => x.GetGitHubContext("api_url")).Returns("https://api.github.com");
-                _ec.Object.Global.Variables.Set(Constants.Runner.Features.DollarSelfReference, "true");
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.SelfReference, "true");
                 var jobContext = new JobContext();
                 jobContext.WorkflowRepository = RepoName;
                 jobContext.WorkflowSha = RepoSha;

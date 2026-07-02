@@ -179,7 +179,7 @@ namespace GitHub.Runner.Worker
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
-        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos, Int32 depth = 0, Guid parentStepId = default(Guid), string dollarSelfRepoName = null, string dollarSelfRepoRef = null)
+        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Dictionary<string, WebApi.ActionDownloadInfo> resolvedDownloadInfos, Int32 depth = 0, Guid parentStepId = default(Guid), string selfRepoName = null, string selfRepoRef = null)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
@@ -187,19 +187,19 @@ namespace GitHub.Runner.Worker
                 throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
             }
 
-            // Resolve dollar-self ($/path) references before processing
-            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DollarSelfReference) == true)
+            // Resolve self-reference ($/) references before processing
+            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
             {
-                if (string.IsNullOrEmpty(dollarSelfRepoName))
+                if (string.IsNullOrEmpty(selfRepoName))
                 {
                     // job.workflow_repository/workflow_sha point to the repo
                     // containing the workflow file — correct for both regular
                     // and reusable workflows. Always present when the server
                     // supports $/. See: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/accessing-contextual-information-about-workflow-runs#github-context
-                    dollarSelfRepoName = executionContext.JobContext?.WorkflowRepository;
-                    dollarSelfRepoRef = executionContext.JobContext?.WorkflowSha;
+                    selfRepoName = executionContext.JobContext?.WorkflowRepository;
+                    selfRepoRef = executionContext.JobContext?.WorkflowSha;
                 }
-                ResolveDollarSelfReferences(executionContext, actions, dollarSelfRepoName, dollarSelfRepoRef);
+                ResolveSelfReferences(executionContext, actions, selfRepoName, selfRepoRef);
             }
 
             var repositoryActions = new List<Pipelines.ActionStep>();
@@ -317,14 +317,14 @@ namespace GitHub.Runner.Worker
                 // then recurse per parent (which hits the cache, not the API).
                 if (nextLevel.Count > 0)
                 {
-                    // Pre-compute parent context per group for dollar-self
-                    // resolution and recursion. Dollar-self refs in nextLevel
+                    // Pre-compute parent context per group for self-reference
+                    // resolution and recursion. Self-reference refs in nextLevel
                     // must be resolved BEFORE batch download-info resolution,
                     // since GetDownloadInfoLookupKey requires concrete refs.
                     var groups = nextLevel.GroupBy(x => x.parentId).Select(group =>
                     {
-                        string childRepoName = dollarSelfRepoName;
-                        string childRepoRef = dollarSelfRepoRef;
+                        string childRepoName = selfRepoName;
+                        string childRepoRef = selfRepoRef;
                         var parentAction = repositoryActions.FirstOrDefault(a => a.Id == group.Key);
                         if (parentAction?.Reference is Pipelines.RepositoryPathReference parentRef &&
                             string.Equals(parentRef.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
@@ -335,11 +335,11 @@ namespace GitHub.Runner.Worker
                         return new { ParentId = group.Key, Actions = group.Select(x => x.action).ToList(), RepoName = childRepoName, RepoRef = childRepoRef };
                     }).ToList();
 
-                    if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DollarSelfReference) == true)
+                    if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
                     {
                         foreach (var group in groups)
                         {
-                            ResolveDollarSelfReferences(executionContext, group.Actions, group.RepoName, group.RepoRef);
+                            ResolveSelfReferences(executionContext, group.Actions, group.RepoName, group.RepoRef);
                         }
                     }
 
@@ -427,7 +427,7 @@ namespace GitHub.Runner.Worker
         /// sub-actions individually, with no cross-depth deduplication.
         /// Used when the BatchActionResolution feature flag is disabled.
         /// </summary>
-        private async Task<PrepareActionsState> PrepareActionsRecursiveLegacyAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid), string dollarSelfRepoName = null, string dollarSelfRepoRef = null)
+        private async Task<PrepareActionsState> PrepareActionsRecursiveLegacyAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid), string selfRepoName = null, string selfRepoRef = null)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
@@ -435,15 +435,15 @@ namespace GitHub.Runner.Worker
                 throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
             }
 
-            // Resolve dollar-self ($/path) references before processing
-            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DollarSelfReference) == true)
+            // Resolve self-reference ($/) references before processing
+            if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
             {
-                if (string.IsNullOrEmpty(dollarSelfRepoName))
+                if (string.IsNullOrEmpty(selfRepoName))
                 {
-                    dollarSelfRepoName = executionContext.JobContext?.WorkflowRepository;
-                    dollarSelfRepoRef = executionContext.JobContext?.WorkflowSha;
+                    selfRepoName = executionContext.JobContext?.WorkflowRepository;
+                    selfRepoRef = executionContext.JobContext?.WorkflowSha;
                 }
-                ResolveDollarSelfReferences(executionContext, actions, dollarSelfRepoName, dollarSelfRepoRef);
+                ResolveSelfReferences(executionContext, actions, selfRepoName, selfRepoRef);
             }
 
             var repositoryActions = new List<Pipelines.ActionStep>();
@@ -570,10 +570,10 @@ namespace GitHub.Runner.Worker
                     }
                     else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        // Propagate parent's repo context for nested dollar-self resolution
+                        // Propagate parent's repo context for nested self-reference resolution
                         var parentRef = action.Reference as Pipelines.RepositoryPathReference;
-                        var childRepoName = dollarSelfRepoName;
-                        var childRepoRef = dollarSelfRepoRef;
+                        var childRepoName = selfRepoName;
+                        var childRepoRef = selfRepoRef;
                         if (parentRef != null &&
                             string.Equals(parentRef.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
                         {
@@ -829,20 +829,20 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
-                        // Resolve dollar-self refs in composite steps at load time.
+                        // Resolve self-reference refs in composite steps at load time.
                         // During setup, resolution happens on a separate copy of these
                         // step objects. At runtime, action.yml is re-parsed, producing
-                        // fresh dollar-self refs that need resolution here.
-                        if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.DollarSelfReference) == true)
+                        // fresh self-reference refs that need resolution here.
+                        if (executionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SelfReference) == true)
                         {
-                            ResolveDollarSelfReferences(executionContext, compositeAction.Steps, repoAction.Name, repoAction.Ref);
+                            ResolveSelfReferences(executionContext, compositeAction.Steps, repoAction.Name, repoAction.Ref);
                             if (compositeAction.PreSteps != null)
                             {
-                                ResolveDollarSelfReferences(executionContext, compositeAction.PreSteps, repoAction.Name, repoAction.Ref);
+                                ResolveSelfReferences(executionContext, compositeAction.PreSteps, repoAction.Name, repoAction.Ref);
                             }
                             if (compositeAction.PostSteps != null)
                             {
-                                ResolveDollarSelfReferences(executionContext, compositeAction.PostSteps, repoAction.Name, repoAction.Ref);
+                                ResolveSelfReferences(executionContext, compositeAction.PostSteps, repoAction.Name, repoAction.Ref);
                             }
                         }
                     }
@@ -1525,11 +1525,11 @@ namespace GitHub.Runner.Worker
         }
 
         /// <summary>
-        /// Resolves dollar-self ($/path) references by mutating them in-place
+        /// Resolves self-reference ($/) references by mutating them in-place
         /// to standard GitHub repository references with the containing repo's
         /// name and ref.
         /// </summary>
-        private void ResolveDollarSelfReferences(IExecutionContext executionContext, IEnumerable<Pipelines.ActionStep> actions, string repoName, string repoRef)
+        private void ResolveSelfReferences(IExecutionContext executionContext, IEnumerable<Pipelines.ActionStep> actions, string repoName, string repoRef)
         {
             if (string.IsNullOrEmpty(repoName) || string.IsNullOrEmpty(repoRef))
             {
@@ -1549,7 +1549,7 @@ namespace GitHub.Runner.Worker
                     continue;
                 }
 
-                Trace.Info($"Resolving dollar-self reference '$/{repoAction.Path}' to '{repoName}/{repoAction.Path}@{repoRef}'");
+                Trace.Info($"Resolving self-reference reference '$/{repoAction.Path}' to '{repoName}/{repoAction.Path}@{repoRef}'");
                 executionContext.Debug($"Resolving $/{repoAction.Path} → {repoName}/{repoAction.Path}@{repoRef}");
 
                 repoAction.RepositoryType = Pipelines.RepositoryTypes.GitHub;
