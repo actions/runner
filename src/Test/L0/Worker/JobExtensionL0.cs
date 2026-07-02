@@ -249,8 +249,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _message.Variables["actions_cache_mode"] = mode;
-                _jobEc.InitializeJob(_message, _tokenSource.Token);
+                _jobEc.Global.Variables.Set("actions_cache_mode", mode);
 
                 var jobExtension = new JobExtension();
                 jobExtension.Initialize(hc);
