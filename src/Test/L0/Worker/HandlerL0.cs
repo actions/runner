@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
@@ -84,6 +86,76 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("docker", _stepTelemetry.Type);
                 Assert.Equal("ubuntu:20.04", _stepTelemetry.Action);
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void OTelPropagation_NeverClobbersWorkflowSetEnv()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: the workflow's step env: block deliberately set its own values.
+                var handler = new TestOTelEnvHandler();
+                handler.Initialize(hc);
+                handler.ExecutionContext = _ec.Object;
+                handler.Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["TRACEPARENT"] = "00-11111111111111111111111111111111-1111111111111111-01",
+                    ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://app-collector:4318",
+                };
+                _ec.Setup(x => x.GetOTelStepEnv()).Returns(new Dictionary<string, string>
+                {
+                    ["TRACEPARENT"] = "00-22222222222222222222222222222222-2222222222222222-01",
+                    ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://runner-collector:4318",
+                    ["OTEL_RESOURCE_ATTRIBUTES"] = "service.name=github-actions-job",
+                });
+
+                // Act.
+                handler.ApplyOTelPropagation();
+
+                // Assert: workflow-set values win; only missing keys are injected.
+                Assert.Equal("00-11111111111111111111111111111111-1111111111111111-01", handler.Environment["TRACEPARENT"]);
+                Assert.Equal("http://app-collector:4318", handler.Environment["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+                Assert.Equal("service.name=github-actions-job", handler.Environment["OTEL_RESOURCE_ATTRIBUTES"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void OTelPropagation_InjectsWhenAbsent_NullSafe()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var handler = new TestOTelEnvHandler();
+                handler.Initialize(hc);
+                handler.ExecutionContext = _ec.Object;
+                handler.Environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                _ec.Setup(x => x.GetOTelStepEnv()).Returns(new Dictionary<string, string>
+                {
+                    ["TRACEPARENT"] = "00-22222222222222222222222222222222-2222222222222222-01",
+                });
+
+                // Act.
+                handler.ApplyOTelPropagation();
+
+                // Assert.
+                Assert.Equal("00-22222222222222222222222222222222-2222222222222222-01", handler.Environment["TRACEPARENT"]);
+
+                // A null step env (e.g. mocked-out execution context) must be a no-op, not a throw.
+                _ec.Setup(x => x.GetOTelStepEnv()).Returns((IDictionary<string, string>)null);
+                handler.ApplyOTelPropagation();
+                Assert.Single(handler.Environment);
+            }
+        }
+
+        // Minimal concrete Handler exposing the shared OTel env injection for test.
+        private sealed class TestOTelEnvHandler : Handler, IHandler
+        {
+            public Task RunAsync(ActionRunStage stage) => Task.CompletedTask;
+            public void ApplyOTelPropagation() => AddOTelPropagationToEnvironment();
         }
     }
 }

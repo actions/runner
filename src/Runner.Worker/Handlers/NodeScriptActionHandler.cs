@@ -86,6 +86,8 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            AddOTelPropagationToEnvironment();
+
             // Resolve the target script.
             string target = null;
             if (stage == ActionRunStage.Main)

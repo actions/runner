@@ -180,6 +180,7 @@ namespace GitHub.Runner.Common
                 public static readonly string BatchActionResolution = "actions_batch_action_resolution";
                 public static readonly string UseBearerTokenForCodeload = "actions_use_bearer_token_for_codeload";
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
+                public static readonly string RunnerOtelExport = "actions_runner_otel_export";
             }
 
             // Node version migration related constants
@@ -312,6 +313,20 @@ namespace GitHub.Runner.Common
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
                 public static readonly string SymlinkCachedActions = "ACTIONS_RUNNER_SYMLINK_CACHED_ACTIONS";
                 public static readonly string EmitCompositeMarkers = "ACTIONS_RUNNER_EMIT_COMPOSITE_MARKERS";
+
+                // Native OpenTelemetry trace export (see docs/adrs/4366-native-otel-export.md).
+                public static readonly string OtlpEndpoint = "ACTIONS_RUNNER_OTLP_ENDPOINT";
+                public static readonly string OtlpHeaders = "ACTIONS_RUNNER_OTLP_HEADERS";
+                // Path to a PEM CA bundle trusted for the collector connection (the safe
+                // primitive for self-signed collectors; mirrors OTEL_EXPORTER_OTLP_CERTIFICATE).
+                public static readonly string OtlpCertificate = "ACTIONS_RUNNER_OTLP_CERTIFICATE";
+                public static readonly string OtlpInsecure = "ACTIONS_RUNNER_OTLP_INSECURE";
+                public static readonly string OtlpPropagate = "ACTIONS_RUNNER_OTLP_PROPAGATE";
+                // Inbound W3C trace context from an upstream scheduler (e.g. ARC): the job
+                // span gets a span LINK to this context (cross-trace causality), keeping the
+                // runner's deterministic IDs intact.
+                public static readonly string OtlpParentTraceparent = "ACTIONS_RUNNER_PARENT_TRACEPARENT";
+                public static readonly string OtlpParentTracestate = "ACTIONS_RUNNER_PARENT_TRACESTATE";
             }
 
             public static class System

@@ -44,6 +44,9 @@ namespace GitHub.Runner.Worker
         string ScopeName { get; }
         string SiblingScopeName { get; }
         string ContextName { get; }
+        // Timeline display name + order of this step's record (used to key its OTel step span).
+        string StepDisplayName { get; }
+        int StepOrder { get; }
         ActionRunStage Stage { get; }
         Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
@@ -107,6 +110,9 @@ namespace GitHub.Runner.Worker
         void SetRunnerContext(string name, string value);
         string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
+        // W3C trace context + OTEL_* env to propagate into this step's process so
+        // in-job tools/actions emit spans parented to the step. Empty unless opted in.
+        IDictionary<string, string> GetOTelStepEnv();
         void SetOutput(string name, string value, out string reference);
         void SetTimeout(TimeSpan? timeout);
 
@@ -201,6 +207,8 @@ namespace GitHub.Runner.Worker
         public string ScopeName { get; private set; }
         public string SiblingScopeName { get; private set; }
         public string ContextName { get; private set; }
+        public string StepDisplayName => _record.Name;
+        public int StepOrder => _record.Order ?? 0;
         public ActionRunStage Stage { get; private set; }
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
@@ -593,6 +601,47 @@ namespace GitHub.Runner.Worker
                 });
 
                 Global.StepsResult.Add(stepResult);
+
+                var otel = HostContext.GetService<IOTelTraceExporter>();
+                var firstError = _record.Issues?.FirstOrDefault(i => i.Type == IssueType.Error)?.Message;
+                otel.RecordStepCompletion(
+                    stepName: _record.Name,
+                    stepNumber: _record.Order,
+                    startTime: _record.StartTime,
+                    endTime: _record.FinishTime,
+                    conclusion: _record.Result,
+                    stepType: StepTelemetry?.Type,
+                    actionName: StepTelemetry?.Action,
+                    actionRef: StepTelemetry?.Ref,
+                    isEmbedded: IsEmbedded,
+                    errorMessage: firstError,
+                    stepStage: StepTelemetry?.Stage);
+
+                // Mirror this step's errors/warnings as OTel logs correlated to the step span.
+                if (!IsEmbedded)
+                {
+                    _record.Issues?.ForEach(issue =>
+                    {
+                        otel.RecordStepLog(_record.Name, _record.Order, issue.Type.ToString(), issue.Message);
+                    });
+                }
+            }
+            else if (_record.RecordType == ExecutionContextType.Job)
+            {
+                var jobOtel = HostContext.GetService<IOTelTraceExporter>();
+                jobOtel.RecordJobCompletion(
+                    startTime: _record.StartTime,
+                    endTime: _record.FinishTime,
+                    conclusion: _record.Result,
+                    throttlingDelayMs: Interlocked.Read(ref _totalThrottlingDelayInMilliseconds),
+                    errorMessage: _record.Issues?.FirstOrDefault(i => i.Type == IssueType.Error)?.Message);
+
+                // Mirror job-level issues/annotations as OTel logs correlated to the job span
+                // (step issues are forwarded above; job-level ones were otherwise dropped).
+                _record.Issues?.ForEach(issue =>
+                {
+                    jobOtel.RecordJobLog(issue.Type.ToString(), issue.Message);
+                });
             }
 
             if (Global.Variables.GetBoolean(Constants.Runner.Features.SendJobLevelAnnotations) ?? false)
@@ -674,6 +723,23 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var githubContext = ExpressionValues["github"] as GitHubContext;
             githubContext[name] = new StringContextData(value);
+        }
+
+        public IDictionary<string, string> GetOTelStepEnv()
+        {
+            return HostContext.GetService<IOTelTraceExporter>().StepPropagationEnv(_record.Name, _record.Order);
+        }
+
+        // PR number for pull_request events, parsed from github.ref (refs/pull/N/merge).
+        private string GetPullRequestNumber()
+        {
+            var eventName = GetGitHubContext("event_name");
+            if (eventName == null || !eventName.StartsWith("pull_request", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            var match = System.Text.RegularExpressions.Regex.Match(GetGitHubContext("ref") ?? "", @"refs/pull/(\d+)/");
+            return match.Success ? match.Groups[1].Value : null;
         }
 
         public string GetGitHubContext(string name)
@@ -1035,6 +1101,26 @@ namespace GitHub.Runner.Worker
                 githubContext[pair.Key] = pair.Value;
             }
             ExpressionValues["github"] = githubContext;
+
+            // Capture job-level identifiers once so native OTel job/step spans
+            // share consistent deterministic IDs and parent links.
+            HostContext.GetService<IOTelTraceExporter>().SetJobInfo(
+                runId: GetGitHubContext("run_id"),
+                runAttempt: GetGitHubContext("run_attempt"),
+                jobName: message.JobDisplayName,
+                jobKey: githubJob,
+                repository: GetGitHubContext("repository"),
+                workflow: GetGitHubContext("workflow"),
+                eventName: GetGitHubContext("event_name"),
+                serverUrl: GetGitHubContext("server_url"),
+                // Server-side kill switch; defaults on so the endpoint opt-in works
+                // where the flag isn't provisioned (self-hosted/GHES).
+                featureEnabled: Global.Variables.GetBoolean(Constants.Runner.Features.RunnerOtelExport) ?? true,
+                sha: GetGitHubContext("sha"),
+                refName: GetGitHubContext("head_ref") ?? GetGitHubContext("ref_name"),
+                actor: GetGitHubContext("actor"),
+                baseRef: GetGitHubContext("base_ref"),
+                changeId: GetPullRequestNumber());
 
             Trace.Info("Initialize Env context");
 #if OS_WINDOWS

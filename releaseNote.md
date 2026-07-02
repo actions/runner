@@ -27,6 +27,7 @@
 * Add new env var to allow single-prefix multiline logs on stdout by @nuclearpidgeon in https://github.com/actions/runner/pull/4424
 * Bump Microsoft.DevTunnels.Connections from 1.3.39 to 1.3.48 by @dependabot[bot] in https://github.com/actions/runner/pull/4441
 * Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4369
+* Native OpenTelemetry export (opt-in) by @stefanpenner in https://github.com/actions/runner/pull/4366 — with `ACTIONS_RUNNER_OTLP_ENDPOINT` set, the runner emits OTLP/HTTP traces, metrics, and logs per job: job/step/child spans with deterministic (SHA-256) IDs, `cicd.*`/`vcs.*` semconv attributes (schema 1.34.0), annotation logs, and duration/error metrics. Best-effort and bounded: secret-masked output, capped buffers, gzip + chunked POSTs with a single bounded retry, 4 s job-end flush deadline, one Warning summary on export loss. Optional `ACTIONS_RUNNER_OTLP_PROPAGATE=true` injects `TRACEPARENT`/`OTEL_*` into step env (workflow-set values always win). Server kill switch: `actions_runner_otel_export`. See docs/adrs/4366-native-otel-export.md and docs/otel-id-contract.md.
 
 ## New Contributors
 * @GitPaulo made their first contribution in https://github.com/actions/runner/pull/4383

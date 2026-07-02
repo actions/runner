@@ -228,11 +228,10 @@ namespace GitHub.Runner.Worker
                     {
                         throw new Exception($"Missing download info for {lookupKey}");
                     }
-
                     Exception downloadFailure = null;
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                        await DownloadActionWithOtelSpan(executionContext, downloadInfo);
                     }
                     catch (Exception ex)
                     {
@@ -463,7 +462,7 @@ namespace GitHub.Runner.Worker
                     Exception downloadFailure = null;
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                        await DownloadActionWithOtelSpan(executionContext, downloadInfo);
                     }
                     catch (Exception ex)
                     {
@@ -1076,6 +1075,40 @@ namespace GitHub.Runner.Worker
                         }, Newtonsoft.Json.Formatting.None)}"
                     });
                 }
+            }
+        }
+
+        private async Task DownloadActionWithOtelSpan(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo)
+        {
+            var start = DateTime.UtcNow;
+            var result = "success";
+            try
+            {
+                await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+            }
+            catch
+            {
+                result = "failure";
+                throw;
+            }
+            finally
+            {
+                HostContext.GetService<IOTelTraceExporter>().RecordSpan(
+                    $"Resolve {downloadInfo.NameWithOwner}@{downloadInfo.Ref}",
+                    "action_download",
+                    start,
+                    DateTime.UtcNow,
+                    new Dictionary<string, object>
+                    {
+                        ["github.action"] = downloadInfo.NameWithOwner,
+                        ["github.action_ref"] = downloadInfo.Ref,
+                        // Give action-resolution spans a result like every other task span.
+                        ["cicd.pipeline.task.run.result"] = result,
+                    },
+                    // Action resolution runs inside this step (e.g. "Set up job") — nest under it.
+                    parentStepName: executionContext.StepDisplayName,
+                    parentStepNumber: executionContext.StepOrder,
+                    spanKind: 3); // CLIENT — a network download
             }
         }
 

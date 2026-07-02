@@ -18,6 +18,12 @@ namespace GitHub.Runner.Common.Tests
     {
         private readonly ConcurrentDictionary<Type, ConcurrentQueue<object>> _serviceInstances = new();
         private readonly ConcurrentDictionary<Type, object> _serviceSingletons = new();
+        // See GetService<T>: only these types auto-instantiate their ServiceLocator
+        // default when unregistered; everything else keeps the fail-loud throw.
+        private static readonly HashSet<Type> _serviceLocatorFallbackAllowlist = new()
+        {
+            typeof(GitHub.Runner.Worker.IOTelTraceExporter),
+        };
         private readonly ITraceManager _traceManager;
         private readonly Terminal _term;
         private readonly SecretMasker _secretMasker;
@@ -129,16 +135,48 @@ namespace GitHub.Runner.Common.Tests
         {
             _trace.Verbose($"Get service: '{typeof(T).Name}'");
 
-            // Get the registered singleton instance.
+            // Return the registered singleton (mock or explicitly-set instance) if present.
             object service;
             if (!_serviceSingletons.TryGetValue(typeof(T), out service))
             {
-                throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
+                // Unregistered services fail loud: a test that forgets to mock a
+                // dependency must throw here, not silently run the real implementation.
+                // The only exception is a short allowlist of leaf telemetry services
+                // that production code resolves lazily on many paths and that are inert
+                // unless explicitly configured via env vars; those mirror HostContext
+                // and instantiate their ServiceLocator default.
+                var defaultType = _serviceLocatorFallbackAllowlist.Contains(typeof(T))
+                    ? GetServiceLocatorDefault(typeof(T))
+                    : null;
+                if (defaultType == null)
+                {
+                    throw new Exception($"Singleton instance not registered for type '{typeof(T).FullName}'.");
+                }
+                service = _serviceSingletons.GetOrAdd(typeof(T), Activator.CreateInstance(defaultType));
             }
 
             T s = service as T;
             s.Initialize(this);
             return s;
+        }
+
+        private static Type GetServiceLocatorDefault(Type interfaceType)
+        {
+            foreach (CustomAttributeData attr in interfaceType.GetTypeInfo().CustomAttributes)
+            {
+                if (attr.AttributeType != typeof(ServiceLocatorAttribute))
+                {
+                    continue;
+                }
+                foreach (CustomAttributeNamedArgument arg in attr.NamedArguments)
+                {
+                    if (string.Equals(arg.MemberName, ServiceLocatorAttribute.DefaultPropertyName, StringComparison.Ordinal))
+                    {
+                        return arg.TypedValue.Value as Type;
+                    }
+                }
+            }
+            return null;
         }
 
         public void EnqueueInstance<T>(T instance) where T : class, IRunnerService
