@@ -171,6 +171,12 @@ namespace GitHub.Runner.Worker
                         context.Output($"Secret source: {secretSource}");
                     }
 
+                    var cacheMode = jobContext.Global.Variables.Get("actions_cache_mode");
+                    if (!string.IsNullOrEmpty(cacheMode))
+                    {
+                        context.Output($"Actions cache-mode: {cacheMode}");
+                    }
+
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
                     context.Debug($"Primary repository: {repoFullName}");
