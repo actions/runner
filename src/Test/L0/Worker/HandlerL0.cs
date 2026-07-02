@@ -141,6 +141,41 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task RunAsync_CacheModeCoexistsWithCacheServiceV2()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var environment = await RunNodeScriptActionHandlerAsync(hc, new Dictionary<string, VariableValue>
+                {
+                    { "actions_uses_cache_service_v2", "true" },
+                    { "actions_cache_mode", "read" }
+                });
+
+                Assert.Equal(bool.TrueString, environment["ACTIONS_CACHE_SERVICE_V2"]);
+                Assert.Equal("read", environment["ACTIONS_CACHE_MODE"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task RunAsync_DoesNotAffectRuntimeEnv_WhenCacheModeAbsent()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var environment = await RunNodeScriptActionHandlerAsync(hc, new Dictionary<string, VariableValue>());
+
+                // Baseline runtime env is still exported and cache-mode adds nothing.
+                Assert.Equal("https://pipelines.actions.githubusercontent.com/", environment["ACTIONS_RUNTIME_URL"]);
+                Assert.Equal("token", environment["ACTIONS_RUNTIME_TOKEN"]);
+                Assert.False(environment.ContainsKey("ACTIONS_CACHE_MODE"));
+                Assert.False(environment.ContainsKey("ACTIONS_CACHE_SERVICE_V2"));
+            }
+        }
+
         private async Task<Dictionary<string, string>> RunNodeScriptActionHandlerAsync(TestHostContext hc, IDictionary<string, VariableValue> variables)
         {
             var actionDirectory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), Guid.NewGuid().ToString());
