@@ -495,8 +495,6 @@ namespace GitHub.Runner.Listener
 
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
-                bool singleUseRunnerConsumed = false;
-                bool isSingleUseRunner = runOnce;
                 bool skipSessionDeletion = false;
                 bool restartSession = false; // Flag to indicate session restart
                 bool restartSessionPending = false;
@@ -697,10 +695,10 @@ namespace GitHub.Runner.Listener
                                         {
                                             await _listener.AcknowledgeMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
                                         }
-                                        catch (RunnerRequestJobNotFoundException) when (isSingleUseRunner)
+                                        catch (RunnerRequestJobNotFoundException) when (settings.Ephemeral)
                                         {
-                                            Trace.Info($"Acknowledge returned job-not-found for single-use runner request '{messageRef.RunnerRequestId}'. Exiting runner.");
-                                            singleUseRunnerConsumed = true;
+                                            Trace.Info($"Acknowledge returned job-not-found for ephemeral runner request '{messageRef.RunnerRequestId}'. Exiting runner.");
+                                            runOnceJobCompleted = true;
                                             return Constants.Runner.ReturnCode.Success;
                                         }
                                         catch (Exception ex)
@@ -867,7 +865,7 @@ namespace GitHub.Runner.Listener
 
                     messageQueueLoopTokenSource.Dispose();
 
-                    if (settings.Ephemeral && (runOnceJobCompleted || singleUseRunnerConsumed))
+                    if (settings.Ephemeral && runOnceJobCompleted)
                     {
                         configManager.DeleteLocalRunnerConfig();
                     }
