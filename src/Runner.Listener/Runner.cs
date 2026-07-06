@@ -496,7 +496,7 @@ namespace GitHub.Runner.Listener
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
                 bool singleUseRunnerConsumed = false;
-                bool isSingleUseRunner = settings.Ephemeral || (runOnce && !returnRunOnceJobResult);
+                bool isSingleUseRunner = runOnce;
                 bool skipSessionDeletion = false;
                 bool restartSession = false; // Flag to indicate session restart
                 bool restartSessionPending = false;
