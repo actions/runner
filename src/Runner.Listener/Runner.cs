@@ -495,6 +495,8 @@ namespace GitHub.Runner.Listener
 
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
+                bool singleUseRunnerConsumed = false;
+                bool isSingleUseRunner = settings.Ephemeral || (runOnce && !returnRunOnceJobResult);
                 bool skipSessionDeletion = false;
                 bool restartSession = false; // Flag to indicate session restart
                 bool restartSessionPending = false;
@@ -687,13 +689,19 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-
+                                    
                                     // Acknowledge (best-effort)
                                     if (messageRef.ShouldAcknowledge) // Temporary feature flag
                                     {
                                         try
                                         {
                                             await _listener.AcknowledgeMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (RunnerRequestJobNotFoundException) when (isSingleUseRunner)
+                                        {
+                                            Trace.Info($"Acknowledge returned job-not-found for single-use runner request '{messageRef.RunnerRequestId}'. Exiting runner.");
+                                            singleUseRunnerConsumed = true;
+                                            return Constants.Runner.ReturnCode.Success;
                                         }
                                         catch (Exception ex)
                                         {
@@ -859,7 +867,7 @@ namespace GitHub.Runner.Listener
 
                     messageQueueLoopTokenSource.Dispose();
 
-                    if (settings.Ephemeral && runOnceJobCompleted)
+                    if (settings.Ephemeral && (runOnceJobCompleted || singleUseRunnerConsumed))
                     {
                         configManager.DeleteLocalRunnerConfig();
                     }
