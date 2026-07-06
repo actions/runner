@@ -181,6 +181,7 @@ namespace GitHub.Runner.Common
                 public static readonly string UseBearerTokenForCodeload = "actions_use_bearer_token_for_codeload";
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
                 public static readonly string AllowArtifactsFile = "actions_runner_allow_artifacts_file";
+                public static readonly string SelfRepository = "actions_self_repository";
             }
 
             // Node version migration related constants

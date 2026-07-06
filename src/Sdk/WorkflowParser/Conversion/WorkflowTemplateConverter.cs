@@ -1605,6 +1605,10 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         id = WorkflowConstants.SelfAlias;
                     }
+                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(action.Uses!.Value, out _))
+                    {
+                        id = WorkflowConstants.SelfRepositoryAlias;
+                    }
                     else
                     {
                         var usesSegments = action.Uses!.Value.Split('@');
