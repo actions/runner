@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
-using GitHub.Services.WebApi.Jwt;
 using Xunit;
 
 namespace GitHub.Actions.RunService.WebApi.Tests;
