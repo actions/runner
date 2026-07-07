@@ -202,6 +202,54 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async Task JobExtensionOutputsLockedDependenciesWhenPresent()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var consoleLines = new List<string>();
+                _jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long?>()))
+                               .Callback((Guid _, string line, long? __) => consoleLines.Add(line));
+
+                _message.ActionsDependencies.Add("actions/checkout@v4:sha256-abc123");
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                Assert.Contains(consoleLines, line => line.Contains("Running with locked dependencies"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task JobExtensionDoesNotOutputLockedDependenciesWhenAbsent()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var consoleLines = new List<string>();
+                _jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long?>()))
+                               .Callback((Guid _, string line, long? __) => consoleLines.Add(line));
+
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                Assert.DoesNotContain(consoleLines, line => line.Contains("Running with locked dependencies"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task JobExtensionBuildPreStepsList()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -292,15 +340,22 @@ namespace GitHub.Runner.Common.Tests.Worker
         public async Task JobExtensionBuildFailsWithoutContainerIfRequired()
         {
             Environment.SetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer, "true");
-            using (TestHostContext hc = CreateTestContext())
+            try
             {
-                var jobExtension = new JobExtension();
-                jobExtension.Initialize(hc);
+                using (TestHostContext hc = CreateTestContext())
+                {
+                    var jobExtension = new JobExtension();
+                    jobExtension.Initialize(hc);
 
-                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
-                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>() { new JobExtensionRunner(null, "", "prepare1", null), new JobExtensionRunner(null, "", "prepare2", null) }, new Dictionary<Guid, IActionRunner>())));
+                    _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                                  .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>() { new JobExtensionRunner(null, "", "prepare1", null), new JobExtensionRunner(null, "", "prepare2", null) }, new Dictionary<Guid, IActionRunner>())));
 
-                await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
+                    await Assert.ThrowsAsync<ArgumentException>(() => jobExtension.InitializeJob(_jobEc, _message));
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Actions.RequireJobContainer, null);
             }
         }
 
