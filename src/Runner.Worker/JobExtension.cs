@@ -1074,17 +1074,17 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex) when (ex is OperationCanceledException && token.IsCancellationRequested)
                     {
                         Trace.Error($"DNS resolution canceled: {ex}");
-                        result.StatusCode = "dns_canceled";
+                        result.DNSError = "dns_canceled";
                     }
                     catch (Exception ex) when (ex is OperationCanceledException && timeoutTokenSource.IsCancellationRequested)
                     {
                         Trace.Error($"DNS resolution timeout: {ex}");
-                        result.StatusCode = "dns_timeout";
+                        result.DNSError = "dns_timeout";
                     }
                     catch (Exception ex)
                     {
                         Trace.Error($"Catch exception during DNS resolution: {ex}");
-                        result.StatusCode = $"dns_{ex.Message}";
+                        result.DNSError = $"dns_{ex.Message}";
                     }
                 }
 
@@ -1300,6 +1300,8 @@ namespace GitHub.Runner.Worker
             public int HttpRequestDurationInMs { get; set; }
 
             public int DNSResolutionDurationInMs { get; set; }
+
+            public string DNSError { get; set; }
         }
     }
 }
