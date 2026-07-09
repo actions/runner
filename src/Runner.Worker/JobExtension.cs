@@ -174,7 +174,7 @@ namespace GitHub.Runner.Worker
                     var cacheMode = jobContext.Global.Variables.Get("actions_cache_mode");
                     if (!string.IsNullOrEmpty(cacheMode))
                     {
-                        context.Output($"Actions cache-mode: {cacheMode}");
+                        context.Output($"Cache mode: {cacheMode}");
                     }
 
                     var repoFullName = context.GetGitHubContext("repository");
