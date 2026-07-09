@@ -195,7 +195,7 @@ namespace GitHub.Runner.Worker
                     // versions from the workflow's lockfile.
                     if (message.ActionsDependencies != null && message.ActionsDependencies.Count > 0)
                     {
-                        context.Output("Using locked actions versions from the workflow's lockfile");
+                        context.Output("Using locked action versions from the workflow's lockfile");
                     }
 
                     // Prepare the workflow directory
