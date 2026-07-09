@@ -260,7 +260,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await jobExtension.InitializeJob(_jobEc, _message);
 
                 _jobServerQueue.Verify(
-                    x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(m => m.Contains($"Actions cache-mode: {mode}")), It.IsAny<long?>()),
+                    x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(m => m.Contains($"Cache mode: {mode}")), It.IsAny<long?>()),
                     Times.Once);
             }
         }
@@ -281,7 +281,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await jobExtension.InitializeJob(_jobEc, _message);
 
                 _jobServerQueue.Verify(
-                    x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(m => m.Contains("Actions cache-mode:")), It.IsAny<long?>()),
+                    x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.Is<string>(m => m.Contains("Cache mode:")), It.IsAny<long?>()),
                     Times.Never);
             }
         }
