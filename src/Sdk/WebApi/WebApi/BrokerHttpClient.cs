@@ -251,27 +251,14 @@ namespace GitHub.Actions.RunService.WebApi
             {
                 switch (brokerError.ErrorKind)
                 {
+                    case BrokerErrorKind.AcknowledgeJobNotFound:
+                        throw new RunnerRequestJobNotFoundException(brokerError.Message);
                     case BrokerErrorKind.RunnerNotFound:
                         throw new RunnerNotFoundException(brokerError.Message);
-                    default:
-                        break;
-                }
-
-                if (IsAcknowledgeJobNotFound(result.StatusCode, brokerError))
-                {
-                    throw new RunnerRequestJobNotFoundException(brokerError.Message);
                 }
             }
 
             throw new Exception($"Failed to acknowledge runner request. Request to {requestUri} failed with status: {result.StatusCode}. Error message {result.Error}");
-        }
-
-        private static bool IsAcknowledgeJobNotFound(HttpStatusCode statusCode, BrokerError brokerError)
-        {
-            return statusCode == HttpStatusCode.NotFound &&
-                brokerError?.StatusCode == (int)HttpStatusCode.NotFound &&
-                !string.Equals(brokerError.ErrorKind, BrokerErrorKind.RunnerNotFound, StringComparison.Ordinal) &&
-                string.Equals(brokerError.Message, "Job not found", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool TryParseErrorBody(string errorBody, out BrokerError error)

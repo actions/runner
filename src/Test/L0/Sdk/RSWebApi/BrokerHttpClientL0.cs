@@ -21,8 +21,9 @@ public sealed class BrokerHttpClientL0
             new BrokerError
             {
                 Source = "actions-broker-listener",
+                ErrorKind = BrokerErrorKind.AcknowledgeJobNotFound,
                 StatusCode = (int)HttpStatusCode.NotFound,
-                Message = "Job not found",
+                Message = "Assigned job no longer exists",
             });
 
         await Assert.ThrowsAsync<RunnerRequestJobNotFoundException>(() =>
