@@ -171,6 +171,12 @@ namespace GitHub.Runner.Worker
                         context.Output($"Secret source: {secretSource}");
                     }
 
+                    var cacheMode = jobContext.Global.Variables.Get("actions_cache_mode");
+                    if (!string.IsNullOrEmpty(cacheMode))
+                    {
+                        context.Output($"Cache mode: {cacheMode}");
+                    }
+
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
                     context.Debug($"Primary repository: {repoFullName}");
@@ -183,6 +189,13 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(HostContext.WebProxy.HttpsProxyAddress))
                     {
                         context.Output($"Runner is running behind proxy server '{HostContext.WebProxy.HttpsProxyAddress}' for all HTTPS requests.");
+                    }
+
+                    // Signal to the user that the job is running with locked/pinned
+                    // action dependencies (a lockfile is in effect).
+                    if (message.ActionsDependencies != null && message.ActionsDependencies.Count > 0)
+                    {
+                        context.Output("Running with locked dependencies");
                     }
 
                     // Prepare the workflow directory
