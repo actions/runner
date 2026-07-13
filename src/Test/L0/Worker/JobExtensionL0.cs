@@ -220,7 +220,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 await jobExtension.InitializeJob(_jobEc, _message);
 
-                Assert.Contains(consoleLines, line => line.Contains("Running with locked dependencies"));
+                Assert.Contains(consoleLines, line => line.Contains("Using locked action versions from the workflow's lockfile"));
             }
         }
 
@@ -243,7 +243,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 await jobExtension.InitializeJob(_jobEc, _message);
 
-                Assert.DoesNotContain(consoleLines, line => line.Contains("Running with locked dependencies"));
+                Assert.DoesNotContain(consoleLines, line => line.Contains("Using locked action versions from the workflow's lockfile"));
             }
         }
 
