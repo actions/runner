@@ -39,8 +39,6 @@ namespace GitHub.Runner.Listener
         private bool _needRefreshCredsV2 = false;
         private bool _handlerInitialized = false;
         private bool _isMigratedSettings = false;
-        private const int _maxMigratedSettingsRetries = 3;
-        private int _migratedSettingsRetryCount = 0;
 
         public BrokerMessageListener()
         {
@@ -166,19 +164,6 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
-
-                    // If using migrated settings, limit the number of retries before returning failure
-                    if (_isMigratedSettings)
-                    {
-                        _migratedSettingsRetryCount++;
-                        Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
-                        
-                        if (_migratedSettingsRetryCount >= _maxMigratedSettingsRetries)
-                        {
-                            Trace.Warning("Reached maximum retry attempts for migrated settings. Returning failure to try default settings.");
-                            return CreateSessionResult.Failure;
-                        }
-                    }
 
                     if (!HostContext.AllowAuthMigration &&
                         ex is VssOAuthTokenRequestException vssOAuthEx &&
@@ -338,7 +323,14 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
+                    // don't retry if SkipSessionRecover = true, broker listener will expire session to stop agent from taking more jobs.
                     if (!HostContext.AllowAuthMigration &&
+                        ex is TaskAgentSessionExpiredException &&
+                        !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
+                    {
+                        Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
+                    }
+                    else if (!HostContext.AllowAuthMigration &&
                         !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw new NonRetryableException("Get next message failed with non-retryable error.", ex);
