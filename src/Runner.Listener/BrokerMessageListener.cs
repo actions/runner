@@ -167,6 +167,23 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
+                    // When using migrated settings, cap retries for generic transient/retriable errors so we can
+                    // fall back to the original .runner settings instead of retrying the migrated settings forever.
+                    // Session conflict (4 min) and clock skew (30 min) have their own bounded retry limits and are
+                    // excluded here so they keep their v1-consistent behavior.
+                    if (_isMigratedSettings &&
+                        ex is not TaskAgentSessionConflictException &&
+                        !(ex is VssOAuthTokenRequestException oauthSkewEx && oauthSkewEx.Message.Contains("Current server time is")))
+                    {
+                        _migratedSettingsRetryCount++;
+                        Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
+                        if (_migratedSettingsRetryCount >= _maxMigratedSettingsRetries)
+                        {
+                            Trace.Warning("Reached maximum retry attempts for migrated settings. Returning failure to try default settings.");
+                            return CreateSessionResult.Failure;
+                        }
+                    }
+
                     if (!HostContext.AllowAuthMigration &&
                         ex is VssOAuthTokenRequestException vssOAuthEx &&
                         _credsV2.Federated is VssOAuthCredential vssOAuthCred)
@@ -199,23 +216,6 @@ namespace GitHub.Runner.Listener
                             return CreateSessionResult.SessionConflict;
                         }
                         return CreateSessionResult.Failure;
-                    }
-
-                    // When using migrated settings, cap retries for generic transient/retriable errors so we can
-                    // fall back to the original .runner settings instead of retrying the migrated settings forever.
-                    // Session conflict (4 min) and clock skew (30 min) have their own bounded retry limits and are
-                    // excluded here so they keep their v1-consistent behavior.
-                    if (_isMigratedSettings &&
-                        ex is not TaskAgentSessionConflictException &&
-                        !(ex is VssOAuthTokenRequestException oauthSkewEx && oauthSkewEx.Message.Contains("Current server time is")))
-                    {
-                        _migratedSettingsRetryCount++;
-                        Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
-                        if (_migratedSettingsRetryCount >= _maxMigratedSettingsRetries)
-                        {
-                            Trace.Warning("Reached maximum retry attempts for migrated settings. Returning failure to try default settings.");
-                            return CreateSessionResult.Failure;
-                        }
                     }
 
                     if (HostContext.AllowAuthMigration)
