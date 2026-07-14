@@ -31,22 +31,6 @@ public sealed class BrokerHttpClientL0
     }
 
     [Fact]
-    public async Task AcknowledgeRunnerRequestAsyncKeepsLegacyJobNotFoundClassification()
-    {
-        using var client = CreateClient(
-            HttpStatusCode.NotFound,
-            new BrokerError
-            {
-                Source = "actions-broker-listener",
-                StatusCode = (int)HttpStatusCode.NotFound,
-                Message = "Job not found",
-            });
-
-        await Assert.ThrowsAsync<RunnerRequestJobNotFoundException>(() =>
-            client.AcknowledgeRunnerRequestAsync("runner-request", Guid.NewGuid(), "2.0.0", TaskAgentStatus.Online, cancellationToken: CancellationToken.None));
-    }
-
-    [Fact]
     public async Task AcknowledgeRunnerRequestAsyncKeepsRunnerNotFoundClassification()
     {
         using var client = CreateClient(

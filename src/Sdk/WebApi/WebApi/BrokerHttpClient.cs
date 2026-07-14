@@ -256,11 +256,6 @@ namespace GitHub.Actions.RunService.WebApi
                     case BrokerErrorKind.RunnerNotFound:
                         throw new RunnerNotFoundException(brokerError.Message);
                 }
-
-                if (IsLegacyAcknowledgeJobNotFound(result.StatusCode, brokerError))
-                {
-                    throw new RunnerRequestJobNotFoundException(brokerError.Message);
-                }
             }
 
             throw new Exception($"Failed to acknowledge runner request. Request to {requestUri} failed with status: {result.StatusCode}. Error message {result.Error}");
@@ -285,14 +280,6 @@ namespace GitHub.Actions.RunService.WebApi
 
             error = null;
             return false;
-        }
-
-        private static bool IsLegacyAcknowledgeJobNotFound(HttpStatusCode statusCode, BrokerError brokerError)
-        {
-            return statusCode == HttpStatusCode.NotFound &&
-                brokerError?.StatusCode == (int)HttpStatusCode.NotFound &&
-                string.IsNullOrEmpty(brokerError.ErrorKind) &&
-                string.Equals(brokerError.Message, "Job not found", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
