@@ -169,11 +169,10 @@ namespace GitHub.Runner.Listener
 
                     // When using migrated settings, cap retries for generic transient/retriable errors so we can
                     // fall back to the original .runner settings instead of retrying the migrated settings forever.
-                    // Session conflict (4 min) and clock skew (30 min) have their own bounded retry limits and are
+                    // Session conflict (4 min) has its own bounded retry limits and are
                     // excluded here so they keep their v1-consistent behavior.
                     if (_isMigratedSettings &&
-                        ex is not TaskAgentSessionConflictException &&
-                        !(ex is VssOAuthTokenRequestException oauthSkewEx && oauthSkewEx.Message.Contains("Current server time is")))
+                        ex is not TaskAgentSessionConflictException)
                     {
                         _migratedSettingsRetryCount++;
                         Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
