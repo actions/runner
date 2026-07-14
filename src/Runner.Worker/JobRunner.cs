@@ -323,41 +323,57 @@ namespace GitHub.Runner.Worker
             }
 
             Trace.Info($"Raising job completed against run service");
-            var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
-            while (completeJobRetryLimit-- > 0)
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                try
-                {
-                    await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, infrastructureFailureCategory: jobContext.Global.InfrastructureFailureCategory, default);
-                    return result;
-                }
-                catch (VssUnauthorizedException ex)
+                MaxAttempts = 5,
+                GetBackoff = RetryBackoffs.Fixed(TimeSpan.FromSeconds(5)),
+                OnRetry = (_, ex, _) =>
                 {
                     Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
-                    break;
-                }
-                catch (TaskOrchestrationJobNotFoundException ex)
+                },
+                OnFailure = (_, ex, _) =>
                 {
-                    Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
-                    Trace.Error(ex);
-                    exceptions.Add(ex);
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
-                    Trace.Error(ex);
-                    exceptions.Add(ex);
-                }
+                    if (ex != null)
+                    {
+                        exceptions.Add(ex);
+                    }
+                },
+            });
 
-                // delay 5 seconds before next retry.
-                await Task.Delay(TimeSpan.FromSeconds(5));
+            var completed = await retryHelper.ExecuteAsync<bool>(
+                operationName: "CompleteJobAsync",
+                operation: async _ =>
+                {
+                    try
+                    {
+                        await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId, result, jobContext.JobOutputs, jobContext.Global.StepsResult, jobContext.Global.JobAnnotations, environmentUrl, telemetry, billingOwnerId: message.BillingOwnerId, infrastructureFailureCategory: jobContext.Global.InfrastructureFailureCategory, default);
+                        return true;
+                    }
+                    catch (VssUnauthorizedException ex)
+                    {
+                        Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
+                        Trace.Error(ex);
+                        exceptions.Add(ex);
+                        return false;
+                    }
+                    catch (TaskOrchestrationJobNotFoundException ex)
+                    {
+                        Trace.Error($"Catch exception while attempting to complete job {message.JobId}, job request {message.RequestId}.");
+                        Trace.Error(ex);
+                        exceptions.Add(ex);
+                        return false;
+                    }
+                },
+                cancellationToken: default);
+
+            if (completed)
+            {
+                return result;
             }
 
-            // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
         }
 
@@ -406,46 +422,67 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Raising job completed event");
             var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.Global.StepsTelemetry, jobContext.Global.JobTelemetry);
 
-            var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
-            while (completeJobRetryLimit-- > 0)
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                try
-                {
-                    await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
-                    return result;
-                }
-                catch (TaskOrchestrationPlanNotFoundException ex)
-                {
-                    Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
-                    Trace.Error(ex);
-                    return TaskResult.Failed;
-                }
-                catch (TaskOrchestrationPlanSecurityException ex)
-                {
-                    Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
-                    Trace.Error(ex);
-                    return TaskResult.Failed;
-                }
-                catch (TaskOrchestrationPlanTerminatedException ex)
-                {
-                    Trace.Error($"TaskOrchestrationPlanTerminatedException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
-                    Trace.Error(ex);
-                    return TaskResult.Failed;
-                }
-                catch (Exception ex)
+                MaxAttempts = 5,
+                GetBackoff = RetryBackoffs.Fixed(TimeSpan.FromSeconds(5)),
+                OnRetry = (_, ex, _) =>
                 {
                     Trace.Error($"Catch exception while attempting to raise JobCompletedEvent for job {message.JobId}, job request {message.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
-                }
+                },
+                OnFailure = (_, ex, _) =>
+                {
+                    if (ex != null)
+                    {
+                        exceptions.Add(ex);
+                    }
+                },
+            });
 
-                // delay 5 seconds before next retry.
-                await Task.Delay(TimeSpan.FromSeconds(5));
+            var completed = await retryHelper.ExecuteAsync<bool>(
+                operationName: "RaiseJobCompletedEvent",
+                operation: async _ =>
+                {
+                    try
+                    {
+                        await jobServer.RaisePlanEventAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, default(CancellationToken));
+                        return true;
+                    }
+                    catch (TaskOrchestrationPlanNotFoundException ex)
+                    {
+                        Trace.Error($"TaskOrchestrationPlanNotFoundException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
+                        Trace.Error(ex);
+                        return false;
+                    }
+                    catch (TaskOrchestrationPlanSecurityException ex)
+                    {
+                        Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
+                        Trace.Error(ex);
+                        return false;
+                    }
+                    catch (TaskOrchestrationPlanTerminatedException ex)
+                    {
+                        Trace.Error($"TaskOrchestrationPlanTerminatedException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
+                        Trace.Error(ex);
+                        return false;
+                    }
+                },
+                cancellationToken: default);
+
+            if (completed)
+            {
+                return result;
             }
 
-            // rethrow exceptions from all attempts.
-            throw new AggregateException(exceptions);
+            if (exceptions.Count > 0)
+            {
+                throw new AggregateException(exceptions);
+            }
+
+            return TaskResult.Failed;
         }
 
         private void MaskTelemetrySecrets(List<JobTelemetry> jobTelemetry)

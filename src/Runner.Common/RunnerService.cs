@@ -46,67 +46,51 @@ namespace GitHub.Runner.Common
         {
             Trace.Info($"EstablishVssConnection");
             Trace.Info($"Establish connection with {timeout.TotalSeconds} seconds timeout.");
-            int attemptCount = 5;
-            while (attemptCount-- > 0)
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                var connection = VssUtil.CreateConnection(serverUrl, credentials, timeout: timeout);
-                try
+                MaxAttempts = 5,
+                GetBackoff = RetryBackoffs.Fixed(TimeSpan.FromMilliseconds(100)),
+                OnRetry = (context, ex, _) =>
                 {
+                    Trace.Info($"Catch exception during connect. {context.MaxAttempts - context.AttemptNumber} attempt left.");
+                    Trace.Error(ex);
+                },
+            });
+
+            return await retryHelper.ExecuteAsync(
+                operationName: nameof(EstablishVssConnection),
+                operation: async () =>
+                {
+                    var connection = VssUtil.CreateConnection(serverUrl, credentials, timeout: timeout);
                     await connection.ConnectAsync();
                     return connection;
-                }
-                catch (Exception ex) when (attemptCount > 0)
-                {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attempt left.");
-                    Trace.Error(ex);
-
-                    await HostContext.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None);
-                }
-            }
-
-            // should never reach here.
-            throw new InvalidOperationException(nameof(EstablishVssConnection));
+                });
         }
 
-        protected async Task RetryRequest(Func<Task> func,
+        protected async Task RetryRequest(Func<Task<OperationOutcome<bool>>> func,
             CancellationToken cancellationToken,
-            int maxAttempts = 5,
-            Func<Exception, bool> shouldRetry = null
+            int maxAttempts = 5
         )
         {
-            async Task<Unit> wrappedFunc()
-            {
-                await func();
-                return Unit.Value;
-            }
-            await RetryRequest<Unit>(wrappedFunc, cancellationToken, maxAttempts, shouldRetry);
+            await RetryRequest<bool>(func, cancellationToken, maxAttempts);
         }
 
-        protected async Task<T> RetryRequest<T>(Func<Task<T>> func,
+        protected async Task<T> RetryRequest<T>(Func<Task<OperationOutcome<T>>> func,
             CancellationToken cancellationToken,
-            int maxAttempts = 5,
-            Func<Exception, bool> shouldRetry = null
+            int maxAttempts = 5
         )
         {
-            var attempt = 0;
-            while (true)
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                attempt++;
-                cancellationToken.ThrowIfCancellationRequested();
-                try
+                MaxAttempts = maxAttempts,
+                GetBackoff = RetryBackoffs.Random(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15)),
+                OnRetry = (context, _, backoff) =>
                 {
-                    return await func();
-                }
-                // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
-                catch (Exception ex) when (attempt < maxAttempts && (shouldRetry == null || shouldRetry(ex)))
-                {
-                    Trace.Error("Catch exception during request");
-                    Trace.Error(ex);
-                    var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15));
-                    Trace.Warning($"Back off {backOff.TotalSeconds} seconds before next retry. {maxAttempts - attempt} attempt left.");
-                    await Task.Delay(backOff, cancellationToken);
-                }
-            }
+                    Trace.Warning($"Transient failure during request, retrying. Attempt {context.AttemptNumber}/{context.MaxAttempts}. Back off {backoff.TotalSeconds} seconds.");
+                },
+            });
+
+            return await retryHelper.ExecuteAsync<T>("RetryRequest", func, cancellationToken);
         }
     }
 }

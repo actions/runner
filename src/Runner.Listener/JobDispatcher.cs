@@ -1128,38 +1128,57 @@ namespace GitHub.Runner.Listener
             }
 
             var runnerServer = HostContext.GetService<IRunnerServer>();
-            int completeJobRequestRetryLimit = 5;
-            List<Exception> exceptions = new();
-            while (completeJobRequestRetryLimit-- > 0)
+            var exceptions = new List<Exception>();
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                try
-                {
-                    await runnerServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
-                    return;
-                }
-                catch (TaskAgentJobNotFoundException)
-                {
-                    Trace.Info($"TaskAgentJobNotFoundException received, job {message.JobId} is no longer valid.");
-                    return;
-                }
-                catch (TaskAgentJobTokenExpiredException)
-                {
-                    Trace.Info($"TaskAgentJobTokenExpiredException received, job {message.JobId} is no longer valid.");
-                    return;
-                }
-                catch (Exception ex)
+                MaxAttempts = 5,
+                GetBackoff = RetryBackoffs.Fixed(TimeSpan.FromSeconds(5)),
+                OnRetry = (context, ex, _) =>
                 {
                     Trace.Error($"Catch exception during complete runner jobrequest {message.RequestId}.");
                     Trace.Error(ex);
                     exceptions.Add(ex);
-                }
+                },
+                OnFailure = (_, ex, _) =>
+                {
+                    if (ex != null)
+                    {
+                        exceptions.Add(ex);
+                    }
+                },
+            });
 
-                // delay 5 seconds before next retry.
-                await Task.Delay(TimeSpan.FromSeconds(5));
+            var completed = await retryHelper.ExecuteAsync<bool>(
+                operationName: nameof(CompleteJobRequestAsync),
+                operation: async _ =>
+                {
+                    try
+                    {
+                        await runnerServer.FinishAgentRequestAsync(poolId, message.RequestId, lockToken, DateTime.UtcNow, result, CancellationToken.None);
+                        return true;
+                    }
+                    catch (TaskAgentJobNotFoundException)
+                    {
+                        Trace.Info($"TaskAgentJobNotFoundException received, job {message.JobId} is no longer valid.");
+                        return false;
+                    }
+                    catch (TaskAgentJobTokenExpiredException)
+                    {
+                        Trace.Info($"TaskAgentJobTokenExpiredException received, job {message.JobId} is no longer valid.");
+                        return false;
+                    }
+                },
+                cancellationToken: CancellationToken.None);
+
+            if (completed)
+            {
+                return;
             }
 
-            // rethrow all catched exceptions during retry.
-            throw new AggregateException(exceptions);
+            if (exceptions.Count > 0)
+            {
+                throw new AggregateException(exceptions);
+            }
         }
 
         // log an error issue to job level timeline record

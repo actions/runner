@@ -64,11 +64,19 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             return RetryRequest<AgentJobRequestMessage>(
-                async () => await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, VarUtil.OS, billingOwnerId, cancellationToken), cancellationToken,
-                shouldRetry: ex =>
-                    ex is not TaskOrchestrationJobNotFoundException &&          // HTTP status 404
-                    ex is not TaskOrchestrationJobAlreadyAcquiredException &&   // HTTP status 409
-                    ex is not TaskOrchestrationJobUnprocessableException);      // HTTP status 422
+                async () =>
+                {
+                    try
+                    {
+                        return OperationOutcome.Success(
+                            await _runServiceHttpClient.GetJobMessageAsync(requestUri, id, VarUtil.OS, billingOwnerId, cancellationToken));
+                    }
+                    catch (TaskOrchestrationJobNotFoundException) { throw; }    // HTTP status 404
+                    catch (TaskOrchestrationJobAlreadyAcquiredException) { throw; } // HTTP status 409
+                    catch (TaskOrchestrationJobUnprocessableException) { throw; }   // HTTP status 422
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex) { return OperationOutcome.TransientFailure<AgentJobRequestMessage>(ex.Message); }
+                }, cancellationToken);
         }
 
         public Task CompleteJobAsync(
@@ -86,19 +94,35 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             return RetryRequest(
-                async () => await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, telemetry, billingOwnerId, infrastructureFailureCategory, cancellationToken), cancellationToken,
-                shouldRetry: ex =>
-                    ex is not VssUnauthorizedException &&               // HTTP status 401
-                    ex is not TaskOrchestrationJobNotFoundException);   // HTTP status 404
+                async () =>
+                {
+                    try
+                    {
+                        await _runServiceHttpClient.CompleteJobAsync(requestUri, planId, jobId, result, outputs, stepResults, jobAnnotations, environmentUrl, telemetry, billingOwnerId, infrastructureFailureCategory, cancellationToken);
+                        return OperationOutcome.Success(true);
+                    }
+                    catch (VssUnauthorizedException) { throw; }             // HTTP status 401
+                    catch (TaskOrchestrationJobNotFoundException) { throw; } // HTTP status 404
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex) { return OperationOutcome.TransientFailure<bool>(ex.Message); }
+                }, cancellationToken);
         }
 
         public Task<RenewJobResponse> RenewJobAsync(Guid planId, Guid jobId, CancellationToken cancellationToken)
         {
             CheckConnection();
             return RetryRequest<RenewJobResponse>(
-                async () => await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken), cancellationToken,
-                shouldRetry: ex =>
-                    ex is not TaskOrchestrationJobNotFoundException);   // HTTP status 404
+                async () =>
+                {
+                    try
+                    {
+                        return OperationOutcome.Success(
+                            await _runServiceHttpClient.RenewJobAsync(requestUri, planId, jobId, cancellationToken));
+                    }
+                    catch (TaskOrchestrationJobNotFoundException) { throw; } // HTTP status 404
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex) { return OperationOutcome.TransientFailure<RenewJobResponse>(ex.Message); }
+                }, cancellationToken);
         }
     }
 }

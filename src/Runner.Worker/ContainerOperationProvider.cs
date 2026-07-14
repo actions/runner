@@ -196,31 +196,32 @@ namespace GitHub.Runner.Worker
             var configLocation = await ContainerRegistryLogin(executionContext, container);
 
             // Pull down docker image with retry up to 3 times
-            int retryCount = 0;
             int pullExitCode = 0;
-            while (retryCount < 3)
+            var pullRetryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                pullExitCode = await _dockerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
-                if (pullExitCode == 0)
+                MaxAttempts = 3,
+                GetBackoff = (_, _, _) => BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10)),
+                OnRetry = (_, _, backoff) =>
                 {
-                    break;
-                }
-                else
+                    executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backoff.TotalSeconds} seconds before retry.");
+                },
+            });
+
+            await pullRetryHelper.ExecuteAsync(
+                operationName: nameof(StartContainerAsync),
+                operation: async () =>
                 {
-                    retryCount++;
-                    if (retryCount < 3)
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                        await Task.Delay(backOff);
-                    }
-                }
-            }
+                    pullExitCode = await _dockerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
+                    return pullExitCode == 0
+                        ? OperationOutcome.Success(true)
+                        : OperationOutcome.TransientFailure<bool>($"Docker pull failed with exit code {pullExitCode}");
+                },
+                cancellationToken: executionContext.CancellationToken);
 
             // Remove credentials after pulling
             ContainerRegistryLogout(configLocation);
 
-            if (retryCount == 3 && pullExitCode != 0)
+            if (pullExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
             }
@@ -468,33 +469,35 @@ namespace GitHub.Runner.Worker
             }
 
             // Login docker with retry up to 3 times
-            int retryCount = 0;
             int loginExitCode = 0;
-            while (retryCount < 3)
+            var loginRetryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                loginExitCode = await _dockerManager.DockerLogin(
-                    executionContext,
-                    configLocation,
-                    container.RegistryServer,
-                    container.RegistryAuthUsername,
-                    container.RegistryAuthPassword);
-                if (loginExitCode == 0)
+                MaxAttempts = 3,
+                GetBackoff = (_, _, _) => BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10)),
+                OnRetry = (_, _, backoff) =>
                 {
-                    break;
-                }
-                else
-                {
-                    retryCount++;
-                    if (retryCount < 3)
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        executionContext.Warning($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                        await Task.Delay(backOff);
-                    }
-                }
-            }
+                    executionContext.Warning($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}, back off {backoff.TotalSeconds} seconds before retry.");
+                },
+            });
 
-            if (retryCount == 3 && loginExitCode != 0)
+            await loginRetryHelper.ExecuteAsync(
+                operationName: nameof(ContainerRegistryLogin),
+                operation: async () =>
+                {
+                    loginExitCode = await _dockerManager.DockerLogin(
+                        executionContext,
+                        configLocation,
+                        container.RegistryServer,
+                        container.RegistryAuthUsername,
+                        container.RegistryAuthPassword);
+
+                    return loginExitCode == 0
+                        ? OperationOutcome.Success(true)
+                        : OperationOutcome.TransientFailure<bool>($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
+                },
+                cancellationToken: executionContext.CancellationToken);
+
+            if (loginExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
             }

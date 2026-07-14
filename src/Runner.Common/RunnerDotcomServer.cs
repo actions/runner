@@ -111,19 +111,27 @@ namespace GitHub.Runner.Common
 
         private async Task<T> RetryRequest<T>(string githubApiUrl, string githubToken, RequestType requestType, int maxRetryAttemptsCount = 5, string errorMessage = null, StringContent body = null)
         {
-            int retry = 0;
-            while (true)
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                retry++;
-                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-                using (var httpClient = new HttpClient(httpClientHandler))
+                MaxAttempts = maxRetryAttemptsCount,
+                GetBackoff = RetryBackoffs.Random(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5)),
+                OnRetry = (context, _, backoff) =>
                 {
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    Trace.Error($"{errorMessage} -- Attempt: {context.AttemptNumber}");
+                    Trace.Info($"Retrying in {backoff.Seconds} seconds");
+                },
+            });
 
-                    var responseStatus = System.Net.HttpStatusCode.OK;
-                    try
+            return await retryHelper.ExecuteAsync<T>(
+                operationName: "RunnerDotcomServer.RetryRequest",
+                operation: async () =>
+                {
+                    using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                    using (var httpClient = new HttpClient(httpClientHandler))
                     {
+                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
+                        httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+
                         HttpResponseMessage response = null;
                         switch (requestType)
                         {
@@ -145,35 +153,32 @@ namespace GitHub.Runner.Common
 
                         if (response != null)
                         {
-                            responseStatus = response.StatusCode;
                             var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
                             if (response.IsSuccessStatusCode)
                             {
                                 Trace.Info($"Http response code: {response.StatusCode} from '{requestType.ToString()} {githubApiUrl}' ({githubRequestId})");
                                 var jsonResponse = await response.Content.ReadAsStringAsync();
-                                return StringUtil.ConvertFromJson<T>(jsonResponse);
+                                return OperationOutcome.Success(StringUtil.ConvertFromJson<T>(jsonResponse));
                             }
                             else
                             {
                                 _term.WriteError($"Http response code: {response.StatusCode} from '{requestType.ToString()} {githubApiUrl}' (Request Id: {githubRequestId})");
                                 var errorResponse = await response.Content.ReadAsStringAsync();
                                 _term.WriteError(errorResponse);
-                                response.EnsureSuccessStatusCode();
+
+                                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                                {
+                                    response.EnsureSuccessStatusCode();
+                                }
+
+                                return OperationOutcome.TransientFailure<T>($"Http response code: {response.StatusCode} from '{requestType} {githubApiUrl}'");
                             }
                         }
 
+                        throw new InvalidOperationException($"Unable to process response from '{requestType} {githubApiUrl}'.");
                     }
-                    catch (Exception ex) when (retry < maxRetryAttemptsCount && responseStatus != System.Net.HttpStatusCode.NotFound)
-                    {
-                        Trace.Error($"{errorMessage} -- Attempt: {retry}");
-                        Trace.Error(ex);
-                    }
-                }
-                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
-                await Task.Delay(backOff);
-            }
+                });
         }
 
         private string GetEntityUrl(string githubUrl)

@@ -66,10 +66,21 @@ namespace GitHub.Runner.Common
         public Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken)
         {
             CheckConnection();
-            var brokerSession = RetryRequest<TaskAgentMessage>(
-                async () => await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken), cancellationToken, shouldRetry: ShouldRetryException);
-
-            return brokerSession;
+            return RetryRequest<TaskAgentMessage>(
+                async () =>
+                {
+                    try
+                    {
+                        return OperationOutcome.Success(
+                            await _brokerHttpClient.GetRunnerMessageAsync(sessionId, version, status, os, architecture, disableUpdate, cancellationToken));
+                    }
+                    catch (AccessDeniedException) { throw; }
+                    catch (VssUnauthorizedException) { throw; }
+                    catch (RunnerNotFoundException) { throw; }
+                    catch (HostedRunnerDeprovisionedException) { throw; }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex) { return OperationOutcome.TransientFailure<TaskAgentMessage>(ex.Message); }
+                }, cancellationToken);
         }
 
         public async Task AcknowledgeRunnerRequestAsync(string runnerRequestId, Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, CancellationToken cancellationToken)
@@ -106,14 +117,5 @@ namespace GitHub.Runner.Common
             return Task.CompletedTask;
         }
 
-        public bool ShouldRetryException(Exception ex)
-        {
-            if (ex is AccessDeniedException || ex is VssUnauthorizedException || ex is RunnerNotFoundException || ex is HostedRunnerDeprovisionedException)
-            {
-                return false;
-            }
-
-            return true;
-        }
     }
 }

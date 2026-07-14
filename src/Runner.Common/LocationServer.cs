@@ -23,21 +23,25 @@ namespace GitHub.Runner.Common
         public async Task ConnectAsync(VssConnection jobConnection)
         {
             _connection = jobConnection;
-            int attemptCount = 5;
-            while (!_connection.HasAuthenticated && attemptCount-- > 0)
+            if (!_connection.HasAuthenticated)
             {
-                try
+                var retryHelper = new RetryHelper(Trace, new RetryStrategy
                 {
-                    await _connection.ConnectAsync();
-                    break;
-                }
-                catch (Exception ex) when (attemptCount > 0)
-                {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attempt left.");
-                    Trace.Error(ex);
-                }
+                    MaxAttempts = 5,
+                    GetBackoff = (_, _, _) => TimeSpan.FromMilliseconds(100),
+                    OnRetry = (context, ex, _) =>
+                    {
+                        Trace.Info($"Catch exception during connect. {context.MaxAttempts - context.AttemptNumber} attempt left.");
+                        Trace.Error(ex);
+                    },
+                });
 
-                await Task.Delay(100);
+                await retryHelper.ExecuteAsync(
+                    operationName: nameof(ConnectAsync),
+                    operation: async () =>
+                    {
+                        await _connection.ConnectAsync();
+                    });
             }
 
             _locationClient = _connection.GetClient<LocationHttpClient>();

@@ -53,6 +53,17 @@ namespace GitHub.Runner.Common
         private String _liveConsoleFeedUrl;
         private string _token;
 
+        private ClientWebSocket CreateWebSocketClient(string accessToken)
+        {
+            var websocketClient = new ClientWebSocket();
+            websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+            var userAgentValues = new List<ProductInfoHeaderValue>();
+            userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
+            userAgentValues.AddRange(HostContext.UserAgents);
+            websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+            return websocketClient;
+        }
+
         public void InitializeResultsClient(Uri uri, string liveConsoleFeedUrl, string token, bool useSdk)
         {
             this._resultsClient = CreateHttpClient(uri, token, useSdk);
@@ -179,12 +190,7 @@ namespace GitHub.Runner.Common
             }
 
             Trace.Info($"Creating websocket client ..." + liveConsoleFeedUrl);
-            this._websocketClient = new ClientWebSocket();
-            this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-            var userAgentValues = new List<ProductInfoHeaderValue>();
-            userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
-            userAgentValues.AddRange(HostContext.UserAgents);
-            this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+            this._websocketClient = CreateWebSocketClient(accessToken);
 
             // during initialization, retry upto 3 times to setup connection
             this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection);
@@ -192,29 +198,34 @@ namespace GitHub.Runner.Common
 
         private async Task ConnectWebSocketClient(string feedStreamUrl, TimeSpan delay, bool retryConnection = false)
         {
-            bool connected = false;
-            int retries = 0;
-
-            do
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                try
+                MaxAttempts = retryConnection ? 3 : 1,
+                GetBackoff = (_, _, _) => TimeSpan.Zero,
+                OnRetry = (_, ex, _) =>
+                {
+                    Trace.Info("Exception caught during websocket client connect, retry connection.");
+                    Trace.Error(ex);
+                    _lastConnectionFailure = DateTime.Now;
+                    this._websocketClient = CreateWebSocketClient(_token);
+                },
+                OnFailure = (_, _, _) =>
+                {
+                    this._websocketClient = null;
+                    _lastConnectionFailure = DateTime.Now;
+                },
+            });
+
+            await retryHelper.ExecuteAsync(
+                operationName: nameof(ConnectWebSocketClient),
+                operation: async () =>
                 {
                     Trace.Info($"Attempting to start websocket client with delay {delay}.");
                     await Task.Delay(delay);
                     using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                     await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
                     Trace.Info($"Successfully started websocket client.");
-                    connected = true;
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info("Exception caught during websocket client connect, retry connection.");
-                    Trace.Error(ex);
-                    retries++;
-                    this._websocketClient = null;
-                    _lastConnectionFailure = DateTime.Now;
-                }
-            } while (retryConnection && !connected && retries < 3);
+                });
         }
 
         public async Task<bool> AppendLiveConsoleFeedAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid timelineRecordId, Guid stepId, IList<string> lines, long? startLine, CancellationToken cancellationToken)

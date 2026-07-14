@@ -234,104 +234,113 @@ namespace GitHub.Runner.Listener
         {
             var stopWatch = Stopwatch.StartNew();
             int runnerSuffix = 1;
-            string archiveFile = null;
-            bool downloadSucceeded = false;
-
-            // Download the runner, using multiple attempts in order to be resilient against any networking/CDN issues
-            for (int attempt = 1; attempt <= Constants.RunnerDownloadRetryMaxAttempts; attempt++)
+            var retryHelper = new RetryHelper(Trace, new RetryStrategy
             {
-                // Generate an available package name, and do our best effort to clean up stale local zip files
-                while (true)
-                {
-                    if (packagePlatform.StartsWith("win"))
-                    {
-                        archiveFile = Path.Combine(downloadDirectory, $"runner{runnerSuffix}.zip");
-                    }
-                    else
-                    {
-                        archiveFile = Path.Combine(downloadDirectory, $"runner{runnerSuffix}.tar.gz");
-                    }
+                MaxAttempts = Constants.RunnerDownloadRetryMaxAttempts,
+                GetBackoff = (_, _, _) => TimeSpan.Zero,
+            });
 
-                    try
+            try
+            {
+                return await retryHelper.ExecuteAsync(
+                    "DownLoadRunner",
+                    async (context) =>
                     {
-                        // delete .zip file
-                        if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
+                        string archiveFile = null;
+
+                        // Generate an available package name, and do our best effort to clean up stale local zip files.
+                        while (true)
                         {
-                            Trace.Verbose("Deleting latest runner package zip '{0}'", archiveFile);
-                            IOUtil.DeleteFile(archiveFile);
-                        }
-
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        // couldn't delete the file for whatever reason, so generate another name
-                        Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
-                        runnerSuffix++;
-                    }
-                }
-
-                // Allow a 15-minute package download timeout, which is good enough to update the runner from a 1 Mbit/s ADSL connection.
-                if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
-                {
-                    timeoutSeconds = 15 * 60;
-                }
-
-                Trace.Info($"Attempt {attempt}: save latest runner into {archiveFile}.");
-
-                using (var downloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
-                using (var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(downloadTimeout.Token, token))
-                {
-                    try
-                    {
-                        Trace.Info($"Download runner: begin download");
-                        long downloadSize = 0;
-
-                        //open zip stream in async mode
-                        using (HttpClient httpClient = new(HostContext.CreateHttpClientHandler()))
-                        {
-                            Trace.Info($"Downloading {packageDownloadUrl}");
-
-                            using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
-                            using (Stream result = await httpClient.GetStreamAsync(packageDownloadUrl))
+                            if (packagePlatform.StartsWith("win"))
                             {
-                                //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
-                                await result.CopyToAsync(fs, 81920, downloadCts.Token);
-                                await fs.FlushAsync(downloadCts.Token);
-                                downloadSize = fs.Length;
+                                archiveFile = Path.Combine(downloadDirectory, $"runner{runnerSuffix}.zip");
+                            }
+                            else
+                            {
+                                archiveFile = Path.Combine(downloadDirectory, $"runner{runnerSuffix}.tar.gz");
+                            }
+
+                            try
+                            {
+                                // delete .zip file
+                                if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
+                                {
+                                    Trace.Verbose("Deleting latest runner package zip '{0}'", archiveFile);
+                                    IOUtil.DeleteFile(archiveFile);
+                                }
+
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                // couldn't delete the file for whatever reason, so generate another name
+                                Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
+                                runnerSuffix++;
                             }
                         }
 
-                        Trace.Info($"Download runner: finished download");
-                        downloadSucceeded = true;
-                        stopWatch.Stop();
-                        _updateTrace.Enqueue($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
-                        _updateTrace.Enqueue($"Attempts: {attempt}");
-                        _updateTrace.Enqueue($"PackageSize: {downloadSize / 1024 / 1024}MB");
-                        break;
-                    }
-                    catch (OperationCanceledException) when (token.IsCancellationRequested)
-                    {
-                        Trace.Info($"Runner download has been cancelled.");
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (downloadCts.Token.IsCancellationRequested)
+                        // Allow a 15-minute package download timeout, which is good enough to update the runner from a 1 Mbit/s ADSL connection.
+                        if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_DOWNLOAD_TIMEOUT") ?? string.Empty, out int timeoutSeconds))
                         {
-                            Trace.Warning($"Runner download has timed out after {timeoutSeconds} seconds");
+                            timeoutSeconds = 15 * 60;
                         }
 
-                        Trace.Warning($"Failed to get package '{archiveFile}' from '{packageDownloadUrl}'. Exception {ex}");
-                    }
-                }
-            }
+                        Trace.Info($"Attempt {context.AttemptNumber}: save latest runner into {archiveFile}.");
 
-            if (downloadSucceeded)
-            {
-                return archiveFile;
+                        using (var downloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
+                        using (var downloadCts = CancellationTokenSource.CreateLinkedTokenSource(downloadTimeout.Token, token))
+                        {
+                            try
+                            {
+                                Trace.Info($"Download runner: begin download");
+                                long downloadSize = 0;
+
+                                //open zip stream in async mode
+                                using (HttpClient httpClient = new(HostContext.CreateHttpClientHandler()))
+                                {
+                                    Trace.Info($"Downloading {packageDownloadUrl}");
+
+                                    using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                                    using (Stream result = await httpClient.GetStreamAsync(packageDownloadUrl))
+                                    {
+                                        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
+                                        await result.CopyToAsync(fs, 81920, downloadCts.Token);
+                                        await fs.FlushAsync(downloadCts.Token);
+                                        downloadSize = fs.Length;
+                                    }
+                                }
+
+                                Trace.Info($"Download runner: finished download");
+                                stopWatch.Stop();
+                                _updateTrace.Enqueue($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
+                                _updateTrace.Enqueue($"Attempts: {context.AttemptNumber}");
+                                _updateTrace.Enqueue($"PackageSize: {downloadSize / 1024 / 1024}MB");
+                                return archiveFile;
+                            }
+                            catch (OperationCanceledException) when (token.IsCancellationRequested)
+                            {
+                                Trace.Info($"Runner download has been cancelled.");
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                if (downloadCts.Token.IsCancellationRequested)
+                                {
+                                    Trace.Warning($"Runner download has timed out after {timeoutSeconds} seconds");
+                                }
+
+                                Trace.Warning($"Failed to get package '{archiveFile}' from '{packageDownloadUrl}'. Exception {ex}");
+                                throw;
+                            }
+                        }
+                    },
+                    cancellationToken: token);
             }
-            else
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
             {
                 return null;
             }
