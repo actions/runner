@@ -338,7 +338,14 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during get next message.");
                     Trace.Error(ex);
 
+                    // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
                     if (!HostContext.AllowAuthMigration &&
+                        ex is TaskAgentSessionExpiredException &&
+                        !_settings.SkipSessionRecover && (await CreateSessionAsync(token) == CreateSessionResult.Success))
+                    {
+                        Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
+                    }
+                    else if (!HostContext.AllowAuthMigration &&
                         !IsGetNextMessageExceptionRetriable(ex))
                     {
                         throw new NonRetryableException("Get next message failed with non-retryable error.", ex);
