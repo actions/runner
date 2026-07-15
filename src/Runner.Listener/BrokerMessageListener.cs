@@ -167,12 +167,15 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    // If using migrated settings, limit the number of retries before returning failure
-                    if (_isMigratedSettings)
+                    // When using migrated settings, cap retries for generic transient/retriable errors so we can
+                    // fall back to the original .runner settings instead of retrying the migrated settings forever.
+                    // Session conflict (4 min) has its own bounded retry limits and are
+                    // excluded here so they keep their v1-consistent behavior.
+                    if (_isMigratedSettings &&
+                        ex is not TaskAgentSessionConflictException)
                     {
                         _migratedSettingsRetryCount++;
                         Trace.Warning($"Migrated settings retry {_migratedSettingsRetryCount} of {_maxMigratedSettingsRetries}");
-                        
                         if (_migratedSettingsRetryCount >= _maxMigratedSettingsRetries)
                         {
                             Trace.Warning("Reached maximum retry attempts for migrated settings. Returning failure to try default settings.");
