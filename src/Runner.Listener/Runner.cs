@@ -687,13 +687,19 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-
+                                    
                                     // Acknowledge (best-effort)
                                     if (messageRef.ShouldAcknowledge) // Temporary feature flag
                                     {
                                         try
                                         {
                                             await _listener.AcknowledgeMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
+                                        }
+                                        catch (RunnerRequestJobNotFoundException) when (settings.Ephemeral)
+                                        {
+                                            Trace.Info($"Acknowledge returned job-not-found for ephemeral runner request '{messageRef.RunnerRequestId}'. Exiting runner.");
+                                            runOnceJobCompleted = true;
+                                            return Constants.Runner.ReturnCode.Success;
                                         }
                                         catch (Exception ex)
                                         {
