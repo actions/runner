@@ -29,6 +29,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ICredentialManager> _credentialManager;
         private Mock<IActionsRunServer> _actionsRunServer;
         private Mock<IRunServer> _runServer;
+        private Mock<IBrokerServer> _brokerServer;
         private readonly string _returnJobResultForHosted;
 
         public RunnerL0()
@@ -46,6 +47,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _credentialManager = new Mock<ICredentialManager>();
             _actionsRunServer = new Mock<IActionsRunServer>();
             _runServer = new Mock<IRunServer>();
+            _brokerServer = new Mock<IBrokerServer>();
 
             _returnJobResultForHosted = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
@@ -172,6 +174,96 @@ namespace GitHub.Runner.Common.Tests.Listener
                     // verify that we didn't try to delete local settings file (since we're not ephemeral)
                     _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
                 }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunAsyncCleanupLocalConfigWhenGetNextMessageReturnsNotFound()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.SetSingleton<IBrokerServer>(_brokerServer.Object);
+                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+                var messageListener = new MessageListener();
+                messageListener.Initialize(hc);
+                hc.SetSingleton<IMessageListener>(messageListener);
+
+                runner.Initialize(hc);
+
+                var settings = new RunnerSettings
+                {
+                    AgentId = 1,
+                    AgentName = "myagent",
+                    PoolId = 43242,
+                    PoolName = "default",
+                    ServerUrl = "http://myserver",
+                    WorkFolder = "_work",
+                    Ephemeral = false,
+                };
+
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _credentialManager.Setup(x => x.LoadCredentials(false)).Returns(new VssCredentials());
+                _runnerServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>()))
+                    .Returns(Task.CompletedTask);
+                _runnerServer.Setup(x => x.CreateAgentSessionAsync(
+                        settings.PoolId,
+                        It.Is<TaskAgentSession>(x => x != null),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(new TaskAgentSession()));
+                _runnerServer.Setup(x => x.GetAgentMessageAsync(
+                        settings.PoolId,
+                        It.IsAny<Guid>(),
+                        It.IsAny<long?>(),
+                        TaskAgentStatus.Online,
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<CancellationToken>()))
+                    .Throws(new TaskAgentNotFoundException("runner not found"));
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<string>()));
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                var result = await runner.ExecuteCommand(command);
+
+                //Assert
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                _runnerServer.Verify(x => x.CreateAgentSessionAsync(
+                    settings.PoolId,
+                    It.Is<TaskAgentSession>(x => x != null),
+                    It.IsAny<CancellationToken>()), Times.Once());
+                _runnerServer.Verify(x => x.GetAgentMessageAsync(
+                    settings.PoolId,
+                    It.IsAny<Guid>(),
+                    It.IsAny<long?>(),
+                    TaskAgentStatus.Online,
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()), Times.Once());
+                _runnerServer.Verify(x => x.DeleteAgentSessionAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()), Times.Never());
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
             }
         }
 

@@ -498,6 +498,7 @@ namespace GitHub.Runner.Listener
                 bool skipSessionDeletion = false;
                 bool restartSession = false; // Flag to indicate session restart
                 bool restartSessionPending = false;
+                bool cleanupLocalConfigAfter404 = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -819,6 +820,14 @@ namespace GitHub.Runner.Listener
                                 Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
                             }
                         }
+                        catch (Exception ex) when (ex is TaskAgentNotFoundException || ex is RunnerNotFoundException)
+                        {
+                            Trace.Info($"Runner registration no longer exists while retrieving messages. {ex.Message}");
+                            _term.WriteError("The runner no longer exists on the server. Cleaning up local configuration.");
+                            skipSessionDeletion = true;
+                            cleanupLocalConfigAfter404 = true;
+                            break;
+                        }
                         finally
                         {
                             if (!skipMessageDeletion && message != null)
@@ -865,7 +874,7 @@ namespace GitHub.Runner.Listener
 
                     messageQueueLoopTokenSource.Dispose();
 
-                    if (settings.Ephemeral && runOnceJobCompleted)
+                    if ((settings.Ephemeral && runOnceJobCompleted) || cleanupLocalConfigAfter404)
                     {
                         configManager.DeleteLocalRunnerConfig();
                     }

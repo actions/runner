@@ -125,6 +125,8 @@ namespace GitHub.Actions.RunService.WebApi
                         };
                     case BrokerErrorKind.HostedRunnerDeprovisioned:
                         throw new HostedRunnerDeprovisionedException(brokerError.Message);
+                    case BrokerErrorKind.RunnerSessionInvalid:
+                        throw new TaskAgentSessionExpiredException(brokerError.Message);
                     default:
                         break;
                 }

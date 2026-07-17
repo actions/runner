@@ -9,5 +9,6 @@ namespace GitHub.Actions.RunService.WebApi
         public const string RunnerNotFound = "RunnerNotFound";
         public const string RunnerVersionTooOld = "RunnerVersionTooOld";
         public const string HostedRunnerDeprovisioned = "HostedRunnerDeprovisioned";
+        public const string RunnerSessionInvalid = "RunnerSessionInvalid";
     }
 }
