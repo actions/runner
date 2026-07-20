@@ -9,14 +9,14 @@ using System.Text.Json;
 
 namespace GitHub.Runner.Common
 {
-    public sealed class RunnerSecretRegistrationNotifier : ISecretRegistrationNotifier
+    public sealed class RunnerFirewallNotifier
     {
         private const AddressFamily VsockAddressFamily = (AddressFamily)40;
         internal bool IsLinux { get; }
         private readonly Socket _vsock;
         private readonly object _vsockSendLock = new object();
 
-        public RunnerSecretRegistrationNotifier()
+        public RunnerFirewallNotifier()
         {
             IsLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
             _vsock = IsLinux ? TryCreateConnectedVsock() : null;
@@ -51,7 +51,7 @@ namespace GitHub.Runner.Common
             }
             catch
             {
-                // Notification delivery is best-effort and must never break secret masking.
+                // Notification delivery is best-effort
             }
         }
 

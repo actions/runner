@@ -154,12 +154,18 @@ namespace GitHub.Runner.Worker
                     // Add the entire value, even if it contains CR or LF. During expression tracing,
                     // invidual trace info may contain line breaks.
                     HostContext.SecretMasker.AddValue(value);
+                    HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                        secrets: new List<string> { value },
+                        secretRegexes: null);
 
                     // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
                     var split = value.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                     foreach (var item in split)
                     {
                         HostContext.SecretMasker.AddValue(item);
+                        HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                            secrets: new List<string> { item },
+                            secretRegexes: null);
                     }
                 }
             }
@@ -174,6 +180,9 @@ namespace GitHub.Runner.Worker
                     // We need this because the worker will print out the job message JSON to diag log
                     // and SecretMasker has JsonEscapeEncoder hook up
                     HostContext.SecretMasker.AddValue(maskHint.Value);
+                    HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                        secrets: new List<string> { maskHint.Value },
+                        secretRegexes: new List<string> { maskHint.Value });
                 }
                 else
                 {
@@ -192,6 +201,9 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(value))
                     {
                         HostContext.SecretMasker.AddValue(value);
+                        HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                            secrets: new List<string> { value },
+                            secretRegexes: null);
                     }
                 }
             }

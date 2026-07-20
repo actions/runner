@@ -11,17 +11,11 @@ namespace GitHub.DistributedTask.Logging
     public sealed class SecretMasker : ISecretMasker, IDisposable
     {
         public SecretMasker()
-            : this(NoOpSecretRegistrationNotifier.Instance)
-        {
-        }
-
-        public SecretMasker(ISecretRegistrationNotifier secretRegistrationNotifier)
         {
             m_originalValueSecrets = new HashSet<ValueSecret>();
             m_regexSecrets = new HashSet<RegexSecret>();
             m_valueEncoders = new HashSet<ValueEncoder>();
             m_valueSecrets = new HashSet<ValueSecret>();
-            m_secretRegistrationNotifier = secretRegistrationNotifier ?? NoOpSecretRegistrationNotifier.Instance;
         }
 
         private SecretMasker(SecretMasker copy)
@@ -36,7 +30,6 @@ namespace GitHub.DistributedTask.Logging
                 m_regexSecrets = new HashSet<RegexSecret>(copy.m_regexSecrets);
                 m_valueEncoders = new HashSet<ValueEncoder>(copy.m_valueEncoders);
                 m_valueSecrets = new HashSet<ValueSecret>(copy.m_valueSecrets);
-                m_secretRegistrationNotifier = copy.m_secretRegistrationNotifier;
             }
             finally
             {
@@ -73,8 +66,6 @@ namespace GitHub.DistributedTask.Logging
                     m_lock.ExitWriteLock();
                 }
             }
-
-            NotifySecretRegistration(new List<string>(), new List<string> { pattern });
         }
 
         /// <summary>
@@ -142,8 +133,6 @@ namespace GitHub.DistributedTask.Logging
                     m_lock.ExitWriteLock();
                 }
             }
-
-            NotifySecretRegistration(new List<string> { value }, new List<string>());
         }
 
         /// <summary>
@@ -304,19 +293,6 @@ namespace GitHub.DistributedTask.Logging
         private readonly HashSet<RegexSecret> m_regexSecrets;
         private readonly HashSet<ValueEncoder> m_valueEncoders;
         private readonly HashSet<ValueSecret> m_valueSecrets;
-        private readonly ISecretRegistrationNotifier m_secretRegistrationNotifier;
         private ReaderWriterLockSlim m_lock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
-
-        private void NotifySecretRegistration(List<string> secretValues, List<string> secretRegexes)
-        {
-            try
-            {
-                m_secretRegistrationNotifier.NotifySecretRegistration(secretValues, secretRegexes);
-            }
-            catch
-            {
-                // Notification failures must never break masking behavior.
-            }
-        }
     }
 }

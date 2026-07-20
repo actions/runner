@@ -25,6 +25,7 @@ namespace GitHub.Runner.Common
         CancellationToken RunnerShutdownToken { get; }
         ShutdownReason RunnerShutdownReason { get; }
         ISecretMasker SecretMasker { get; }
+        RunnerFirewallNotifier RunnerFirewallNotifier { get; }
         List<ProductInfoHeaderValue> UserAgents { get; }
         RunnerWebProxy WebProxy { get; }
         string GetDirectory(WellKnownDirectory directory);
@@ -60,7 +61,8 @@ namespace GitHub.Runner.Common
         private static int[] _vssHttpCredentialEventIds = new int[] { 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 27, 29 };
         private readonly ConcurrentDictionary<Type, object> _serviceInstances = new();
         private readonly ConcurrentDictionary<Type, Type> _serviceTypes = new();
-        private readonly ISecretMasker _secretMasker = new SecretMasker(new RunnerSecretRegistrationNotifier());
+        private readonly ISecretMasker _secretMasker = new SecretMasker();
+        private readonly RunnerFirewallNotifier _runnerFirewallNotifier = new RunnerFirewallNotifier();
         private readonly List<ProductInfoHeaderValue> _userAgents = new() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
         private CancellationTokenSource _runnerShutdownTokenSource = new();
         private object _perfLock = new();
@@ -88,6 +90,7 @@ namespace GitHub.Runner.Common
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
+        public RunnerFirewallNotifier RunnerFirewallNotifier => _runnerFirewallNotifier;
         public List<ProductInfoHeaderValue> UserAgents => _userAgents;
         public RunnerWebProxy WebProxy => _webProxy;
         public bool AllowAuthMigration => _allowAuthMigration.IsSet;
@@ -190,6 +193,9 @@ namespace GitHub.Runner.Common
                     if (!string.IsNullOrEmpty(WebProxy.HttpProxyPassword))
                     {
                         this.SecretMasker.AddValue(WebProxy.HttpProxyPassword);
+                        this.RunnerFirewallNotifier.NotifySecretRegistration(
+                            secrets: new List<string> { WebProxy.HttpProxyPassword },
+                            secretRegexes: null);
                     }
 
                     _trace.Info($"Configuring authenticated proxy {WebProxy.HttpProxyAddress} for all HTTP requests.");
@@ -208,6 +214,9 @@ namespace GitHub.Runner.Common
                     if (!string.IsNullOrEmpty(WebProxy.HttpsProxyPassword))
                     {
                         this.SecretMasker.AddValue(WebProxy.HttpsProxyPassword);
+                        this.RunnerFirewallNotifier.NotifySecretRegistration(
+                            secrets: new List<string> { WebProxy.HttpsProxyPassword },
+                            secretRegexes: null);
                     }
 
                     _trace.Info($"Configuring authenticated proxy {WebProxy.HttpsProxyAddress} for all HTTPS requests.");

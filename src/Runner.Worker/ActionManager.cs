@@ -1119,6 +1119,9 @@ namespace GitHub.Runner.Worker
             {
                 // Add secret
                 HostContext.SecretMasker.AddValue(actionDownloadInfo.Authentication?.Token);
+                HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                    secrets: new List<string> { actionDownloadInfo.Authentication?.Token },
+                    secretRegexes: null);
 
                 // Default auth token
                 if (string.IsNullOrEmpty(actionDownloadInfo.Authentication?.Token))
@@ -1637,6 +1640,9 @@ namespace GitHub.Runner.Worker
                 Trace.Info("Using Basic token for action archive download.");
                 var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
                 HostContext.SecretMasker.AddValue(base64EncodingToken);
+                HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                    secrets: new List<string> { base64EncodingToken },
+                    secretRegexes: null);
                 return new AuthenticationHeaderValue("Basic", base64EncodingToken);
             }
         }
