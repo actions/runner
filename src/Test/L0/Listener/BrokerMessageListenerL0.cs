@@ -366,6 +366,80 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async Task GetNextMessage_RecreatesSessionOnSessionExpired()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+
+                var expectedSession = new TaskAgentSession();
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedSession));
+
+                var expectedMessage = new TaskAgentMessage();
+                var throwSessionExpired = true;
+                _brokerServer
+                    .Setup(x => x.GetRunnerMessageAsync(
+                        It.IsAny<Guid?>(),
+                        It.IsAny<TaskAgentStatus>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(async (Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token) =>
+                    {
+                        await Task.Yield();
+                        if (throwSessionExpired)
+                        {
+                            throwSessionExpired = false;
+                            throw new TaskAgentSessionExpiredException("Runner session is invalid");
+                        }
+
+                        return expectedMessage;
+                    });
+
+                // Act.
+                BrokerMessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                trace.Info("result: {0}", result);
+                Assert.Equal(CreateSessionResult.Success, result);
+
+                TaskAgentMessage message = await listener.GetNextMessageAsync(tokenSource.Token);
+                trace.Info("message: {0}", message);
+
+                // Assert.
+                Assert.Equal(expectedMessage, message);
+                _brokerServer
+                   .Verify(x => x.GetRunnerMessageAsync(
+                       It.IsAny<Guid?>(),
+                       It.IsAny<TaskAgentStatus>(),
+                       It.IsAny<string>(),
+                       It.IsAny<string>(),
+                       It.IsAny<string>(),
+                       It.IsAny<bool>(),
+                       It.IsAny<CancellationToken>()), Times.Exactly(2));
+
+                // Session recreated once on the expired exception (plus the initial create above).
+                _brokerServer
+                   .Verify(x => x.CreateSessionAsync(
+                       It.Is<TaskAgentSession>(y => y != null),
+                       tokenSource.Token), Times.Exactly(2));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async Task CreatesSessionWithProvidedSettings()
         {
             using (TestHostContext tc = CreateTestContext())
@@ -400,7 +474,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                    .Verify(x => x.CreateSessionAsync(
                        It.Is<TaskAgentSession>(y => y != null),
                        tokenSource.Token), Times.Once());
-                
+
                 // Verify LoadSettings was never called
                 _config.Verify(x => x.LoadSettings(), Times.Never());
             }
