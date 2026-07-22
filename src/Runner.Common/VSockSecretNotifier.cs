@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(VSockSecretNotifier))]
     public interface IVSockSecretNotifier : IRunnerService, IAsyncDisposable
     {
-        bool TryStartNotifier();
+        Task<bool> TryStartNotifierAsync();
 
         void NotifyNewSecret(NewSecretEventArgs newSecret);
     }
@@ -30,7 +30,7 @@ namespace GitHub.Runner.Common
 
         private Channel<byte[]> _channel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions() { SingleReader = true });
 
-        public bool TryStartNotifier()
+        public async Task<bool> TryStartNotifierAsync()
         {
             if (_vsock != null)
             {
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Common
                 }
 
                 _vsock = new Socket(nativeSocket);
-                _vsock.Connect(new HostVsockEndPoint(cid, port));
+                await _vsock.ConnectAsync(new HostVsockEndPoint(cid, port), HostContext.RunnerShutdownToken);
             }
             catch (Exception ex)
             {

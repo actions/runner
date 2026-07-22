@@ -87,7 +87,7 @@ namespace GitHub.Runner.Worker
 
                     // Initialize the secret masker and set the thread culture.
                     if (Constants.Runner.Platform == Constants.OSPlatform.Linux &&
-                        secretNotifier.TryStartNotifier())
+                        await secretNotifier.TryStartNotifierAsync())
                     {
                         HostContext.SecretMasker.NewSecretAdded += (sender, e) =>
                         {
