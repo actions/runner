@@ -29,6 +29,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<ICredentialManager> _credentialManager;
         private Mock<IActionsRunServer> _actionsRunServer;
         private Mock<IRunServer> _runServer;
+        private Mock<IBrokerServer> _brokerServer;
         private readonly string _returnJobResultForHosted;
 
         public RunnerL0()
@@ -46,6 +47,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _credentialManager = new Mock<ICredentialManager>();
             _actionsRunServer = new Mock<IActionsRunServer>();
             _runServer = new Mock<IRunServer>();
+            _brokerServer = new Mock<IBrokerServer>();
 
             _returnJobResultForHosted = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
@@ -172,6 +174,96 @@ namespace GitHub.Runner.Common.Tests.Listener
                     // verify that we didn't try to delete local settings file (since we're not ephemeral)
                     _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
                 }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunAsyncCleanupLocalConfigWhenGetNextMessageReturnsNotFound()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.SetSingleton<IBrokerServer>(_brokerServer.Object);
+                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+                var messageListener = new MessageListener();
+                messageListener.Initialize(hc);
+                hc.SetSingleton<IMessageListener>(messageListener);
+
+                runner.Initialize(hc);
+
+                var settings = new RunnerSettings
+                {
+                    AgentId = 1,
+                    AgentName = "myagent",
+                    PoolId = 43242,
+                    PoolName = "default",
+                    ServerUrl = "http://myserver",
+                    WorkFolder = "_work",
+                    Ephemeral = false,
+                };
+
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _credentialManager.Setup(x => x.LoadCredentials(false)).Returns(new VssCredentials());
+                _runnerServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>()))
+                    .Returns(Task.CompletedTask);
+                _runnerServer.Setup(x => x.CreateAgentSessionAsync(
+                        settings.PoolId,
+                        It.Is<TaskAgentSession>(x => x != null),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(new TaskAgentSession()));
+                _runnerServer.Setup(x => x.GetAgentMessageAsync(
+                        settings.PoolId,
+                        It.IsAny<Guid>(),
+                        It.IsAny<long?>(),
+                        TaskAgentStatus.Online,
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<CancellationToken>()))
+                    .Throws(new TaskAgentNotFoundException("runner not found"));
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<string>()));
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                var result = await runner.ExecuteCommand(command);
+
+                //Assert
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                _runnerServer.Verify(x => x.CreateAgentSessionAsync(
+                    settings.PoolId,
+                    It.Is<TaskAgentSession>(x => x != null),
+                    It.IsAny<CancellationToken>()), Times.Once());
+                _runnerServer.Verify(x => x.GetAgentMessageAsync(
+                    settings.PoolId,
+                    It.IsAny<Guid>(),
+                    It.IsAny<long?>(),
+                    TaskAgentStatus.Online,
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()), Times.Once());
+                _runnerServer.Verify(x => x.DeleteAgentSessionAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()), Times.Never());
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
             }
         }
 
@@ -868,6 +960,202 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
                 _credentialManager.Verify(x => x.LoadCredentials(true), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestEphemeralRunnerJobRequestMessageFromRunServiceExitsOnAcknowledgeJobNotFound()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<ISelfUpdater>(_updater.Object);
+                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IRunServer>(_runServer.Object);
+                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+                runner.Initialize(hc);
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    Ephemeral = true,
+                    ServerUrl = "https://github.com",
+                };
+
+                var message = new TaskAgentMessage()
+                {
+                    Body = JsonUtility.ToString(new RunnerJobRequestRef() { BillingOwnerId = "github", RunnerRequestId = "999", RunServiceUrl = "https://run-service.com", ShouldAcknowledge = true }),
+                    MessageId = 4234,
+                    MessageType = JobRequestMessageTypes.RunnerJobRequest
+                };
+
+                var messages = new Queue<TaskAgentMessage>();
+                messages.Enqueue(message);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                    .Returns(async (CancellationToken token) =>
+                        {
+                            if (0 == messages.Count)
+                            {
+                                await Task.Delay(2000, token);
+                            }
+
+                            return messages.Dequeue();
+                        });
+                _messageListener.Setup(x => x.AcknowledgeMessageAsync("999", It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new RunnerRequestJobNotFoundException("Job not found"));
+                _messageListener.Setup(x => x.DeleteSessionAsync())
+                    .Returns(Task.CompletedTask);
+                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                    .Returns(Task.CompletedTask);
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                    .Callback(() =>
+                    {
+
+                    });
+
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                Task<int> runnerTask = runner.ExecuteCommand(command);
+
+                //Assert
+                await Task.WhenAny(runnerTask, Task.Delay(30000));
+
+                Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
+                Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
+                if (runnerTask.IsCompleted)
+                {
+                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
+                }
+
+                _messageListener.Verify(x => x.AcknowledgeMessageAsync("999", It.IsAny<CancellationToken>()), Times.Once());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Never());
+                _runServer.Verify(x => x.GetJobMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
+                _credentialManager.Verify(x => x.LoadCredentials(true), Times.Never());
+                _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
+                _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunnerJobRequestMessageFromRunServiceContinuesOnAcknowledgeJobNotFoundForPersistentRunner()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                //Arrange
+                var runner = new Runner.Listener.Runner();
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+                hc.SetSingleton<IMessageListener>(_messageListener.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                hc.SetSingleton<ISelfUpdater>(_updater.Object);
+                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+                hc.EnqueueInstance<IRunServer>(_runServer.Object);
+                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+                runner.Initialize(hc);
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    Ephemeral = false,
+                    ServerUrl = "https://github.com",
+                };
+
+                var message = new TaskAgentMessage()
+                {
+                    Body = JsonUtility.ToString(new RunnerJobRequestRef() { BillingOwnerId = "github", RunnerRequestId = "999", RunServiceUrl = "https://run-service.com", ShouldAcknowledge = true }),
+                    MessageId = 4234,
+                    MessageType = JobRequestMessageTypes.RunnerJobRequest
+                };
+
+                var messages = new Queue<TaskAgentMessage>();
+                messages.Enqueue(message);
+                var signalWorkerStarted = new SemaphoreSlim(0, 1);
+                _configurationManager.Setup(x => x.LoadSettings())
+                    .Returns(settings);
+                _configurationManager.Setup(x => x.IsConfigured())
+                    .Returns(true);
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                    .Returns(async (CancellationToken token) =>
+                        {
+                            if (0 == messages.Count)
+                            {
+                                await Task.Delay(2000, token);
+                            }
+
+                            return messages.Dequeue();
+                        });
+                _messageListener.Setup(x => x.AcknowledgeMessageAsync("999", It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new RunnerRequestJobNotFoundException("Job not found"));
+                _messageListener.Setup(x => x.DeleteSessionAsync())
+                    .Returns(Task.CompletedTask);
+                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                    .Returns(Task.CompletedTask);
+                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                    .Callback(() =>
+                    {
+
+                    });
+                _runServer.Setup(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(CreateJobRequestMessage("test")));
+                _credentialManager.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), false))
+                    .Callback(() =>
+                    {
+                        signalWorkerStarted.Release();
+                    });
+
+                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+                //Act
+                var command = new CommandSettings(hc, new string[] { "run" });
+                Task<int> runnerTask = runner.ExecuteCommand(command);
+
+                //Assert
+                if (!await signalWorkerStarted.WaitAsync(2000))
+                {
+                    Assert.Fail($"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
+                }
+
+                hc.ShutdownRunner(ShutdownReason.UserCancelled);
+                await Task.WhenAny(runnerTask, Task.Delay(2000));
+
+                Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
+                Assert.True(runnerTask.IsCanceled);
+                _messageListener.Verify(x => x.AcknowledgeMessageAsync("999", It.IsAny<CancellationToken>()), Times.Once());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), false), Times.Once());
+                _runServer.Verify(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()), Times.Once());
+                _credentialManager.Verify(x => x.LoadCredentials(true), Times.Once());
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
             }
         }
 
