@@ -1,15 +1,14 @@
-﻿using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using System.Text;
+using Newtonsoft.Json;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -142,6 +141,18 @@ namespace GitHub.Runner.Worker
             Trace.Entering();
             ArgUtil.NotNull(message, nameof(message));
             ArgUtil.NotNull(message.Resources, nameof(message.Resources));
+
+            if (Constants.Runner.Platform == Constants.OSPlatform.Linux)
+            {
+                var secretNotifier = HostContext.GetService<IVSockSecretNotifier>();
+                if (secretNotifier.TryStartNotifier())
+                {
+                    HostContext.SecretMasker.NewSecretAdded += (sender, e) =>
+                    {
+                        secretNotifier.NotifyNewSecret(e);
+                    };
+                }
+            }
 
             // Add mask hints for secret variables
             foreach (var variable in (message.Variables ?? new Dictionary<string, VariableValue>()))
