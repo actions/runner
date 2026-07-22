@@ -60,6 +60,12 @@ namespace GitHub.Runner.Common
                 return false;
             }
 
+            var socketConnectTimeout = 5; // Default to 5 seconds
+            if (int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_VSOCK_CONNECT_TIMEOUT"), out var timeout) && timeout > 0)
+            {
+                socketConnectTimeout = timeout;
+            }
+
             try
             {
                 SafeSocketHandle nativeSocket = NativeSocket((int)(AddressFamily)40, (int)SocketType.Stream, 0);
@@ -71,7 +77,11 @@ namespace GitHub.Runner.Common
                 }
 
                 _vsock = new Socket(nativeSocket);
-                await _vsock.ConnectAsync(new HostVsockEndPoint(cid, port), HostContext.RunnerShutdownToken);
+                using (var connectCancelTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
+                {
+                    connectCancelTokenSource.CancelAfter(TimeSpan.FromSeconds(socketConnectTimeout));
+                    await _vsock.ConnectAsync(new HostVsockEndPoint(cid, port), connectCancelTokenSource.Token);
+                }
             }
             catch (Exception ex)
             {
