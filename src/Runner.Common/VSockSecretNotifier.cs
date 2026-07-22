@@ -15,7 +15,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(VSockSecretNotifier))]
     public interface IVSockSecretNotifier : IRunnerService, IAsyncDisposable
     {
-        Task<bool> TryStartNotifierAsync();
+        bool TryStartNotifier();
 
         void NotifyNewSecret(NewSecretEventArgs newSecret);
     }
@@ -30,7 +30,7 @@ namespace GitHub.Runner.Common
 
         private Channel<byte[]> _channel = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions() { SingleReader = true });
 
-        public async Task<bool> TryStartNotifierAsync()
+        public bool TryStartNotifier()
         {
             if (_vsock != null)
             {
@@ -60,12 +60,7 @@ namespace GitHub.Runner.Common
                 return false;
             }
 
-            var socketConnectTimeout = 5; // Default to 5 seconds
-            if (int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_VSOCK_CONNECT_TIMEOUT"), out var timeout) && timeout > 0)
-            {
-                socketConnectTimeout = timeout;
-            }
-
+            Trace.Info($"Attempting to start VSocket secret notifier with CID: {cid}, Port: {port}.");
             try
             {
                 SafeSocketHandle nativeSocket = NativeSocket((int)(AddressFamily)40, (int)SocketType.Stream, 0);
@@ -77,11 +72,7 @@ namespace GitHub.Runner.Common
                 }
 
                 _vsock = new Socket(nativeSocket);
-                using (var connectCancelTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
-                {
-                    connectCancelTokenSource.CancelAfter(TimeSpan.FromSeconds(socketConnectTimeout));
-                    await _vsock.ConnectAsync(new HostVsockEndPoint(cid, port), connectCancelTokenSource.Token);
-                }
+                _vsock.Connect(new HostVsockEndPoint(cid, port));
             }
             catch (Exception ex)
             {
@@ -93,7 +84,7 @@ namespace GitHub.Runner.Common
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
             _secretNotificationTask = ProcessSecretChannel();
-            Trace.Info($"VSocket secret notifier started successfully using CID: {cid}, Port: {port}.");
+            Trace.Info($"VSocket secret notifier started successfully.");
             return true;
         }
 
