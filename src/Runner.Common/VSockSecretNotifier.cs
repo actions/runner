@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -15,7 +13,7 @@ namespace GitHub.Runner.Common
 {
 
     [ServiceLocator(Default = typeof(VSockSecretNotifier))]
-    public interface IVSockSecretNotifier : IRunnerService
+    public interface IVSockSecretNotifier : IRunnerService, IAsyncDisposable
     {
         bool TryStartNotifier();
 
@@ -25,6 +23,8 @@ namespace GitHub.Runner.Common
     public sealed class VSockSecretNotifier : RunnerService, IVSockSecretNotifier
     {
         private Socket _vsock = null;
+
+        private CancellationTokenSource _cancellationTokenSource = null;
 
         private Task _secretNotificationTask = null;
 
@@ -81,6 +81,7 @@ namespace GitHub.Runner.Common
                 return false;
             }
 
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
             _secretNotificationTask = ProcessSecretChannel();
             Trace.Info($"VSocket secret notifier started successfully using CID: {cid}, Port: {port}.");
             return true;
@@ -104,11 +105,33 @@ namespace GitHub.Runner.Common
             _channel.Writer.TryWrite(fullPayload);
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            if (_vsock != null && _secretNotificationTask != null)
+            {
+                _cancellationTokenSource?.Cancel();
+                try
+                {
+                    await _secretNotificationTask;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error($"Secret notification task finished with error: {ex}");
+                }
+
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+                _vsock?.Dispose();
+                _vsock = null;
+            }
+        }
+
         private async Task ProcessSecretChannel()
         {
             try
             {
-                while (await _channel.Reader.WaitToReadAsync(HostContext.RunnerShutdownToken))
+                while (!_cancellationTokenSource.Token.IsCancellationRequested &&
+                        await _channel.Reader.WaitToReadAsync(_cancellationTokenSource.Token))
                 {
                     while (_channel.Reader.TryRead(out var payload))
                     {
@@ -119,7 +142,7 @@ namespace GitHub.Runner.Common
                             int totalSent = 0;
                             while (totalSent < payload.Length)
                             {
-                                int bytesSent = await _vsock.SendAsync(payload.AsMemory(totalSent), SocketFlags.None, HostContext.RunnerShutdownToken);
+                                int bytesSent = await _vsock.SendAsync(payload.AsMemory(totalSent), SocketFlags.None, _cancellationTokenSource.Token);
                                 if (bytesSent == 0)
                                 {
                                     throw new SocketException((int)SocketError.ConnectionReset);
@@ -141,8 +164,6 @@ namespace GitHub.Runner.Common
             }
 
             _channel.Writer.TryComplete();
-            _vsock?.Dispose();
-            _vsock = null;
         }
 
         [DllImport("libc", SetLastError = true, EntryPoint = "socket")]
