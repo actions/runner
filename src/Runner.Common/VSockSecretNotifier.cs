@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Logging;
 using GitHub.Runner.Sdk;
+using Newtonsoft.Json;
 
 namespace GitHub.Runner.Common
 {
@@ -96,7 +97,7 @@ namespace GitHub.Runner.Common
                 return;
             }
 
-            byte[] payloadBytes = Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(newSecret, Newtonsoft.Json.Formatting.None));
+            byte[] payloadBytes = Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(new { RunnerSecrets = newSecret }, Formatting.None));
             byte[] lengthPrefix = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(payloadBytes.Length));
             byte[] fullPayload = new byte[lengthPrefix.Length + payloadBytes.Length];
             Buffer.BlockCopy(lengthPrefix, 0, fullPayload, 0, lengthPrefix.Length);
