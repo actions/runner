@@ -275,12 +275,6 @@ namespace GitHub.DistributedTask.Pipelines
         /// default welcome message. When the flag is not set, the runner shows its
         /// built-in help text and this field is ignored.
         /// </summary>
-        /// <remarks>
-        /// This field must only be populated by the Actions service; it is never
-        /// sourced from workflow or other tenant-controlled input. The runner still
-        /// treats it as untrusted and runs it through secret masking and control
-        /// character stripping before writing it to the debugger console.
-        /// </remarks>
         [DataMember(EmitDefaultValue = false)]
         public string DebuggerWelcomeMessage
         {
