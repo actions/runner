@@ -1026,7 +1026,9 @@ namespace GitHub.Runner.Worker.Dap
             {
                 if (!string.IsNullOrEmpty(debuggerConfig.WelcomeMessage))
                 {
-                    SendOutput("console", debuggerConfig.WelcomeMessage);
+                    // The welcome message is server-supplied and never rendered verbatim:
+                    // mask secrets and strip control characters before it reaches the console.
+                    SendOutput("console", SanitizeConsoleText(MaskUserVisibleText(debuggerConfig.WelcomeMessage)));
                     Trace.Info("Sent custom welcome message");
                 }
                 else
@@ -1770,6 +1772,30 @@ namespace GitHub.Runner.Worker.Dap
             }
 
             return HostContext?.SecretMasker?.MaskSecrets(value) ?? value;
+        }
+
+        /// <summary>
+        /// Removes C0/C1 control characters (except tab, carriage return and line feed) so
+        /// server-supplied text cannot inject ANSI escape sequences or terminal control codes
+        /// into the DAP console.
+        /// </summary>
+        internal static string SanitizeConsoleText(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return value ?? string.Empty;
+            }
+
+            var builder = new StringBuilder(value.Length);
+            foreach (var character in value)
+            {
+                if (!char.IsControl(character) || character == '\t' || character == '\r' || character == '\n')
+                {
+                    builder.Append(character);
+                }
+            }
+
+            return builder.ToString();
         }
 
         /// <summary>
