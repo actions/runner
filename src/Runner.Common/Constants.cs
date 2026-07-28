@@ -180,6 +180,7 @@ namespace GitHub.Runner.Common
                 public static readonly string BatchActionResolution = "actions_batch_action_resolution";
                 public static readonly string UseBearerTokenForCodeload = "actions_use_bearer_token_for_codeload";
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
+                public static readonly string AllowArtifactsFile = "actions_runner_allow_artifacts_file";
                 public static readonly string SelfRepository = "actions_self_repository";
             }
 
@@ -228,6 +229,12 @@ namespace GitHub.Runner.Common
             public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see: https://docs.github.com/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
             public static readonly string UnsupportedSummarySize = "$GITHUB_STEP_SUMMARY upload aborted, supports content up to a size of {0}k, got {1}k. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
             public static readonly string SummaryUploadError = "$GITHUB_STEP_SUMMARY upload aborted, an error occurred when uploading the summary. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
+
+            // $GITHUB_ARTIFACTS file command
+            public static readonly string ArtifactsFileSizeExceeded = "$GITHUB_ARTIFACTS file exceeds the maximum size of {0} KiB (got {1} KiB).";
+            public static readonly string ArtifactsAggregateLimitExceeded = "The job has exceeded the maximum of {0} declared artifacts.";
+            public static readonly string ArtifactsInvalidLine = "Invalid $GITHUB_ARTIFACTS entry on line {0}: {1}";
+            public static readonly string ArtifactsConflictingDigest = "Conflicting digest for artifact '{0}': previously declared as '{1}', now declared as '{2}'.";
         }
 
         public static class RunnerEvent
