@@ -153,12 +153,20 @@ namespace GitHub.Runner.Common
                                 totalSent += bytesSent;
                             }
                         }
+                        catch (OperationCanceledException)
+                        {
+                            Trace.Info("Secret notification task was canceled.");
+                        }
                         catch (Exception ex)
                         {
                             Trace.Error($"Failed to notify new secret over VSocket: {ex}");
                         }
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Trace.Info("Secret notification task was canceled.");
             }
             catch (Exception ex)
             {
