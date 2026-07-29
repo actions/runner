@@ -271,7 +271,6 @@ namespace GitHub.Runner.Common
             if (!delivered)
             {
                 // Giving up for now, so next invocation of this method won't attempt to reconnect
-                _websocketClient?.Dispose();
                 _websocketClient = null;
 
                 // however if 10 minutes have already passed, let's try reestablish connection again
