@@ -16,11 +16,13 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private Mock<IProcessChannel> _processChannel;
         private Mock<IJobRunner> _jobRunner;
+        private Mock<IVSockSecretNotifier> _vsockSecretNotifier;
 
         public WorkerL0()
         {
             _processChannel = new Mock<IProcessChannel>();
             _jobRunner = new Mock<IJobRunner>();
+            _vsockSecretNotifier = new Mock<IVSockSecretNotifier>();
         }
 
         private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
@@ -88,6 +90,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
+                hc.SetSingleton<IVSockSecretNotifier>(_vsockSecretNotifier.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
                 var arWorkerMessages = new WorkerMessage[]
@@ -139,6 +142,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
+                hc.SetSingleton<IVSockSecretNotifier>(_vsockSecretNotifier.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
                 var cancelMessage = CreateJobCancelMessage(jobMessage.JobId);
