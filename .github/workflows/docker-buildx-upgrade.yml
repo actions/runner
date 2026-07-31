@@ -36,8 +36,8 @@ jobs:
             exit 1
           fi
 
-          should_update=0
-          [ "$current_version" != "$latest_version" ] && should_update=1
+          should_update=false
+          [ "$current_version" != "$latest_version" ] && should_update=true
 
           echo "CURRENT_VERSION=${current_version}" >> $GITHUB_OUTPUT
           echo "LATEST_VERSION=${latest_version}" >> $GITHUB_OUTPUT
@@ -53,8 +53,8 @@ jobs:
           # Fetch latest Buildx version
           latest_version=$(curl -s https://api.github.com/repos/docker/buildx/releases/latest | jq -r '.tag_name' | sed 's/^v//')
 
-          should_update=0
-          [ "$current_version" != "$latest_version" ] && should_update=1
+          should_update=false
+          [ "$current_version" != "$latest_version" ] && should_update=true
 
           echo "CURRENT_VERSION=${current_version}" >> $GITHUB_OUTPUT
           echo "LATEST_VERSION=${latest_version}" >> $GITHUB_OUTPUT
@@ -66,17 +66,17 @@ jobs:
           buildx_should_update="${{ steps.check_buildx_version.outputs.SHOULD_UPDATE }}"
 
           # Show annotation if only Docker needs update
-          if [[ "$docker_should_update" == "1" && "$buildx_should_update" == "0" ]]; then
-            echo "::warning ::Docker version (${{ steps.check_docker_version.outputs.LATEST_VERSION }}) needs update but Buildx is current. Only updating when both need updates."
+          if [[ "$docker_should_update" == "true" && "$buildx_should_update" == "false" ]]; then
+            echo "::warning ::Docker version (${{ steps.check_docker_version.outputs.LATEST_VERSION }}) needs update; Buildx is current."
           fi
 
           # Show annotation if only Buildx needs update
-          if [[ "$docker_should_update" == "0" && "$buildx_should_update" == "1" ]]; then
-            echo "::warning ::Buildx version (${{ steps.check_buildx_version.outputs.LATEST_VERSION }}) needs update but Docker is current. Only updating when both need updates."
+          if [[ "$docker_should_update" == "false" && "$buildx_should_update" == "true" ]]; then
+            echo "::warning ::Buildx version (${{ steps.check_buildx_version.outputs.LATEST_VERSION }}) needs update; Docker is current."
           fi
 
           # Show annotation when both are current
-          if [[ "$docker_should_update" == "0" && "$buildx_should_update" == "0" ]]; then
+          if [[ "$docker_should_update" == "false" && "$buildx_should_update" == "false" ]]; then
             echo "::warning ::Latest Docker version is ${{ steps.check_docker_version.outputs.LATEST_VERSION }} and Buildx version is ${{ steps.check_buildx_version.outputs.LATEST_VERSION }}. No updates needed."
           fi
 
@@ -85,13 +85,14 @@ jobs:
       pull-requests: write
       contents: write
     needs: [check-versions]
-    if: ${{ needs.check-versions.outputs.DOCKER_SHOULD_UPDATE == 1 && needs.check-versions.outputs.BUILDX_SHOULD_UPDATE == 1 }}
+    if: ${{ needs.check-versions.outputs.DOCKER_SHOULD_UPDATE == 'true' || needs.check-versions.outputs.BUILDX_SHOULD_UPDATE == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
       - name: Update Docker version
+        if: ${{ needs.check-versions.outputs.DOCKER_SHOULD_UPDATE == 'true' }}
         shell: bash
         run: |
           latest_version="${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }}"
@@ -101,6 +102,7 @@ jobs:
           sed -i "s/ARG DOCKER_VERSION=$current_version/ARG DOCKER_VERSION=$latest_version/g" ./images/Dockerfile
 
       - name: Update Buildx version
+        if: ${{ needs.check-versions.outputs.BUILDX_SHOULD_UPDATE == 'true' }}
         shell: bash
         run: |
           latest_version="${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
@@ -114,9 +116,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Setup branch and commit information
+          docker_should_update="${{ needs.check-versions.outputs.DOCKER_SHOULD_UPDATE }}"
+          buildx_should_update="${{ needs.check-versions.outputs.BUILDX_SHOULD_UPDATE }}"
           branch_name="feature/docker-buildx-upgrade"
-          commit_message="Upgrade Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
-          pr_title="Update Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+
+          if [[ "$docker_should_update" == "true" && "$buildx_should_update" == "true" ]]; then
+            commit_message="Upgrade Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+            pr_title="Update Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }} and Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+            pr_summary="Automated Docker and Buildx version update:"
+            pr_detail="This update ensures we're using the latest stable Docker and Buildx versions for security and performance improvements."
+          elif [[ "$docker_should_update" == "true" ]]; then
+            commit_message="Upgrade Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }}"
+            pr_title="Update Docker to v${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }}"
+            pr_summary="Automated Docker version update:"
+            pr_detail="This update ensures we're using the latest stable Docker version for security and performance improvements."
+          else
+            commit_message="Upgrade Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+            pr_title="Update Buildx to v${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+            pr_summary="Automated Buildx version update:"
+            pr_detail="This update ensures we're using the latest stable Buildx version for security and performance improvements."
+          fi
 
           # Configure git
           git config --global user.name "github-actions[bot]"
@@ -134,27 +153,37 @@ jobs:
           git commit -a -m "$commit_message"
           git push --force origin "$branch_name"
 
-          # Create PR body using here-doc for proper formatting
-          cat > pr_body.txt << 'EOF'
-          Automated Docker and Buildx version update:
-          
-          - Docker: ${{ needs.check-versions.outputs.DOCKER_CURRENT_VERSION }} → ${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }}
-          - Buildx: ${{ needs.check-versions.outputs.BUILDX_CURRENT_VERSION }} → ${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}
-          
-          This update ensures we're using the latest stable Docker and Buildx versions for security and performance improvements.
-          
-          **Release notes:** https://docs.docker.com/engine/release-notes/
-          
-          **Next steps:**
-          - Review the version changes
-          - Verify container builds work as expected
-          - Test multi-platform builds if applicable
-          - Merge when ready
-          
-          ---
-          
-          Autogenerated by [Docker/Buildx Version Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/docker-buildx-upgrade.yml)
-          EOF
+          # Create PR body
+          {
+            echo "$pr_summary"
+            echo
+            if [[ "$docker_should_update" == "true" ]]; then
+              echo "- Docker: ${{ needs.check-versions.outputs.DOCKER_CURRENT_VERSION }} → ${{ needs.check-versions.outputs.DOCKER_LATEST_VERSION }}"
+            fi
+            if [[ "$buildx_should_update" == "true" ]]; then
+              echo "- Buildx: ${{ needs.check-versions.outputs.BUILDX_CURRENT_VERSION }} → ${{ needs.check-versions.outputs.BUILDX_LATEST_VERSION }}"
+            fi
+            echo
+            echo "$pr_detail"
+            echo
+            echo "**Release notes:**"
+            if [[ "$docker_should_update" == "true" ]]; then
+              echo "- Docker: https://docs.docker.com/engine/release-notes/"
+            fi
+            if [[ "$buildx_should_update" == "true" ]]; then
+              echo "- Buildx: https://github.com/docker/buildx/releases"
+            fi
+            echo
+            echo "**Next steps:**"
+            echo "- Review the version changes"
+            echo "- Verify container builds work as expected"
+            echo "- Test multi-platform builds if applicable"
+            echo "- Merge when ready"
+            echo
+            echo "---"
+            echo
+            echo "Autogenerated by [Docker/Buildx Version Upgrade Workflow](https://github.com/actions/runner/blob/main/.github/workflows/docker-buildx-upgrade.yml)"
+          } > pr_body.txt
 
           # Create PR
           gh pr create -B main -H "$branch_name" \
