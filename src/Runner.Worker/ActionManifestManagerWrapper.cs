@@ -274,6 +274,17 @@ namespace GitHub.Runner.Worker
                 };
             }
 
+            // Self-repository reference: $/path/to/action
+            // Mirrors PipelineTemplateConverter.ConvertToStep, which folds any '@ref' into the path.
+            if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses, out var selfPath))
+            {
+                return new GitHub.DistributedTask.Pipelines.RepositoryPathReference
+                {
+                    RepositoryType = GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias,
+                    Path = selfPath
+                };
+            }
+
             // Repository reference: owner/repo@ref or owner/repo/path@ref
             var atIndex = uses.LastIndexOf('@');
             string refPart = null;
