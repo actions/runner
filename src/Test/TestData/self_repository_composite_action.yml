@@ -1,0 +1,22 @@
+name: 'Self Repository Composite'
+description: 'Test composite action referencing actions in the same repository via $/'
+runs:
+  using: "composite"
+  steps:
+    - uses: $/.github/actions/inventory-client
+      id: inventory
+
+    - uses: $/actions/nested/composite
+      id: nested
+
+    - uses: $/foo@v1
+      id: with-ref
+
+    - uses: actions/checkout@v4
+      id: external
+
+    - uses: ./local-action
+      id: local
+
+    - run: echo done
+      shell: bash
