@@ -1033,5 +1033,78 @@ namespace GitHub.Runner.Common.Tests.Worker
                 mockDebugger.Verify(x => x.StopAsync(), Times.Once);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DebuggerTunnelFailureIsReportedAsInfrastructureFailure()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                EnableDebuggerOnMessage(hc);
+
+                var mockDebugger = new Mock<IDapDebugger>();
+                mockDebugger.Setup(x => x.StartAsync(It.IsAny<IExecutionContext>()))
+                            .ThrowsAsync(new DebuggerTunnelException("Failed to connect to the debugger tunnel: relay unreachable."));
+                mockDebugger.Setup(x => x.StopAsync()).Returns(Task.CompletedTask);
+                hc.SetSingleton(mockDebugger.Object);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await Assert.ThrowsAsync<DebuggerTunnelException>(() => jobExtension.InitializeJob(_jobEc, _message));
+
+                Assert.Equal("debugger_tunnel_failure", _jobEc.Global.InfrastructureFailureCategory);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task DebuggerClientConnectionTimeoutIsNotAnInfrastructureFailure()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                EnableDebuggerOnMessage(hc);
+
+                // The tunnel came up fine — the user just never attached a debug client.
+                var mockDebugger = new Mock<IDapDebugger>();
+                mockDebugger.Setup(x => x.StartAsync(It.IsAny<IExecutionContext>())).Returns(Task.CompletedTask);
+                mockDebugger.Setup(x => x.WaitUntilReadyAsync())
+                            .ThrowsAsync(new TimeoutException("No debugger client connected within 15 minutes."));
+                mockDebugger.Setup(x => x.StopAsync()).Returns(Task.CompletedTask);
+                hc.SetSingleton(mockDebugger.Object);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                await Assert.ThrowsAsync<TimeoutException>(() => jobExtension.InitializeJob(_jobEc, _message));
+
+                Assert.True(string.IsNullOrEmpty(_jobEc.Global.InfrastructureFailureCategory));
+            }
+        }
+
+        private void EnableDebuggerOnMessage(TestHostContext hc)
+        {
+            _message.EnableDebugger = true;
+            _message.DebuggerTunnel = new Pipelines.DebuggerTunnelInfo
+            {
+                TunnelId = "test-tunnel",
+                ClusterId = "test-cluster",
+                HostToken = "test-token",
+                Port = 9229
+            };
+
+            // Re-initialize the execution context so it picks up debugger config
+            _jobEc = new Runner.Worker.ExecutionContext();
+            _jobEc.Initialize(hc);
+            _jobEc.InitializeJob(_message, _tokenSource.Token);
+        }
     }
 }
