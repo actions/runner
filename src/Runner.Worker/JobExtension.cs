@@ -664,8 +664,23 @@ namespace GitHub.Runner.Worker
                             context.Error("Job was cancelled before debugger client connected.");
                             throw;
                         }
+                        catch (DebuggerTunnelException ex)
+                        {
+                            // The Dev Tunnel relay could not be established, or dropped while we
+                            // were waiting. The user can't do anything about that, so report it
+                            // as an infrastructure failure rather than a job error.
+                            Trace.Error($"DAP debugger tunnel failed: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, "TunnelFailed");
+                            context.InfrastructureError(
+                                ex.Message,
+                                category: Constants.Runner.InfrastructureFailureCategories.DebuggerTunnelFailure);
+                            throw;
+                        }
                         catch (Exception ex)
                         {
+                            // Deliberately NOT an infrastructure failure. The common case here is
+                            // the TimeoutException from WaitUntilReadyAsync, which only means the
+                            // user never attached a debug client — the tunnel itself was fine.
                             Trace.Error($"DAP debugger failed: {ex.Message}");
                             AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
                             context.Error("The debugger failed to start or no debugger client connected in time.");
