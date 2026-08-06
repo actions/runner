@@ -94,6 +94,10 @@ namespace GitHub.Runner.Worker.Dap
         // listener directly on the configured tunnel port (unit tests only).
         internal bool SkipWebSocketBridge { get; set; }
 
+        // Invoked once the tunnel relay is up, so tests can simulate a relay drop
+        // that lands while startup is still in progress (unit tests only).
+        internal Action TunnelRelayStarted { get; set; }
+
         // Synchronization for step execution
         private TaskCompletionSource<DapCommand> _commandTcs;
         private readonly object _stateLock = new object();
@@ -181,7 +185,27 @@ namespace GitHub.Runner.Worker.Dap
                 await StartTunnelRelayAsync(debuggerConfig);
             }
 
-            _state = DapSessionState.WaitingForConnection;
+            TunnelRelayStarted?.Invoke();
+
+            // The relay can drop while we're still starting up, which terminates the
+            // session and reports the failure. Don't resurrect it or start listening
+            // for a client that has no way to reach us.
+            bool terminatedDuringStartup;
+            lock (_stateLock)
+            {
+                terminatedDuringStartup = _state == DapSessionState.Terminated;
+                if (!terminatedDuringStartup)
+                {
+                    _state = DapSessionState.WaitingForConnection;
+                }
+            }
+
+            if (terminatedDuringStartup)
+            {
+                Trace.Info("Debugger tunnel dropped during startup, skipping connection loop.");
+                return;
+            }
+
             _loopCts = CancellationTokenSource.CreateLinkedTokenSource(jobContext.CancellationToken);
             _connectionLoopTask = ConnectionLoopAsync(_loopCts.Token);
 

@@ -830,6 +830,35 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async Task TunnelDisconnectDuringStartupDoesNotResurrectTheSession()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+
+                // Simulate the relay dropping between connecting and the rest of startup.
+                _debugger.TunnelRelayStarted = () => _debugger.HandleTunnelConnectionStatusChanged(
+                    ConnectionStatus.Disconnected,
+                    new IOException("relay went away during startup"));
+
+                await _debugger.StartAsync(jobContext.Object);
+
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                Assert.False(_debugger.IsActive);
+                Assert.Equal("debugger_tunnel_failure", jobContext.Object.Global.InfrastructureFailureCategory);
+                Assert.Equal(TaskResult.Failed, jobContext.Object.Result);
+
+                await Assert.ThrowsAsync<DebuggerTunnelException>(() => _debugger.WaitUntilReadyAsync());
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task UnexpectedTunnelDisconnectIsOnlyReportedOnce()
         {
             using (CreateTestContext())
