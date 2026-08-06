@@ -678,9 +678,6 @@ namespace GitHub.Runner.Worker
                         }
                         catch (Exception ex)
                         {
-                            // Deliberately NOT an infrastructure failure. The common case here is
-                            // the TimeoutException from WaitUntilReadyAsync, which only means the
-                            // user never attached a debug client — the tunnel itself was fine.
                             Trace.Error($"DAP debugger failed: {ex.Message}");
                             AddDebuggerConnectionTelemetry(jobContext, $"Failed: {ex.GetType().Name}");
                             context.Error("The debugger failed to start or no debugger client connected in time.");
