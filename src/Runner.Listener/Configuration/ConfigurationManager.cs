@@ -717,6 +717,9 @@ namespace GitHub.Runner.Listener.Configuration
                 var jitToken = await GetJITRunnerTokenAsync(githubUrl, githubPAT, tokenType);
                 Trace.Info($"Retrived runner {tokenType} token is good to {jitToken.ExpiresAt}.");
                 HostContext.SecretMasker.AddValue(jitToken.Token);
+                HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                    secrets: new List<string> { jitToken.Token },
+                    secretRegexes: null);
                 runnerToken = jitToken.Token;
             }
 
@@ -783,6 +786,9 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
                     HostContext.SecretMasker.AddValue(base64EncodingToken);
+                    HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                        secrets: new List<string> { base64EncodingToken },
+                        secretRegexes: null);
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");

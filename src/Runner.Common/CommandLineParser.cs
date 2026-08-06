@@ -13,6 +13,7 @@ namespace GitHub.Runner.Common
     public sealed class CommandLineParser
     {
         private ISecretMasker _secretMasker;
+        private RunnerFirewallNotifier _runnerFirewallNotifier;
         private Tracing _trace;
 
         public List<string> Commands { get; }
@@ -24,6 +25,7 @@ namespace GitHub.Runner.Common
         public CommandLineParser(IHostContext hostContext, string[] secretArgNames)
         {
             _secretMasker = hostContext.SecretMasker;
+            _runnerFirewallNotifier = hostContext.RunnerFirewallNotifier;
             _trace = hostContext.GetTrace(nameof(CommandLineParser));
 
             Commands = new List<string>();
@@ -91,6 +93,9 @@ namespace GitHub.Runner.Common
                             if (SecretArgNames.Contains(argScope))
                             {
                                 _secretMasker.AddValue(arg);
+                                _runnerFirewallNotifier.NotifySecretRegistration(
+                                    secrets: new List<string> { arg },
+                                    secretRegexes: null);
                             }
 
                             _trace.Info("Adding option '{0}': '{1}'", argScope, arg);

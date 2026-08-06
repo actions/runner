@@ -127,6 +127,9 @@ namespace GitHub.Runner.Listener
                         if (secret)
                         {
                             context.SecretMasker.AddValue(val);
+                            context.RunnerFirewallNotifier.NotifySecretRegistration(
+                                secrets: new List<string> { val },
+                                secretRegexes: null);
                         }
 
                         // Store the value.
