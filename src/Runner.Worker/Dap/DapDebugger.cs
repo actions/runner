@@ -333,7 +333,7 @@ namespace GitHub.Runner.Worker.Dap
                     jobContext.Global.InfrastructureFailureCategory = Constants.Runner.InfrastructureFailureCategories.DebuggerTunnelFailure;
                 }
 
-                jobContext.Error(message);
+                jobContext.InfrastructureError(message, category: Constants.Runner.InfrastructureFailureCategories.DebuggerTunnelFailure);
                 jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
                 if (jobContext.JobContext != null)
                 {
