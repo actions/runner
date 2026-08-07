@@ -314,7 +314,7 @@ runs:
 
 **We will not support "timeout-minutes" in a composite action for now. This functionality will be focused on in a future ADR.**
 
-A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
+A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equal to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
 
 If the time taken for any of the steps in combination or individually exceeds the whole composite action `timeout-minutes` attribute, the whole job will fail (1). If an individual step exceeds its own `timeout-minutes` attribute but the total time that has been used including this step is below the overall composite action `timeout-minutes`, the individual step will fail but the rest of the steps will run based on their own `timeout-minutes` attribute (they will still abide by condition (1) though).
 

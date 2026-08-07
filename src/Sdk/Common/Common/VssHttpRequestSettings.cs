@@ -123,7 +123,7 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Gets or sets a value indicating whether or not the Expect: 100-continue header should be sent on
-        /// outgoing requess. The default value is true.
+        /// outgoing requests. The default value is true.
         /// </summary>
         [DefaultValue(true)]
         public Boolean ExpectContinue

@@ -36,7 +36,7 @@ namespace GitHub.Services.Location
         public static readonly Guid ResourceAreas = new Guid("E81700F7-3BE2-46DE-8624-2EB35882FCAA");
 
         // Used for updating the SPS locations in account migrations.
-        public const string SpsServiceDefintionResource = "SpsServiceDefinition";
+        public const string SpsServiceDefinitionResource = "SpsServiceDefinition";
 
         public static readonly Guid SpsServiceDefinition = new Guid("{DF5F298A-4E06-4815-A13E-6CE90A37EFA4}");
     }

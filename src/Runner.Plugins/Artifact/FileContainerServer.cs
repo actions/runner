@@ -103,9 +103,9 @@ namespace GitHub.Runner.Plugins.Artifact
             }
 
             // container items will include both folders, files and even file with zero size
-            // Create all required empty folders and emptry files, gather a list of files that we need to download from server.
+            // Create all required empty folders and empty files, gather a list of files that we need to download from server.
             int foldersCreated = 0;
-            int emptryFilesCreated = 0;
+            int emptyFilesCreated = 0;
             List<DownloadInfo> downloadFiles = new();
             foreach (var item in containerItems.OrderBy(x => x.Path))
             {
@@ -134,7 +134,7 @@ namespace GitHub.Runner.Plugins.Artifact
                         using (new FileStream(localPath, FileMode.Create))
                         {
                         }
-                        emptryFilesCreated++;
+                        emptyFilesCreated++;
                     }
                     else
                     {
@@ -153,9 +153,9 @@ namespace GitHub.Runner.Plugins.Artifact
                 context.Output($"{foldersCreated} folders created.");
             }
 
-            if (emptryFilesCreated > 0)
+            if (emptyFilesCreated > 0)
             {
-                context.Output($"{emptryFilesCreated} empty files created.");
+                context.Output($"{emptyFilesCreated} empty files created.");
             }
 
             if (downloadFiles.Count == 0)

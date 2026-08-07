@@ -35,7 +35,7 @@ namespace GitHub.Runner.Plugins.Artifact
 
             if (String.IsNullOrWhiteSpace(artifactName))
             {
-                throw new ArgumentException($"Artifact name can not be empty string");
+                throw new ArgumentException($"Artifact name cannot be empty string");
             }
 
             if (Path.GetInvalidFileNameChars().Any(x => artifactName.Contains(x)))

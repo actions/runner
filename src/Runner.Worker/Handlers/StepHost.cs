@@ -128,7 +128,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Container, nameof(Container));
             if (!FeatureManager.IsContainerHooksEnabled(executionContext.Global?.Variables))
             {
-                // TODO: Remove nullcheck with executionContext.Global? by setting up ExecutionContext.Global at GitHub.Runner.Common.Tests.Worker.ExecutionContextL0.GetExpressionValues_ContainerStepHost
+                // TODO: Remove null check with executionContext.Global? by setting up ExecutionContext.Global at GitHub.Runner.Common.Tests.Worker.ExecutionContextL0.GetExpressionValues_ContainerStepHost
                 ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
             }
 
@@ -181,7 +181,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
-            // so determine based on known distribtutions instead
+            // so determine based on known distributions instead
             var osReleaseIdCmd = "sh -c \"cat /etc/*release | grep ^ID\"";
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
@@ -263,7 +263,7 @@ namespace GitHub.Runner.Worker.Handlers
             // [ARG...]
             dockerCommandArgs.Add(arguments);
 
-            string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
+            string dockerCommandArgString = string.Join(" ", dockerCommandArgs);
             TranslateToContainerPath(environment);
 
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
@@ -280,7 +280,7 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,
-                                                         arguments: dockerCommandArgstring,
+                                                         arguments: dockerCommandArgString,
                                                          environment: environment,
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,

@@ -62,7 +62,7 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
-        /// When T is String, we cannot distiguish between literals and expressions solely by type. 
+        /// When T is String, we cannot distinguish between literals and expressions solely by type. 
         /// Use this function when parsing and you want to err on the side of expressions.
         /// </summary>
         public static ExpressionValue<String> FromToken(String token)
