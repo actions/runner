@@ -124,6 +124,8 @@ namespace GitHub.Services.OAuth
                 messageHandler.UseProxy = true;
             }
 
+            VssHttpMessageHandler.ConfigureClientCertificates?.Invoke(messageHandler);
+
             if (requestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) &&
                 VssClientHttpRequestSettings.Default.ClientCertificateManager != null &&
                 VssClientHttpRequestSettings.Default.ClientCertificateManager.ClientCertificates != null &&

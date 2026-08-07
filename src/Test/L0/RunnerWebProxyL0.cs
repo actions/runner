@@ -581,6 +581,52 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WebProxyClientCertificateFromEnvironmentVariables()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("https_proxy", "http://127.0.0.1:9999");
+                Environment.SetEnvironmentVariable("HTTPS_PROXY_CLIENT_CERT", "/path/to/client.crt");
+                Environment.SetEnvironmentVariable("HTTPS_PROXY_CLIENT_KEY", "/path/to/client.key");
+                Environment.SetEnvironmentVariable("HTTPS_PROXY_CA_CERT", "/path/to/ca.crt");
+                var proxy = new RunnerWebProxy();
+
+                Assert.Equal("/path/to/client.crt", proxy.HttpsProxyClientCert);
+                Assert.Equal("/path/to/client.key", proxy.HttpsProxyClientKey);
+                Assert.Equal("/path/to/ca.crt", proxy.HttpsProxyCACert);
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WebProxyClientCertificateLowerCaseFromEnvironmentVariables()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("https_proxy", "http://127.0.0.1:9999");
+                Environment.SetEnvironmentVariable("https_proxy_client_cert", "/path/to/client.crt");
+                Environment.SetEnvironmentVariable("https_proxy_client_key", "/path/to/client.key");
+                Environment.SetEnvironmentVariable("https_proxy_ca_cert", "/path/to/ca.crt");
+                var proxy = new RunnerWebProxy();
+
+                Assert.Equal("/path/to/client.crt", proxy.HttpsProxyClientCert);
+                Assert.Equal("/path/to/client.key", proxy.HttpsProxyClientKey);
+                Assert.Equal("/path/to/ca.crt", proxy.HttpsProxyCACert);
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
         private void CleanProxyEnv()
         {
             Environment.SetEnvironmentVariable("http_proxy", null);
@@ -589,6 +635,12 @@ namespace GitHub.Runner.Common.Tests
             Environment.SetEnvironmentVariable("HTTPS_PROXY", null);
             Environment.SetEnvironmentVariable("no_proxy", null);
             Environment.SetEnvironmentVariable("NO_PROXY", null);
+            Environment.SetEnvironmentVariable("HTTPS_PROXY_CLIENT_CERT", null);
+            Environment.SetEnvironmentVariable("HTTPS_PROXY_CLIENT_KEY", null);
+            Environment.SetEnvironmentVariable("HTTPS_PROXY_CA_CERT", null);
+            Environment.SetEnvironmentVariable("https_proxy_client_cert", null);
+            Environment.SetEnvironmentVariable("https_proxy_client_key", null);
+            Environment.SetEnvironmentVariable("https_proxy_ca_cert", null);
         }
     }
 }

@@ -503,8 +503,12 @@ namespace GitHub.Services.Common
                 {
                     httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip;
                 }
+
+                ConfigureClientCertificates?.Invoke(httpClientHandler);
             }
         }
+
+        public static Action<HttpClientHandler> ConfigureClientCertificates { get; set; }
 
         // setting this to WebRequest.DefaultWebProxy in NETSTANDARD is causing a System.PlatformNotSupportedException
         //.in System.Net.SystemWebProxy.IsBypassed.  Comment in IsBypassed method indicates ".NET Core and .NET Native

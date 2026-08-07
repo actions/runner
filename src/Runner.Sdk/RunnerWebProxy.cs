@@ -22,6 +22,9 @@ namespace GitHub.Runner.Sdk
         private string _httpsProxyUsername;
         private string _httpsProxyPassword;
         private string _noProxyString;
+        private string _httpsProxyClientCert;
+        private string _httpsProxyClientKey;
+        private string _httpsProxyCACert;
 
         private readonly List<ByPassInfo> _noProxyList = new();
         private readonly HashSet<string> _noProxyUnique = new(StringComparer.OrdinalIgnoreCase);
@@ -35,6 +38,9 @@ namespace GitHub.Runner.Sdk
         public string HttpsProxyUsername => _httpsProxyUsername;
         public string HttpsProxyPassword => _httpsProxyPassword;
         public string NoProxyString => _noProxyString;
+        public string HttpsProxyClientCert => _httpsProxyClientCert;
+        public string HttpsProxyClientKey => _httpsProxyClientKey;
+        public string HttpsProxyCACert => _httpsProxyCACert;
 
         public List<ByPassInfo> NoProxyList => _noProxyList;
 
@@ -135,6 +141,37 @@ namespace GitHub.Runner.Sdk
                     (Credentials as CredentialCache).Remove(proxyHttpsUri, "Basic");
                     (Credentials as CredentialCache).Add(proxyHttpsUri, "Basic", credentials);
                 }
+            }
+
+            // Load mTLS client certificate configuration for proxy connections
+            var httpsProxyClientCert = Environment.GetEnvironmentVariable("HTTPS_PROXY_CLIENT_CERT");
+            if (string.IsNullOrEmpty(httpsProxyClientCert))
+            {
+                httpsProxyClientCert = Environment.GetEnvironmentVariable("https_proxy_client_cert");
+            }
+            if (!string.IsNullOrEmpty(httpsProxyClientCert))
+            {
+                _httpsProxyClientCert = httpsProxyClientCert.Trim();
+            }
+
+            var httpsProxyClientKey = Environment.GetEnvironmentVariable("HTTPS_PROXY_CLIENT_KEY");
+            if (string.IsNullOrEmpty(httpsProxyClientKey))
+            {
+                httpsProxyClientKey = Environment.GetEnvironmentVariable("https_proxy_client_key");
+            }
+            if (!string.IsNullOrEmpty(httpsProxyClientKey))
+            {
+                _httpsProxyClientKey = httpsProxyClientKey.Trim();
+            }
+
+            var httpsProxyCACert = Environment.GetEnvironmentVariable("HTTPS_PROXY_CA_CERT");
+            if (string.IsNullOrEmpty(httpsProxyCACert))
+            {
+                httpsProxyCACert = Environment.GetEnvironmentVariable("https_proxy_ca_cert");
+            }
+            if (!string.IsNullOrEmpty(httpsProxyCACert))
+            {
+                _httpsProxyCACert = httpsProxyCACert.Trim();
             }
 
             if (!string.IsNullOrEmpty(noProxyList))

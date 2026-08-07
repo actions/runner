@@ -77,6 +77,8 @@ namespace GitHub.Services.Common
         // This needs to be investigated further.
         private static IWebProxy s_defaultWebProxy = null;
 
+        public static Action<HttpClientHandler> ConfigureClientCertificates { get; set; }
+
         /// <summary>
         /// Allows you to set a proxy to be used by all RawHttpMessageHandler requests without affecting the global WebRequest.DefaultWebProxy.  If not set it returns the WebRequest.DefaultWebProxy.
         /// </summary>
@@ -300,6 +302,8 @@ namespace GitHub.Services.Common
                 httpClientHandler.Proxy = DefaultWebProxy;
                 httpClientHandler.UseCookies = false;
                 httpClientHandler.UseProxy = true;
+
+                ConfigureClientCertificates?.Invoke(httpClientHandler);
             }
         }
 
