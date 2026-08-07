@@ -740,19 +740,18 @@ namespace GitHub.Runner.Listener
                                             ex is TaskOrchestrationJobAlreadyAcquiredException ||   // HTTP status 409
                                             ex is TaskOrchestrationJobUnprocessableException)       // HTTP status 422
                                         {
-                                            Trace.Info($"Skipping message Job. {ex.Message}");
-
                                             // The service consumes an ephemeral runner's registration when it assigns
                                             // the job. Once that assignment is lost there is no session left to listen
                                             // on, so skipping would leave the runner alive but deregistered, never to
                                             // be assigned work again.
                                             if (settings.Ephemeral)
                                             {
-                                                Trace.Info("Ephemeral runner lost its job assignment. Exiting runner.");
+                                                Trace.Info($"Ephemeral runner lost its job assignment. Exiting runner. {ex.Message}");
                                                 runOnceJobCompleted = true;
                                                 return Constants.Runner.ReturnCode.Success;
                                             }
 
+                                            Trace.Info($"Skipping message Job. {ex.Message}");
                                             await _acquireJobThrottler.IncrementAndWaitAsync(messageQueueLoopTokenSource.Token);
                                             continue;
                                         }
