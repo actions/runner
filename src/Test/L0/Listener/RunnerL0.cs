@@ -1056,79 +1056,92 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
+        // Shared arrange for the RunService acquire-path tests. The message loop parks instead of
+        // dequeuing an empty queue: a bare Dequeue surfaces a regression as "Queue empty" thrown
+        // from the mock, which hides the assertion that was meant to catch it.
+        private (Queue<TaskAgentMessage> Messages, TaskCompletionSource<bool> Drained) ArrangeRunServiceRunner(TestHostContext hc, Runner.Listener.Runner runner, bool ephemeral)
+        {
+            hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+            hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+            hc.SetSingleton<IMessageListener>(_messageListener.Object);
+            hc.SetSingleton<IPromptManager>(_promptManager.Object);
+            hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+            hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+            hc.SetSingleton<ISelfUpdater>(_updater.Object);
+            hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
+            hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+            hc.EnqueueInstance<IRunServer>(_runServer.Object);
+            hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+            runner.Initialize(hc);
+            var settings = new RunnerSettings
+            {
+                PoolId = 43242,
+                AgentId = 5678,
+                Ephemeral = ephemeral,
+                ServerUrl = "https://github.com",
+            };
+
+            var messages = new Queue<TaskAgentMessage>();
+            messages.Enqueue(new TaskAgentMessage()
+            {
+                Body = JsonUtility.ToString(new RunnerJobRequestRef() { BillingOwnerId = "github", RunnerRequestId = "999", RunServiceUrl = "https://run-service.com" }),
+                MessageId = 4234,
+                MessageType = JobRequestMessageTypes.RunnerJobRequest
+            });
+
+            // Completed once the runner is back asking for work, which means the message loop has
+            // already re-checked its cancellation token. Signalling any earlier races the shutdown.
+            var drained = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _configurationManager.Setup(x => x.LoadSettings())
+                .Returns(settings);
+            _configurationManager.Setup(x => x.IsConfigured())
+                .Returns(true);
+            _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
+            _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                .Returns(async (CancellationToken token) =>
+                    {
+                        if (0 == messages.Count)
+                        {
+                            drained.TrySetResult(true);
+                            await Task.Delay(Timeout.Infinite, token);
+                        }
+
+                        return messages.Dequeue();
+                    });
+            _messageListener.Setup(x => x.DeleteSessionAsync())
+                .Returns(Task.CompletedTask);
+            _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                .Returns(Task.CompletedTask);
+            _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                .Callback(() =>
+                {
+
+                });
+            _credentialManager.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+            _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+            return (messages, drained);
+        }
+
         [Theory]
         [InlineData(typeof(TaskOrchestrationJobNotFoundException))]          // HTTP status 404
         [InlineData(typeof(TaskOrchestrationJobAlreadyAcquiredException))]   // HTTP status 409
-        [InlineData(typeof(TaskOrchestrationJobUnprocessableException))]     // HTTP status 422
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
         public async Task TestEphemeralRunnerJobRequestMessageFromRunServiceExitsOnLostJobAssignment(Type acquireException)
         {
-            using (var hc = new TestHostContext(this))
+            // Name the context per row: TestHostContext derives its trace file from
+            // [CallerMemberName] and deletes any existing one, so rows would overwrite each other.
+            using (var hc = new TestHostContext(this, $"{nameof(TestEphemeralRunnerJobRequestMessageFromRunServiceExitsOnLostJobAssignment)}_{acquireException.Name}"))
             {
                 //Arrange
                 var runner = new Runner.Listener.Runner();
-                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
-                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
-                hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<ISelfUpdater>(_updater.Object);
-                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
-                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
-                hc.EnqueueInstance<IRunServer>(_runServer.Object);
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
-
-                runner.Initialize(hc);
-                var settings = new RunnerSettings
-                {
-                    PoolId = 43242,
-                    AgentId = 5678,
-                    Ephemeral = true,
-                    ServerUrl = "https://github.com",
-                };
-
-                var message = new TaskAgentMessage()
-                {
-                    Body = JsonUtility.ToString(new RunnerJobRequestRef() { BillingOwnerId = "github", RunnerRequestId = "999", RunServiceUrl = "https://run-service.com" }),
-                    MessageId = 4234,
-                    MessageType = JobRequestMessageTypes.RunnerJobRequest
-                };
-
-                var messages = new Queue<TaskAgentMessage>();
-                messages.Enqueue(message);
-                _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(settings);
-                _configurationManager.Setup(x => x.IsConfigured())
-                    .Returns(true);
-                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
-                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
-                    .Returns(async (CancellationToken token) =>
-                        {
-                            if (0 == messages.Count)
-                            {
-                                await Task.Delay(2000, token);
-                            }
-
-                            return messages.Dequeue();
-                        });
-                _messageListener.Setup(x => x.DeleteSessionAsync())
-                    .Returns(Task.CompletedTask);
-                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
-                    .Returns(Task.CompletedTask);
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
-                    .Callback(() =>
-                    {
-
-                    });
+                ArrangeRunServiceRunner(hc, runner, ephemeral: true);
                 _runServer.Setup(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()))
                     .ThrowsAsync((Exception)Activator.CreateInstance(acquireException, "Job assignment is invalid: MissingKey"));
-
-                _credentialManager.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
-
-                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
 
                 //Act
                 var command = new CommandSettings(hc, new string[] { "run" });
@@ -1139,117 +1152,58 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
-                if (runnerTask.IsCompleted)
-                {
-                    Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
-                }
+                Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
 
                 _runServer.Verify(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()), Times.Once());
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Never());
                 _acquireJobThrottler.Verify(x => x.IncrementAndWaitAsync(It.IsAny<CancellationToken>()), Times.Never());
-                _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
+                // The registration is already consumed, so deleting the session would only stall.
+                _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Never());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
                 _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
             }
         }
 
-        [Fact]
+        [Theory]
+        // 422 says the job is unprocessable, not that the assignment moved: an ephemeral runner keeps listening.
+        [InlineData(true, false, typeof(TaskOrchestrationJobUnprocessableException))]
+        // A persistent runner keeps skipping whatever the service answers.
+        [InlineData(false, false, typeof(TaskOrchestrationJobNotFoundException))]
+        [InlineData(false, false, typeof(TaskOrchestrationJobAlreadyAcquiredException))]
+        // --once is a client-side flag, so the registration is not consumed and the runner must
+        // keep listening. This pins settings.Ephemeral as the predicate over the in-scope runOnce.
+        [InlineData(false, true, typeof(TaskOrchestrationJobAlreadyAcquiredException))]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async Task TestRunnerJobRequestMessageFromRunServiceContinuesOnLostJobAssignmentForPersistentRunner()
+        public async Task TestRunnerJobRequestMessageFromRunServiceContinuesOnLostJobAssignment(bool ephemeral, bool runOnce, Type acquireException)
         {
-            using (var hc = new TestHostContext(this))
+            using (var hc = new TestHostContext(this, $"{nameof(TestRunnerJobRequestMessageFromRunServiceContinuesOnLostJobAssignment)}_{ephemeral}_{runOnce}_{acquireException.Name}"))
             {
                 //Arrange
                 var runner = new Runner.Listener.Runner();
-                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
-                hc.SetSingleton<IJobNotification>(_jobNotification.Object);
-                hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<ISelfUpdater>(_updater.Object);
-                hc.SetSingleton<ICredentialManager>(_credentialManager.Object);
-                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
-                hc.EnqueueInstance<IRunServer>(_runServer.Object);
-                hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
-
-                runner.Initialize(hc);
-                var settings = new RunnerSettings
-                {
-                    PoolId = 43242,
-                    AgentId = 5678,
-                    Ephemeral = false,
-                    ServerUrl = "https://github.com",
-                };
-
-                var message = new TaskAgentMessage()
-                {
-                    Body = JsonUtility.ToString(new RunnerJobRequestRef() { BillingOwnerId = "github", RunnerRequestId = "999", RunServiceUrl = "https://run-service.com" }),
-                    MessageId = 4234,
-                    MessageType = JobRequestMessageTypes.RunnerJobRequest
-                };
-
-                var messages = new Queue<TaskAgentMessage>();
-                messages.Enqueue(message);
-                var signalThrottled = new SemaphoreSlim(0, 1);
-                _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(settings);
-                _configurationManager.Setup(x => x.IsConfigured())
-                    .Returns(true);
-                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
-                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
-                    .Returns(async (CancellationToken token) =>
-                        {
-                            if (0 == messages.Count)
-                            {
-                                await Task.Delay(2000, token);
-                            }
-
-                            return messages.Dequeue();
-                        });
-                _messageListener.Setup(x => x.DeleteSessionAsync())
-                    .Returns(Task.CompletedTask);
-                _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
-                    .Returns(Task.CompletedTask);
-                _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
-                    .Callback(() =>
-                    {
-
-                    });
+                var arrange = ArrangeRunServiceRunner(hc, runner, ephemeral: ephemeral);
                 _runServer.Setup(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()))
-                    .ThrowsAsync(new TaskOrchestrationJobAlreadyAcquiredException("Job assignment is invalid: MissingKey"));
-                _acquireJobThrottler.Setup(x => x.IncrementAndWaitAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.CompletedTask)
-                    .Callback(() =>
-                    {
-                        signalThrottled.Release();
-                    });
-
-                _credentialManager.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
-
-                _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+                    .ThrowsAsync((Exception)Activator.CreateInstance(acquireException, "Job assignment is invalid: MissingKey"));
 
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run" });
+                var command = new CommandSettings(hc, runOnce ? new string[] { "run", "--once" } : new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert
-                //the runner skips the job and keeps listening, so it only stops when we shut it down
-                if (!await signalThrottled.WaitAsync(2000))
-                {
-                    Assert.Fail($"{nameof(_acquireJobThrottler.Object.IncrementAndWaitAsync)} was not invoked.");
-                }
+                //the runner skips the job and goes back to listening, so it stops only once we shut it down
+                await Task.WhenAny(arrange.Drained.Task, runnerTask, Task.Delay(30000));
+                Assert.True(arrange.Drained.Task.IsCompletedSuccessfully, $"the runner did not go back to listening. {runnerTask.Exception?.ToString()}");
 
                 hc.ShutdownRunner(ShutdownReason.UserCancelled);
-                await Task.WhenAny(runnerTask, Task.Delay(2000));
+                await Task.WhenAny(runnerTask, Task.Delay(30000));
 
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(runnerTask.IsCanceled);
                 _runServer.Verify(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()), Times.Once());
                 _acquireJobThrottler.Verify(x => x.IncrementAndWaitAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Never());
+                // Skipping must still drain the message, or Broker redelivers it forever.
+                _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
                 _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
             }
         }
