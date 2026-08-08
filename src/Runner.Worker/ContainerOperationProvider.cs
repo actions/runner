@@ -362,37 +362,39 @@ namespace GitHub.Runner.Worker
 
             List<string> outputs = new();
             object outputLock = new();
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
-                if (!string.IsNullOrEmpty(message.Data))
+                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
                 {
-                    lock (outputLock)
+                    if (!string.IsNullOrEmpty(message.Data))
                     {
-                        outputs.Add(message.Data);
+                        lock (outputLock)
+                        {
+                            outputs.Add(message.Data);
+                        }
                     }
-                }
-            };
+                };
 
-            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
-            {
-                if (!string.IsNullOrEmpty(message.Data))
+                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
                 {
-                    lock (outputLock)
+                    if (!string.IsNullOrEmpty(message.Data))
                     {
-                        outputs.Add(message.Data);
+                        lock (outputLock)
+                        {
+                            outputs.Add(message.Data);
+                        }
                     }
-                }
-            };
+                };
 
-            await processInvoker.ExecuteAsync(
-                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                            fileName: command,
-                            arguments: arg,
-                            environment: null,
-                            requireExitCodeZero: true,
-                            outputEncoding: null,
-                            cancellationToken: CancellationToken.None);
+                await processInvoker.ExecuteAsync(
+                                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                fileName: command,
+                                arguments: arg,
+                                environment: null,
+                                requireExitCodeZero: true,
+                                outputEncoding: null,
+                                cancellationToken: CancellationToken.None);
+            }
 
             foreach (var outputLine in outputs)
             {
