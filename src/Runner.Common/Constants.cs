@@ -184,6 +184,13 @@ namespace GitHub.Runner.Common
                 public static readonly string SelfRepository = "actions_self_repository";
             }
 
+            // Categories reported to the service alongside an infrastructure failure so
+            // it can distinguish between the different ways runner infrastructure fails.
+            public static class InfrastructureFailureCategories
+            {
+                public static readonly string DebuggerTunnelFailure = "debugger_tunnel_failure";
+            }
+
             // Node version migration related constants
             public static class NodeMigration
             {

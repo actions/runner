@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using Microsoft.DevTunnels.Connections;
 using Microsoft.DevTunnels.Contracts;
@@ -74,6 +75,14 @@ namespace GitHub.Runner.Worker.Dap
         private TunnelRelayTunnelHost _tunnelRelayHost;
         private IWebSocketDapBridge _webSocketBridge;
 
+        // Set before we intentionally tear the Dev Tunnel down so the relay
+        // disconnect that teardown produces isn't mistaken for a failure.
+        private volatile bool _tunnelShuttingDown;
+
+        // 0 until an unexpected tunnel disconnect has been reported, so the job
+        // is only failed once no matter how many status changes we observe.
+        private int _tunnelFailureReported;
+
         // Cancellation source for the connection loop, cancelled in StopAsync
         // so AcceptTcpClientAsync unblocks cleanly without relying on listener disposal.
         private CancellationTokenSource _loopCts;
@@ -84,6 +93,10 @@ namespace GitHub.Runner.Worker.Dap
         // When true, skip the public websocket bridge and expose the raw DAP
         // listener directly on the configured tunnel port (unit tests only).
         internal bool SkipWebSocketBridge { get; set; }
+
+        // Invoked once the tunnel relay is up, so tests can simulate a relay drop
+        // that lands while startup is still in progress (unit tests only).
+        internal Action TunnelRelayStarted { get; set; }
 
         // Synchronization for step execution
         private TaskCompletionSource<DapCommand> _commandTcs;
@@ -145,6 +158,8 @@ namespace GitHub.Runner.Worker.Dap
             Trace.Info($"Starting DAP debugger on port {debuggerConfig.Tunnel.Port}");
 
             _jobContext = jobContext;
+            _tunnelShuttingDown = false;
+            Interlocked.Exchange(ref _tunnelFailureReported, 0);
             _readyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var dapPort = SkipWebSocketBridge ? debuggerConfig.Tunnel.Port : 0;
@@ -170,7 +185,27 @@ namespace GitHub.Runner.Worker.Dap
                 await StartTunnelRelayAsync(debuggerConfig);
             }
 
-            _state = DapSessionState.WaitingForConnection;
+            TunnelRelayStarted?.Invoke();
+
+            // The relay can drop while we're still starting up, which terminates the
+            // session and reports the failure. Don't resurrect it or start listening
+            // for a client that has no way to reach us.
+            bool terminatedDuringStartup;
+            lock (_stateLock)
+            {
+                terminatedDuringStartup = _state == DapSessionState.Terminated;
+                if (!terminatedDuringStartup)
+                {
+                    _state = DapSessionState.WaitingForConnection;
+                }
+            }
+
+            if (terminatedDuringStartup)
+            {
+                Trace.Info("Debugger tunnel dropped during startup, skipping connection loop.");
+                return;
+            }
+
             _loopCts = CancellationTokenSource.CreateLinkedTokenSource(jobContext.CancellationToken);
             _connectionLoopTask = ConnectionLoopAsync(_loopCts.Token);
 
@@ -216,9 +251,141 @@ namespace GitHub.Runner.Worker.Dap
             var tunnelConnectTimeoutSeconds = ResolveTunnelConnectTimeout();
             using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(tunnelConnectTimeoutSeconds));
             Trace.Info($"Connecting to Dev Tunnel relay (timeout: {tunnelConnectTimeoutSeconds}s)");
-            await _tunnelRelayHost.ConnectAsync(tunnel, connectCts.Token);
+
+            try
+            {
+                await _tunnelRelayHost.ConnectAsync(tunnel, connectCts.Token);
+            }
+            catch (OperationCanceledException) when (_jobContext?.CancellationToken.IsCancellationRequested == true)
+            {
+                // The job itself is going away — not a tunnel problem.
+                throw;
+            }
+            catch (OperationCanceledException ex) when (connectCts.IsCancellationRequested)
+            {
+                throw new DebuggerTunnelException(
+                    $"Timed out after {tunnelConnectTimeoutSeconds} seconds while connecting to the debugger tunnel.",
+                    ex);
+            }
+            catch (Exception ex)
+            {
+                throw new DebuggerTunnelException(
+                    $"Failed to connect to the debugger tunnel: {ex.Message}",
+                    ex);
+            }
+
+            // Only watch for drops once we're actually connected. A failure during the
+            // initial connect surfaces as the DebuggerTunnelException above, so watching
+            // earlier would just report the same failure twice.
+            _tunnelRelayHost.ConnectionStatusChanged += OnTunnelConnectionStatusChanged;
+
+            // Close the (tiny) window between ConnectAsync returning and the handler
+            // being attached, during which a drop would go unnoticed.
+            HandleTunnelConnectionStatusChanged(_tunnelRelayHost.ConnectionStatus, _tunnelRelayHost.DisconnectException);
 
             Trace.Info("Dev Tunnel relay started");
+        }
+
+        private void OnTunnelConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs e)
+        {
+            HandleTunnelConnectionStatusChanged(e.Status, e.DisconnectException);
+        }
+
+        /// <summary>
+        /// Reacts to Dev Tunnel relay connection status changes. The Dev Tunnel SDK
+        /// reconnects on its own, so transient drops show up as <c>Connecting</c> and
+        /// only a settled <c>Disconnected</c> means the relay is really gone.
+        /// </summary>
+        internal void HandleTunnelConnectionStatusChanged(ConnectionStatus status, Exception disconnectException)
+        {
+            try
+            {
+                Trace.Info($"Dev Tunnel relay connection status: {status}");
+
+                if (status != ConnectionStatus.Disconnected)
+                {
+                    return;
+                }
+
+                if (_tunnelShuttingDown)
+                {
+                    Trace.Info("Dev Tunnel relay disconnected while shutting down — expected, ignoring.");
+                    return;
+                }
+
+                ReportTunnelDisconnected(disconnectException);
+            }
+            catch (Exception ex)
+            {
+                // This runs on a Dev Tunnel SDK callback thread — never let it throw.
+                Trace.Error($"Error handling Dev Tunnel connection status change: {ex.Message}");
+                Trace.Error(ex);
+            }
+        }
+
+        /// <summary>
+        /// Fails the job when the debugger's tunnel drops unexpectedly. Without the
+        /// tunnel the debug client can never resume the job, so anything waiting on a
+        /// DAP pause would hang until the job timeout — fail fast instead.
+        /// </summary>
+        private void ReportTunnelDisconnected(Exception disconnectException)
+        {
+            if (Interlocked.Exchange(ref _tunnelFailureReported, 1) != 0)
+            {
+                return;
+            }
+
+            IExecutionContext jobContext;
+            lock (_stateLock)
+            {
+                jobContext = _jobContext;
+            }
+
+            var detail = string.IsNullOrEmpty(disconnectException?.Message)
+                ? string.Empty
+                : $" {disconnectException.Message}";
+            var message = $"The debugger lost its connection to the tunnel and the job cannot continue.{detail}";
+            Trace.Error(message);
+
+            if (jobContext != null)
+            {
+                // A disconnect can land at any point in the job, including outside a step
+                // record, so set the category directly rather than relying on an issue
+                // being flushed by a step completing.
+                if (string.IsNullOrEmpty(jobContext.Global.InfrastructureFailureCategory))
+                {
+                    jobContext.Global.InfrastructureFailureCategory = Constants.Runner.InfrastructureFailureCategories.DebuggerTunnelFailure;
+                }
+
+                jobContext.InfrastructureError(message, category: Constants.Runner.InfrastructureFailureCategories.DebuggerTunnelFailure);
+                jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                if (jobContext.JobContext != null)
+                {
+                    jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
+                }
+
+                jobContext.Global.JobTelemetry?.Add(new JobTelemetry
+                {
+                    Type = JobTelemetryType.General,
+                    Message = "DebuggerConnectionResult: TunnelDisconnected"
+                });
+            }
+
+            // Unblock anything waiting on the debug client so the job stops waiting.
+            var readyTcs = _readyTcs;
+            if (readyTcs?.TrySetException(new DebuggerTunnelException(message)) == true)
+            {
+                // Make sure the fault is observed even when nothing is awaiting it.
+                _ = readyTcs.Task.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            }
+
+            lock (_stateLock)
+            {
+                _state = DapSessionState.Terminated;
+                _commandTcs?.TrySetResult(DapCommand.Disconnect);
+            }
+
+            HandleClientDisconnected();
         }
 
         public async Task WaitUntilReadyAsync()
@@ -462,6 +629,10 @@ namespace GitHub.Runner.Worker.Dap
 
         public async Task StopAsync()
         {
+            // Everything from here on is deliberate teardown, so any relay disconnect
+            // it produces is expected and must not be reported as an infra failure.
+            _tunnelShuttingDown = true;
+
             if (_cancellationRegistration.HasValue)
             {
                 _cancellationRegistration.Value.Dispose();
@@ -481,6 +652,7 @@ namespace GitHub.Runner.Worker.Dap
                 if (_tunnelRelayHost != null)
                 {
                     Trace.Info("Stopping Dev Tunnel relay");
+                    _tunnelRelayHost.ConnectionStatusChanged -= OnTunnelConnectionStatusChanged;
                     var disposeTask = _tunnelRelayHost.DisposeAsync().AsTask();
                     if (await Task.WhenAny(disposeTask, Task.Delay(10_000)) != disposeTask)
                     {

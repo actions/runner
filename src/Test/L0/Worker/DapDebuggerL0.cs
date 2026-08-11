@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -8,8 +9,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Dap;
+using Microsoft.DevTunnels.Connections;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -249,8 +252,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             };
             var debuggerConfig = new DebuggerConfig(true, tunnel, overrideWelcomeMessage, welcomeMessage);
             var jobContext = new Mock<IExecutionContext>();
+            jobContext.SetupProperty(x => x.Result);
             jobContext.Setup(x => x.CancellationToken).Returns(cancellationToken);
-            jobContext.Setup(x => x.Global).Returns(new GlobalContext { Debugger = debuggerConfig });
+            jobContext.Setup(x => x.Global).Returns(new GlobalContext
+            {
+                Debugger = debuggerConfig,
+                JobTelemetry = new List<JobTelemetry>()
+            });
             jobContext
                 .Setup(x => x.GetGitHubContext(It.IsAny<string>()))
                 .Returns((string contextName) => string.Equals(contextName, "job", StringComparison.Ordinal) ? jobName : null);
@@ -788,6 +796,194 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _debugger.StopAsync();
 
                 // StopAsync after already stopped
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task UnexpectedTunnelDisconnectFailsJobAsInfrastructureFailure()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                _debugger.HandleTunnelConnectionStatusChanged(
+                    ConnectionStatus.Disconnected,
+                    new IOException("relay went away"));
+
+                Assert.Equal("debugger_tunnel_failure", jobContext.Object.Global.InfrastructureFailureCategory);
+                Assert.Equal(TaskResult.Failed, jobContext.Object.Result);
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                Assert.Contains(
+                    jobContext.Object.Global.JobTelemetry,
+                    t => t.Message == "DebuggerConnectionResult: TunnelDisconnected");
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task TunnelDisconnectDuringStartupDoesNotResurrectTheSession()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+
+                // Simulate the relay dropping between connecting and the rest of startup.
+                _debugger.TunnelRelayStarted = () => _debugger.HandleTunnelConnectionStatusChanged(
+                    ConnectionStatus.Disconnected,
+                    new IOException("relay went away during startup"));
+
+                await _debugger.StartAsync(jobContext.Object);
+
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
+                Assert.False(_debugger.IsActive);
+                Assert.Equal("debugger_tunnel_failure", jobContext.Object.Global.InfrastructureFailureCategory);
+                Assert.Equal(TaskResult.Failed, jobContext.Object.Result);
+
+                await Assert.ThrowsAsync<DebuggerTunnelException>(() => _debugger.WaitUntilReadyAsync());
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task UnexpectedTunnelDisconnectIsOnlyReportedOnce()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                _debugger.HandleTunnelConnectionStatusChanged(ConnectionStatus.Disconnected, null);
+                _debugger.HandleTunnelConnectionStatusChanged(ConnectionStatus.Disconnected, null);
+
+                Assert.Single(jobContext.Object.Global.JobTelemetry);
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ExpectedTunnelDisconnectDuringTeardownIsNotAnInfrastructureFailure()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                // StopAsync marks the debugger as shutting down; the relay disconnect it
+                // triggers is expected and must not be reported.
+                await _debugger.StopAsync();
+                _debugger.HandleTunnelConnectionStatusChanged(ConnectionStatus.Disconnected, null);
+
+                Assert.True(string.IsNullOrEmpty(jobContext.Object.Global.InfrastructureFailureCategory));
+                Assert.Null(jobContext.Object.Result);
+                Assert.Empty(jobContext.Object.Global.JobTelemetry);
+            }
+        }
+
+        [Theory]
+        [InlineData(ConnectionStatus.Connecting)]
+        [InlineData(ConnectionStatus.Connected)]
+        [InlineData(ConnectionStatus.RefreshingTunnelAccessToken)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task TransientTunnelStatusChangesDoNotFailJob(ConnectionStatus status)
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                _debugger.HandleTunnelConnectionStatusChanged(status, null);
+
+                Assert.True(string.IsNullOrEmpty(jobContext.Object.Global.InfrastructureFailureCategory));
+                Assert.Null(jobContext.Object.Result);
+                Assert.NotEqual(DapSessionState.Terminated, _debugger.State);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task TunnelDisconnectWhileWaitingForClientSurfacesAsTunnelException()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                await Task.Delay(50);
+
+                _debugger.HandleTunnelConnectionStatusChanged(ConnectionStatus.Disconnected, null);
+
+                await Assert.ThrowsAsync<DebuggerTunnelException>(() => waitTask);
+                Assert.Equal("debugger_tunnel_failure", jobContext.Object.Global.InfrastructureFailureCategory);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task TunnelDisconnectDuringStepPauseReleasesWait()
+        {
+            using (CreateTestContext())
+            {
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                // Complete handshake so the session is ready
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                await SendRequestAsync(client.GetStream(), new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+                await waitTask;
+
+                // The step pauses waiting for a debugger command it will never get.
+                var step = CreateStep("Test Step");
+                var stepTask = _debugger.OnStepStartingAsync(step.Object);
+                await Task.Delay(50);
+                Assert.False(stepTask.IsCompleted);
+
+                _debugger.HandleTunnelConnectionStatusChanged(ConnectionStatus.Disconnected, null);
+
+                await stepTask;
+                Assert.Equal(TaskResult.Failed, jobContext.Object.Result);
+                Assert.Equal("debugger_tunnel_failure", jobContext.Object.Global.InfrastructureFailureCategory);
+                Assert.Equal(DapSessionState.Terminated, _debugger.State);
+
                 await _debugger.StopAsync();
             }
         }
@@ -1656,5 +1852,137 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _debugger.StopAsync();
             }
         }
+
+        #region Secret masking regression tests
+        //
+        // The DAP transport is a secret-carrying channel that bypasses the job
+        // log's masking, so every user-visible string a DAP producer builds must
+        // go through the runner's SecretMasker at the point of construction (the
+        // raw protocol JSON deliberately isn't masked — see SendMessageInternal).
+        // These tests pin the DapDebugger-owned sinks; DapReplExecutorL0 and
+        // DapVariableProviderL0 cover the REPL and expression sinks.
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ErrorResponseMasksSecretsInExceptionMessage()
+        {
+            using (var hc = CreateTestContext())
+            {
+                const string secret = "super-secret-token";
+                hc.SecretMasker.AddValue(secret);
+
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                // A non-integer frameId makes argument deserialization throw, and
+                // Newtonsoft embeds the offending value in the exception message —
+                // exercising the HandleMessageAsync catch-all error response path.
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "evaluate",
+                    Arguments = JObject.FromObject(new
+                    {
+                        expression = "github.repository",
+                        context = "repl",
+                        frameId = secret
+                    })
+                });
+
+                var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"success\":false", response);
+                Assert.Contains("***", response);
+                Assert.DoesNotContain(secret, response, StringComparison.Ordinal);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task ThreadsResponseMasksSecretsInJobName()
+        {
+            using (var hc = CreateTestContext())
+            {
+                const string secret = "super-secret-token";
+                hc.SecretMasker.AddValue(secret);
+
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port, jobName: $"build-{secret}");
+                await _debugger.StartAsync(jobContext.Object);
+
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "threads"
+                });
+
+                var response = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"command\":\"threads\"", response);
+                Assert.Contains("Job: build-***", response);
+                Assert.DoesNotContain(secret, response, StringComparison.Ordinal);
+
+                await _debugger.StopAsync();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StoppedEventMasksSecretsInStepDescription()
+        {
+            using (var hc = CreateTestContext())
+            {
+                const string secret = "super-secret-token";
+                hc.SecretMasker.AddValue(secret);
+
+                var port = GetFreePort();
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var jobContext = CreateJobContextWithTunnel(cts.Token, port);
+                await _debugger.StartAsync(jobContext.Object);
+
+                var waitTask = _debugger.WaitUntilReadyAsync();
+                using var client = await ConnectClientAsync(port);
+                var stream = client.GetStream();
+                await SendRequestAsync(stream, new Request
+                {
+                    Seq = 1,
+                    Type = "request",
+                    Command = "configurationDone"
+                });
+                await waitTask;
+
+                // configurationDone response + welcome message
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+
+                var step = CreateStep($"Run deploy {secret}");
+                var stepTask = _debugger.OnStepStartingAsync(step.Object);
+
+                var stoppedEvent = await ReadDapMessageAsync(stream, TimeSpan.FromSeconds(5));
+                Assert.Contains("\"event\":\"stopped\"", stoppedEvent);
+                Assert.Contains("Run deploy ***", stoppedEvent);
+                Assert.DoesNotContain(secret, stoppedEvent, StringComparison.Ordinal);
+
+                cts.Cancel();
+                await stepTask;
+                await _debugger.StopAsync();
+            }
+        }
+
+        #endregion
     }
 }
