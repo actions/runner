@@ -254,6 +254,8 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error($"We are not yet checking the state of jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    // wait for worker process exit then return.
+                    await jobDispatch.WorkerDispatch;
                     return;
                 }
 
