@@ -1653,6 +1653,7 @@ namespace GitHub.Runner.Worker
                 while (retryCount < 3)
                 {
                     string requestId = string.Empty;
+                    TimeSpan? retryAfter = null;
                     using (var actionDownloadTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds)))
                     using (var actionDownloadCancellation = CancellationTokenSource.CreateLinkedTokenSource(actionDownloadTimeout.Token, executionContext.CancellationToken))
                     {
@@ -1697,6 +1698,14 @@ namespace GitHub.Runner.Worker
                                     }
                                     else
                                     {
+                                        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                                        {
+                                            // We are being throttled, use the Retry-After header (if provided) to decide backoff time.
+                                            // We will back off between 10s and 10min when Retry-After is provided.
+                                            var retryAfterHeader = UrlUtil.GetRetryAfter(response.Headers);
+                                            retryAfter = VssNetworkHelper.ConvertRetryAfterToTimeSpan(retryAfterHeader, TimeSpan.FromSeconds(10), TimeSpan.FromMinutes(10));
+                                        }
+
                                         // Something else bad happened, let's go to our retry logic
                                         response.EnsureSuccessStatusCode();
                                     }
@@ -1743,6 +1752,11 @@ namespace GitHub.Runner.Worker
                     if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+                        if (retryAfter.HasValue)
+                        {
+                            // prefer the Retry-After header.
+                            backOff = retryAfter.Value;
+                        }
                         executionContext.Warning($"Back off {backOff.TotalSeconds} seconds before retry.");
                         await Task.Delay(backOff);
                     }
