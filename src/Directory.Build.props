@@ -53,7 +53,7 @@
     <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
 
-  <!-- Set Treat tarnings as errors -->
+  <!-- Set Treat warnings as errors -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>

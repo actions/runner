@@ -14,7 +14,7 @@ using GitHub.Services.Common.Internal;
 namespace GitHub.Services.Identity
 {
     //The only PATCH-able property on this class is CustomDisplayName, however there are more read/write properties
-    //because they get set by various providers in the Framework dll, in general Framework should not have internalsvisibleto to this dll
+    //because they get set by various providers in the Framework dll, in general Framework should not have internals visible to to this dll
     //CONSIDER: Should providers be in GitHub.Services.Identity instead?
     [DataContract]
     public sealed class Identity : IdentityBase, ISecuredObject

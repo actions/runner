@@ -89,7 +89,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runnerServer.Setup(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<TaskResult>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(new TaskAgentJobRequest()));
 
 
-                //Actt
+                //Act
                 jobDispatcher.Run(message);
 
                 //Assert

@@ -98,7 +98,7 @@ var runService = function () {
           retriableFailureRetryCount++;
           if (retriableFailureRetryCount >= 10) {
             console.error(
-              "Stopping the runner after 10 consecutive re-tryable failures"
+              "Stopping the runner after 10 consecutive retryable failures"
             );
             stopping = true;
           }
@@ -110,7 +110,7 @@ var runService = function () {
           retriableFailureRetryCount++;
           if (retriableFailureRetryCount >= 10) {
             console.error(
-              "Stopping the runner after 10 consecutive re-tryable failures"
+              "Stopping the runner after 10 consecutive retryable failures"
             );
             stopping = true;
           }
