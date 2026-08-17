@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -375,7 +376,8 @@ namespace GitHub.Runner.Listener
                 }
 
                 var term = HostContext.GetService<ITerminal>();
-                term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
+                var workflowRunId = GetGitHubContextValue(message, "run_id");
+                term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName} (Workflow run ID: {workflowRunId})");
 
                 // first job request renew succeed.
                 TaskCompletionSource<int> firstJobRequestRenewed = new();
@@ -729,6 +731,20 @@ namespace GitHub.Runner.Listener
                     JobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));
                 }
             }
+        }
+
+        internal static string GetGitHubContextValue(Pipelines.AgentJobRequestMessage message, string key)
+        {
+            if (message.ContextData != null &&
+                message.ContextData.TryGetValue("github", out var githubContext) &&
+                githubContext is DictionaryContextData githubContextData &&
+                githubContextData.TryGetValue(key, out var value) &&
+                value is StringContextData stringValue)
+            {
+                return stringValue.Value;
+            }
+
+            return "unknown";
         }
 
         internal async Task RenewJobRequestAsync(Pipelines.AgentJobRequestMessage message, ServiceEndpoint systemConnection, int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
