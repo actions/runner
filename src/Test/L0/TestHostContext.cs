@@ -34,6 +34,7 @@ namespace GitHub.Runner.Common.Tests
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
+        public RunnerFirewallNotifier RunnerFirewallNotifier { get; } = new RunnerFirewallNotifier();
 
         public TestHostContext(object testClass, [CallerMemberName] string testName = "")
         {

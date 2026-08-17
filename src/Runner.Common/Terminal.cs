@@ -85,6 +85,9 @@ namespace GitHub.Runner.Common
             if (!string.IsNullOrEmpty(val))
             {
                 HostContext.SecretMasker.AddValue(val);
+                HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                            secrets: new List<string> { val },
+                            secretRegexes: null);
             }
 
             Trace.Info($"Read value: '{val}'");

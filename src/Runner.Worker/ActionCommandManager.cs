@@ -116,6 +116,9 @@ namespace GitHub.Runner.Worker
                         if (_stopToken.Length > 6)
                         {
                             HostContext.SecretMasker.AddValue(_stopToken);
+                            HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                                secrets: new List<string> { _stopToken },
+                                secretRegexes: null);
                         }
 
                         context.Output(input);
@@ -438,6 +441,9 @@ namespace GitHub.Runner.Worker
                 }
 
                 HostContext.SecretMasker.AddValue(command.Data);
+                HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                    secrets: new List<string> { command.Data },
+                    secretRegexes: null);
                 Trace.Info($"Add new secret mask with length of {command.Data.Length}");
 
                 // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
@@ -445,6 +451,9 @@ namespace GitHub.Runner.Worker
                 foreach (var item in split)
                 {
                     HostContext.SecretMasker.AddValue(item);
+                    HostContext.RunnerFirewallNotifier.NotifySecretRegistration(
+                        secrets: new List<string> { item },
+                        secretRegexes: null);
                 }
             }
         }
