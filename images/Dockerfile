@@ -51,7 +51,7 @@ RUN apt update -y \
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
     && apt update -y \
-    && apt install -y git \
+    && apt install -y git git-lfs \
     && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
