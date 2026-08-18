@@ -224,6 +224,59 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Theory]
+        [InlineData("BASH_ENV")]
+        [InlineData("LD_PRELOAD")]
+        [InlineData("LD_LIBRARY_PATH")]
+        [InlineData("NODE_PATH")]
+        [InlineData("PYTHONSTARTUP")]
+        [InlineData("PERL5OPT")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_BlocksAdditionalDangerousVars(string envName)
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "blocked");
+                var content = new List<string>
+                {
+                    $"{envName}=malicious_value",
+                };
+                WriteContent(stateFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+            }
+        }
+
+        [Theory]
+        [InlineData("BASH_ENV")]
+        [InlineData("LD_PRELOAD")]
+        [InlineData("LD_LIBRARY_PATH")]
+        [InlineData("NODE_PATH")]
+        [InlineData("PYTHONSTARTUP")]
+        [InlineData("PERL5OPT")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_BlocksAdditionalDangerousVars_Heredoc(string envName)
+        {
+            using (var hostContext = Setup())
+            {
+                var stateFile = Path.Combine(_rootDirectory, "blocked_heredoc");
+                var content = new List<string>
+                {
+                    $"{envName}<<EOF",
+                    "malicious_value",
+                    "EOF",
+                };
+                WriteContent(stateFile, content);
+                _setEnvFileCommand.ProcessCommand(_executionContext.Object, stateFile, null);
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal(0, _executionContext.Object.Global.EnvironmentVariables.Count);
+            }
+        }
+
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]

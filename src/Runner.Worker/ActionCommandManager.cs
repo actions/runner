@@ -301,7 +301,13 @@ namespace GitHub.Runner.Worker
 
         private string[] _setEnvBlockList =
         {
-            "NODE_OPTIONS"
+            "NODE_OPTIONS",
+            "BASH_ENV",
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "NODE_PATH",
+            "PYTHONSTARTUP",
+            "PERL5OPT"
         };
     }
 

@@ -549,5 +549,44 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Theory]
+        [InlineData("NODE_OPTIONS")]
+        [InlineData("BASH_ENV")]
+        [InlineData("LD_PRELOAD")]
+        [InlineData("LD_LIBRARY_PATH")]
+        [InlineData("NODE_PATH")]
+        [InlineData("PYTHONSTARTUP")]
+        [InlineData("PERL5OPT")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvCommand_BlocksDangerousVars(string envName)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var issues = new List<Issue>();
+                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>()))
+                   .Callback((Issue issue, ExecutionContextLogOptions logOptions) =>
+                   {
+                       issues.Add(issue);
+                   });
+
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                var expressionValues = new DictionaryContextData
+                {
+                    ["env"] =
+#if OS_WINDOWS
+                        new DictionaryContextData { { Constants.Variables.Actions.AllowUnsupportedCommands, new StringContextData("true") } }
+#else
+                        new CaseSensitiveDictionaryContextData { { Constants.Variables.Actions.AllowUnsupportedCommands, new StringContextData("true") } }
+#endif
+                };
+                _ec.Setup(x => x.ExpressionValues).Returns(expressionValues);
+
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"##[set-env name={envName}]malicious_value", null));
+                Assert.Single(issues);
+                Assert.Equal(IssueType.Error, issues[0].Type);
+                Assert.Empty(_ec.Object.Global.EnvironmentVariables);
+            }
+        }
     }
 }
