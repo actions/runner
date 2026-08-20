@@ -1666,7 +1666,11 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(executionContext, downloadUrl, downloadAuthToken);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                                using (var response = await httpClient.GetAsync(downloadUrl))
+                                // ResponseHeadersRead keeps the archive from being buffered entirely
+                                // in memory before it is copied to disk; the default (ResponseContentRead)
+                                // holds the whole tarball in the managed heap, which can OOM
+                                // memory-constrained runners on large action repositories.
+                                using (var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, actionDownloadCancellation.Token))
                                 {
                                     requestId = UrlUtil.GetGitHubRequestId(response.Headers);
                                     if (!string.IsNullOrEmpty(requestId))
