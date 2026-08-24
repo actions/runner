@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 
 namespace GitHub.Services.Common
@@ -221,9 +222,47 @@ namespace GitHub.Services.Common
             return false;
         }
 
-        /// <summary>
-        /// Gets the HttpStatusCode which represents a throttling error.
-        /// </summary>
-        public const HttpStatusCode TooManyRequests = (HttpStatusCode)429;
+
+        public static TimeSpan? ConvertRetryAfterToTimeSpan(string retryAfter, TimeSpan minBackoff, TimeSpan maxBackoff)
+        {
+            if (string.IsNullOrEmpty(retryAfter))
+            {
+                return null;
+            }
+
+            // Retry-After can be either a delay in seconds or a date/time after which to retry.
+            if (RetryConditionHeaderValue.TryParse(retryAfter, out var retryAfterValue))
+            {
+                TimeSpan? retryAfterDelay = null;
+                if (retryAfterValue.Delta.HasValue)
+                {
+                    retryAfterDelay = retryAfterValue.Delta;
+                }
+                else if (retryAfterValue.Date.HasValue)
+                {
+                    // Convert the absolute date/time into a delay relative to now. Guard against
+                    // clock skew or a date in the past, in which case we ignore the header.
+                    var delta = retryAfterValue.Date.Value - DateTimeOffset.UtcNow;
+                    if (delta > TimeSpan.Zero)
+                    {
+                        retryAfterDelay = delta;
+                    }
+                }
+
+                if (retryAfterDelay?.TotalSeconds < minBackoff.TotalSeconds)
+                {
+                    return BackoffTimerHelper.GetRandomBackoff(minBackoff, minBackoff.Add(TimeSpan.FromSeconds(30)));
+                }
+
+                if (retryAfterDelay?.TotalSeconds > maxBackoff.TotalSeconds)
+                {
+                    return BackoffTimerHelper.GetRandomBackoff(maxBackoff, maxBackoff.Add(TimeSpan.FromSeconds(30)));
+                }
+
+                return retryAfterDelay;
+            }
+
+            return null;
+        }
     }
 }
