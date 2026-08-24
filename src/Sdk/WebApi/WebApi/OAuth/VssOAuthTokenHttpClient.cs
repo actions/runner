@@ -103,14 +103,8 @@ namespace GitHub.Services.OAuth
 
         private static HttpMessageHandler CreateMessageHandler(Uri requestUri)
         {
-            var retryOptions = new VssHttpRetryOptions()
-            {
-                RetryableStatusCodes =
-                {
-                    HttpStatusCode.InternalServerError,
-                    VssNetworkHelper.TooManyRequests,
-                },
-            };
+            var retryOptions = new VssHttpRetryOptions();
+            retryOptions.RetryableStatusCodes.Add(HttpStatusCode.InternalServerError);
 
             HttpClientHandler messageHandler = new HttpClientHandler()
             {

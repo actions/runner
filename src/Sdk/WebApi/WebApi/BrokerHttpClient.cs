@@ -132,15 +132,6 @@ namespace GitHub.Actions.RunService.WebApi
                 }
             }
 
-            // temporary back compat
-            if (result.StatusCode == HttpStatusCode.Forbidden)
-            {
-                throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
-                {
-                    ErrorCode = 1
-                };
-            }
-
             throw new Exception($"Failed to get job message. Request to {requestUri} failed with status: {result.StatusCode}. Error message {result.Error}");
         }
 
