@@ -61,7 +61,7 @@ namespace GitHub.Runner.Common
             if (!string.IsNullOrEmpty(liveConsoleFeedUrl))
             {
                 _liveConsoleFeedUrl = liveConsoleFeedUrl;
-                InitializeWebsocketClient(liveConsoleFeedUrl, token, TimeSpan.Zero, retryConnection: true);
+                InitializeWebsocketClient(liveConsoleFeedUrl, TimeSpan.Zero, retryConnection: true);
             }
         }
 
@@ -164,9 +164,9 @@ namespace GitHub.Runner.Common
             return ValueTask.CompletedTask;
         }
 
-        private void InitializeWebsocketClient(string liveConsoleFeedUrl, string accessToken, TimeSpan delay, bool retryConnection = false)
+        private void InitializeWebsocketClient(string liveConsoleFeedUrl, TimeSpan delay, bool retryConnection = false)
         {
-            if (string.IsNullOrEmpty(accessToken))
+            if (string.IsNullOrEmpty(_token))
             {
                 Trace.Info($"No access token from server");
                 return;
@@ -179,12 +179,7 @@ namespace GitHub.Runner.Common
             }
 
             Trace.Info($"Creating websocket client ..." + liveConsoleFeedUrl);
-            this._websocketClient = new ClientWebSocket();
-            this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-            var userAgentValues = new List<ProductInfoHeaderValue>();
-            userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
-            userAgentValues.AddRange(HostContext.UserAgents);
-            this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+            this._websocketClient = CreateWebSocketClient();
 
             // during initialization, retry upto 3 times to setup connection
             this._websocketConnectTask = ConnectWebSocketClient(liveConsoleFeedUrl, delay, retryConnection);
@@ -201,8 +196,15 @@ namespace GitHub.Runner.Common
                 {
                     Trace.Info($"Attempting to start websocket client with delay {delay}.");
                     await Task.Delay(delay);
-                    using var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                    await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
+                    using (var connectTimeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                    {
+                        if (this._websocketClient == null)
+                        {
+                            this._websocketClient = CreateWebSocketClient();
+                        }
+
+                        await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), connectTimeoutTokenSource.Token);
+                    }
                     Trace.Info($"Successfully started websocket client.");
                     connected = true;
                 }
@@ -211,6 +213,7 @@ namespace GitHub.Runner.Common
                     Trace.Info("Exception caught during websocket client connect, retry connection.");
                     Trace.Error(ex);
                     retries++;
+                    this._websocketClient?.Dispose();
                     this._websocketClient = null;
                     _lastConnectionFailure = DateTime.Now;
                 }
@@ -259,7 +262,7 @@ namespace GitHub.Runner.Common
                             Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
                             Trace.Verbose(ex.ToString());
                             retries++;
-                            InitializeWebsocketClient(_liveConsoleFeedUrl, _token, delay);
+                            InitializeWebsocketClient(_liveConsoleFeedUrl, delay);
                         }
                     }
                 }
@@ -274,11 +277,22 @@ namespace GitHub.Runner.Common
                 if (_lastConnectionFailure.HasValue && DateTime.Now > _lastConnectionFailure.Value.AddMinutes(10))
                 {
                     // Some minutes passed since we retried last time, try connection again
-                    InitializeWebsocketClient(_liveConsoleFeedUrl, _token, TimeSpan.Zero);
+                    InitializeWebsocketClient(_liveConsoleFeedUrl, TimeSpan.Zero);
                 }
             }
 
             return delivered;
+        }
+
+        private ClientWebSocket CreateWebSocketClient()
+        {
+            var client = new ClientWebSocket();
+            client.Options.SetRequestHeader("Authorization", $"Bearer {_token}");
+            var userAgentValues = new List<ProductInfoHeaderValue>();
+            userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
+            userAgentValues.AddRange(HostContext.UserAgents);
+            client.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x => x.ToString())));
+            return client;
         }
 
         private void CloseWebSocket(WebSocketCloseStatus closeStatus, CancellationToken cancellationToken)
