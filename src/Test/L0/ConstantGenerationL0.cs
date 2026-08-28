@@ -20,6 +20,7 @@ namespace GitHub.Runner.Common.Tests
                 "linux-x64",
                 "linux-arm",
                 "linux-arm64",
+                "linux-loongarch64",
                 "osx-x64",
                 "osx-arm64"
             };
