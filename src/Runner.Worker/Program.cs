@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker
                 await WaitForDebugger(trace);
             }
 
-            // We may want to consider registering this handler in Worker.cs, similiar to the unloading/SIGTERM handler
+            // We may want to consider registering this handler in Worker.cs, similar to the unloading/SIGTERM handler
             //ITerminal registers a CTRL-C handler, which keeps the Runner.Worker process running
             //and lets the Runner.Listener handle gracefully the exit.
             var term = context.GetService<ITerminal>();

@@ -209,7 +209,7 @@ namespace GitHub.Services.WebApi.Patch
         }
 
         /// <summary>
-        /// Gets The type of the field the path maps to.
+        /// Gets the type of the field to which the path maps.
         /// </summary>
         /// <param name="type">The type of the parent object.</param>
         /// <param name="path">The path to evaluate.</param>
@@ -220,7 +220,7 @@ namespace GitHub.Services.WebApi.Patch
         }
 
         /// <summary>
-        /// Gets The type of the field the path maps to.
+        /// Gets the type of the field to which the path maps.
         /// </summary>
         /// <param name="type">The type of the parent object.</param>
         /// <param name="path">The path enumeration to evaluate.</param>

@@ -67,7 +67,7 @@ namespace GitHub.Services.Common
             }
 
             // However, we'd ideally like to throw the cancellation exception from the original task if we can.
-            // Thus, we'll give that task a few seconds to coallesce (e.g. write to a log) before we give up on it.
+            // Thus, we'll give that task a few seconds to coalesce (e.g. write to a log) before we give up on it.
             int seconds = 3;
             var lastChanceTcs = new TaskCompletionSource<bool>(RUN_CONTINUATIONS_ASYNCHRONOUSLY);
             using (var lastChanceTimer = new CancellationTokenSource(TimeSpan.FromSeconds(seconds)))

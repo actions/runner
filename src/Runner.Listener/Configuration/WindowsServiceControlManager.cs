@@ -126,7 +126,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (!_windowsServiceHelper.IsRunningInElevatedMode())
             {
                 Trace.Error("Needs Administrator privileges for unconfigure windows service runner.");
-                throw new SecurityException("Needs Administrator privileges for unconfiguring runner that running as windows service.");
+                throw new SecurityException("Needs Administrator privileges to remove runner running as Windows service.");
             }
 
             string serviceConfigPath = HostContext.GetConfigFile(WellKnownConfigFile.Service);

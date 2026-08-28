@@ -117,7 +117,7 @@ namespace GitHub.Services.Common
 
         //****************************************************************************************
         /// <summary>
-        /// Convert the byte array to a lower case hex string.
+        /// Convert the byte array to a lowercase hex string.
         /// </summary>
         /// <param name="bytes">byte array to be converted.</param>
         /// <returns>hex string converted from byte array.</returns>

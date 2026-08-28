@@ -233,7 +233,7 @@ namespace GitHub.Services.WebApi.Location
             }
             catch (Exception)
             {
-                // It looks like something is wrong witht he cahce, lets just hide this
+                // It looks like something is wrong with the cache, lets just hide this
                 // exception and work without it.
                 s_cacheUnavailable = true;
             }
