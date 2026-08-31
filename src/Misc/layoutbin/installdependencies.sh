@@ -131,10 +131,61 @@ then
             command -v dnf
             if [ $? -eq 0 ]
             then
-                dnf install -y lttng-ust openssl-libs krb5-libs zlib libicu
+                # Install basic dependencies first
+                dnf install -y openssl-libs krb5-libs zlib libicu
                 if [ $? -ne 0 ]
                 then
                     echo "'dnf' failed with exit code '$?'"
+                    print_errormessage
+                    exit 1
+                fi
+
+                # Handle lttng-ust with fallback logic for version compatibility
+                dnf_with_lttng_fallbacks() {
+                    # Try to install the current lttng-ust package
+                    dnf install -y lttng-ust
+                    if [ $? -eq 0 ]
+                    then
+                        # Check if it provides the required liblttng-ust.so.0
+                        if ldconfig -p | grep -q "liblttng-ust.so.0"
+                        then
+                            echo "Found liblttng-ust.so.0"
+                            return 0
+                        else
+                            echo "Warning: lttng-ust installed but liblttng-ust.so.0 not found"
+                            echo "Attempting to create compatibility symlink..."
+                            
+                            # Find the actual liblttng-ust library
+                            lttng_lib=$(ldconfig -p | grep "liblttng-ust.so" | head -1 | awk '{print $NF}')
+                            if [ -n "$lttng_lib" ] && [ -f "$lttng_lib" ]
+                            then
+                                # Create symlink in the same directory
+                                lib_dir=$(dirname "$lttng_lib")
+                                if [ -w "$lib_dir" ]
+                                then
+                                    ln -sf "$(basename "$lttng_lib")" "$lib_dir/liblttng-ust.so.0"
+                                    echo "Created compatibility symlink: $lib_dir/liblttng-ust.so.0 -> $(basename "$lttng_lib")"
+                                    ldconfig
+                                    return 0
+                                else
+                                    echo "Cannot create symlink in $lib_dir (permission denied)"
+                                    return 1
+                                fi
+                            else
+                                echo "Could not find lttng-ust library file"
+                                return 1
+                            fi
+                        fi
+                    else
+                        echo "Failed to install lttng-ust package"
+                        return 1
+                    fi
+                }
+
+                dnf_with_lttng_fallbacks
+                if [ $? -ne 0 ]
+                then
+                    echo "Failed to install lttng-ust with compatibility"
                     print_errormessage
                     exit 1
                 fi         
