@@ -92,8 +92,18 @@ namespace GitHub.Runner.Listener
             }
 
             // Create connection.
-            Trace.Info("Loading Credentials");
-            _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
+            var credentialData = HostContext.GetService<IConfigurationStore>().GetCredentials();
+            var enableAuthMigrationByDefault = credentialData?.Data.TryGetValue("enableAuthMigrationByDefault", out var enableAuthMigration) == true &&
+                StringUtil.ConvertToBoolean(enableAuthMigration);
+            if (!_settings.UseRunnerAdminFlow || !enableAuthMigrationByDefault)
+            {
+                Trace.Info("Loading legacy credentials");
+                _creds = _credMgr.LoadCredentials(allowAuthUrlV2: false);
+            }
+            else
+            {
+                Trace.Info("Skipping legacy credentials for runner-admin flow with auth migration enabled by default");
+            }
 
             var agent = new TaskAgentReference
             {

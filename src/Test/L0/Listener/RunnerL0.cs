@@ -665,7 +665,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async Task TestReportAuthMigrationTelemetry()
+        public async Task TestReportAuthMigrationTelemetryIgnoresReportFailure()
         {
             using (var hc = new TestHostContext(this))
             {
@@ -742,8 +742,11 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
 
-                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult(new TaskAgent()));
+                _runnerServer.SetupSequence(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new Exception("Failed to report update state"))
+                    .ReturnsAsync(new TaskAgent())
+                    .ReturnsAsync(new TaskAgent())
+                    .ReturnsAsync(new TaskAgent());
 
                 //Act
                 var command = new CommandSettings(hc, new string[] { "run" });

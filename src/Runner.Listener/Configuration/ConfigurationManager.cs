@@ -155,8 +155,11 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     runnerSettings.UseRunnerAdminFlow = authResult.UseRunnerAdminFlow;
                     Trace.Info($"Using runner-admin flow: {runnerSettings.UseRunnerAdminFlow}");
-                    creds = authResult.ToVssCredentials();
-                    Trace.Info("cred retrieved via GitHub auth");
+                    if (!runnerSettings.UseRunnerAdminFlow)
+                    {
+                        creds = authResult.ToVssCredentials();
+                        Trace.Info("cred retrieved via legacy GitHub auth");
+                    }
                 }
 
                 try

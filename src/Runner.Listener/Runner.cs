@@ -40,6 +40,7 @@ namespace GitHub.Runner.Listener
         private readonly object _authMigrationTelemetryLock = new();
         private Task _authMigrationClaimsCheckTask;
         private readonly object _authMigrationClaimsCheckLock = new();
+        private bool _enableAuthMigrationByDefault;
         private IRunnerServer _runnerServer;
         private CancellationTokenSource _authMigrationTelemetryTokenSource = new();
         private CancellationTokenSource _authMigrationClaimsCheckTokenSource = new();
@@ -316,9 +317,11 @@ namespace GitHub.Runner.Listener
                     }
 
                     var cred = store.GetCredentials();
-                    if (cred != null &&
+                    _enableAuthMigrationByDefault = cred != null &&
                         cred.Scheme == Constants.Configuration.OAuth &&
-                        cred.Data.ContainsKey("EnableAuthMigrationByDefault"))
+                        cred.Data.TryGetValue("EnableAuthMigrationByDefault", out var enableAuthMigrationByDefault) &&
+                        StringUtil.ConvertToBoolean(enableAuthMigrationByDefault);
+                    if (_enableAuthMigrationByDefault)
                     {
                         Trace.Info("Enable auth migration by default.");
                         HostContext.EnableAuthMigration("EnableAuthMigrationByDefault");
@@ -748,7 +751,7 @@ namespace GitHub.Runner.Listener
                                         {
                                             Trace.Error($"Caught exception from acquiring job message: {ex}");
 
-                                            if (HostContext.AllowAuthMigration)
+                                            if (HostContext.AllowAuthMigration && !_enableAuthMigrationByDefault)
                                             {
                                                 Trace.Info("Disable migration mode for 60 minutes.");
                                                 HostContext.DeferAuthMigration(TimeSpan.FromMinutes(60), $"Acquire job failed with exception: {ex}");
@@ -1092,9 +1095,9 @@ namespace GitHub.Runner.Listener
                         }
                         catch (Exception ex)
                         {
+                            // best effort
                             Trace.Error("Failed to report auth migration telemetry.");
                             Trace.Error(ex);
-                            _authMigrationTelemetries.Enqueue(telemetry);
                         }
                     }
 

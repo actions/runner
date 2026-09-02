@@ -130,10 +130,13 @@ namespace GitHub.Runner.Common
         {
             get
             {
-                Uri accountUri = new(this.ServerUrl);
+                bool useGitHubUrl = (UseRunnerAdminFlow || string.IsNullOrEmpty(ServerUrl)) && !string.IsNullOrEmpty(GitHubUrl);
+                string accountUrl = useGitHubUrl ? GitHubUrl : ServerUrl;
+                Uri accountUri = new(accountUrl);
                 string repoOrOrgName = string.Empty;
 
-                if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(this.GitHubUrl))
+                if (useGitHubUrl ||
+                    (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(this.GitHubUrl)))
                 {
                     Uri gitHubUrl = new(this.GitHubUrl);
 

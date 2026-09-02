@@ -48,6 +48,36 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Service")]
+        public void CalculateServiceNameForRunnerAdminFlowWithoutServerUrl()
+        {
+            RunnerSettings settings = new()
+            {
+                AgentName = "runner-name",
+                GitHubUrl = "https://github.com/myorganization/myrepository",
+                UseRunnerAdminFlow = true,
+                ServerUrlV2 = "https://broker.actions.githubusercontent.com"
+            };
+
+            using (TestHostContext hc = CreateTestContext())
+            {
+                ServiceControlManager scm = new();
+                scm.Initialize(hc);
+
+                scm.CalculateServiceName(
+                    settings,
+                    "actions.runner.{0}.{1}",
+                    "GitHub Actions Runner ({0}.{1})",
+                    out string serviceName,
+                    out string serviceDisplayName);
+
+                Assert.Equal("actions.runner.myorganization-myrepository.runner-name", serviceName);
+                Assert.Equal("GitHub Actions Runner (myorganization-myrepository.runner-name)", serviceDisplayName);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Service")]
         public void CalculateServiceName80Chars()
         {
             RunnerSettings settings = new();

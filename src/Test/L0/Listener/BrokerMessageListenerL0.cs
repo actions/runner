@@ -16,6 +16,7 @@ namespace GitHub.Runner.Common.Tests.Listener
     {
         private readonly RunnerSettings _settings;
         private readonly Mock<IConfigurationManager> _config;
+        private readonly Mock<IConfigurationStore> _store;
         private readonly Mock<IBrokerServer> _brokerServer;
         private readonly Mock<IRunnerServer> _runnerServer;
         private readonly Mock<ICredentialManager> _credMgr;
@@ -25,6 +26,8 @@ namespace GitHub.Runner.Common.Tests.Listener
             _settings = new RunnerSettings { AgentId = 1, AgentName = "myagent", PoolId = 123, PoolName = "default", ServerUrl = "http://myserver", WorkFolder = "_work", ServerUrlV2 = "http://myserverv2" };
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
+            _store = new Mock<IConfigurationStore>();
+            _store.Setup(x => x.GetCredentials()).Returns(new CredentialData { Scheme = Constants.Configuration.OAuth });
             _credMgr = new Mock<ICredentialManager>();
             _brokerServer = new Mock<IBrokerServer>();
             _runnerServer = new Mock<IRunnerServer>();
@@ -63,6 +66,61 @@ namespace GitHub.Runner.Common.Tests.Listener
                    .Verify(x => x.CreateSessionAsync(
                        It.Is<TaskAgentSession>(y => y != null),
                        tokenSource.Token), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CreatesSessionSkipsLegacyConnectionForRunnerAdminFlow()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                _settings.UseRunnerAdminFlow = true;
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(It.IsAny<TaskAgentSession>(), tokenSource.Token))
+                    .ReturnsAsync(new TaskAgentSession());
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
+
+                BrokerMessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+
+                Assert.Equal(CreateSessionResult.Success, result);
+                _runnerServer.Verify(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>()), Times.Never());
+                _credMgr.Verify(x => x.LoadCredentials(false), Times.Once());
+                _credMgr.Verify(x => x.LoadCredentials(true), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CreatesSessionSkipsLegacyCredentialsForRunnerAdminFlowWithAuthMigrationEnabledByDefault()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                _settings.UseRunnerAdminFlow = true;
+                var credentialData = new CredentialData { Scheme = Constants.Configuration.OAuth };
+                credentialData.Data["enableAuthMigrationByDefault"] = "true";
+                _store.Setup(x => x.GetCredentials()).Returns(credentialData);
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(It.IsAny<TaskAgentSession>(), tokenSource.Token))
+                    .ReturnsAsync(new TaskAgentSession());
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+
+                BrokerMessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+
+                Assert.Equal(CreateSessionResult.Success, result);
+                _runnerServer.Verify(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>()), Times.Never());
+                _credMgr.Verify(x => x.LoadCredentials(false), Times.Never());
+                _credMgr.Verify(x => x.LoadCredentials(true), Times.Once());
             }
         }
 
@@ -484,6 +542,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         {
             TestHostContext tc = new(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
+            tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             tc.SetSingleton<IBrokerServer>(_brokerServer.Object);
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
