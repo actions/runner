@@ -1,6 +1,7 @@
 ﻿using Moq;
 using System;
 using System.IO;
+using System.Reflection;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Listener
@@ -126,5 +127,215 @@ namespace GitHub.Runner.Common.Tests.Listener
                 CleanLogFolder();
             }
         }
+
+        // Dispose without End() should flush/queue partial content.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Dispose_AfterPartialWrite_FlushesAndClosesFiles()
+        {
+            CleanLogFolder();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var pagingLogger = new PagingLogger();
+                    hc.SetSingleton<IJobServerQueue>(_jobServerQueue.Object);
+                    pagingLogger.Initialize(hc);
+                    Guid timeLineId = Guid.NewGuid();
+                    Guid timeLineRecordId = Guid.NewGuid();
+
+                    string queuedPagePath = null;
+                    _jobServerQueue
+                        .Setup(x => x.QueueFileUpload(timeLineId, timeLineRecordId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true))
+                        .Callback((Guid _, Guid _, string _, string _, string path, bool _) => queuedPagePath = path);
+
+                    string queuedBlockPath = null;
+                    _jobServerQueue
+                        .Setup(x => x.QueueResultsUpload(timeLineRecordId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<long>()))
+                        .Callback((Guid _, string _, string path, string _, bool _, bool _, bool _, long _) => queuedBlockPath = path);
+
+                    // Act: write once, then dispose without End().
+                    pagingLogger.Setup(timeLineId, timeLineRecordId);
+                    pagingLogger.Write(LogData);
+                    pagingLogger.Dispose();
+
+                    Assert.False(string.IsNullOrEmpty(queuedPagePath), "Dispose should have queued the partial page for upload.");
+                    Assert.False(string.IsNullOrEmpty(queuedBlockPath), "Dispose should have queued the partial block for upload with finalize=true.");
+
+                    // Verify flushed content reached queued files.
+                    Assert.Contains(LogData, File.ReadAllText(queuedPagePath));
+                    Assert.Contains(LogData, File.ReadAllText(queuedBlockPath));
+
+                    // Cleanup files created outside the normal callback path.
+                    File.Delete(queuedPagePath);
+                    File.Delete(queuedBlockPath);
+                }
+            }
+            finally
+            {
+                CleanLogFolder();
+            }
+        }
+
+        // Dispose should be idempotent.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Dispose_IsIdempotent()
+        {
+            CleanLogFolder();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var pagingLogger = new PagingLogger();
+                    hc.SetSingleton<IJobServerQueue>(_jobServerQueue.Object);
+                    pagingLogger.Initialize(hc);
+                    Guid timeLineId = Guid.NewGuid();
+                    Guid timeLineRecordId = Guid.NewGuid();
+
+                    int queueFileUploadCount = 0;
+                    int queueResultsUploadCount = 0;
+                    _jobServerQueue
+                        .Setup(x => x.QueueFileUpload(timeLineId, timeLineRecordId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true))
+                        .Callback(() => queueFileUploadCount++);
+                    _jobServerQueue
+                        .Setup(x => x.QueueResultsUpload(timeLineRecordId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<long>()))
+                        .Callback(() => queueResultsUploadCount++);
+
+                    pagingLogger.Setup(timeLineId, timeLineRecordId);
+                    pagingLogger.Write(LogData);
+                    pagingLogger.Dispose();
+                    pagingLogger.Dispose();
+
+                    Assert.Equal(1, queueFileUploadCount);
+                    Assert.Equal(1, queueResultsUploadCount);
+                }
+            }
+            finally
+            {
+                CleanLogFolder();
+            }
+        }
+
+        // Dispose after End() should be a no-op.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Dispose_AfterEnd_IsNoOp()
+        {
+            CleanLogFolder();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var pagingLogger = new PagingLogger();
+                    hc.SetSingleton<IJobServerQueue>(_jobServerQueue.Object);
+                    pagingLogger.Initialize(hc);
+                    Guid timeLineId = Guid.NewGuid();
+                    Guid timeLineRecordId = Guid.NewGuid();
+
+                    int queueCount = 0;
+                    _jobServerQueue
+                        .Setup(x => x.QueueFileUpload(timeLineId, timeLineRecordId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), true))
+                        .Callback(() => queueCount++);
+
+                    pagingLogger.Setup(timeLineId, timeLineRecordId);
+                    pagingLogger.Write(LogData);
+                    pagingLogger.End();
+                    int afterEnd = queueCount;
+
+                    pagingLogger.Dispose();
+
+                    Assert.Equal(afterEnd, queueCount);
+                }
+            }
+            finally
+            {
+                CleanLogFolder();
+            }
+        }
+
+        // Dispose before Write() should not queue uploads.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Dispose_BeforeAnyWrite_DoesNotThrow()
+        {
+            CleanLogFolder();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var pagingLogger = new PagingLogger();
+                    hc.SetSingleton<IJobServerQueue>(_jobServerQueue.Object);
+                    pagingLogger.Initialize(hc);
+
+                    int queueCount = 0;
+                    _jobServerQueue
+                        .Setup(x => x.QueueFileUpload(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                        .Callback(() => queueCount++);
+
+                    pagingLogger.Setup(Guid.NewGuid(), Guid.NewGuid());
+                    pagingLogger.Dispose();
+
+                    Assert.Equal(0, queueCount);
+                }
+            }
+            finally
+            {
+                CleanLogFolder();
+            }
+        }
+
+        // Safety net: close orphaned _pageData when _pageWriter was never assigned.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void Dispose_ReleasesOrphanedFileStream_WhenWriterWasNeverAssigned()
+        {
+            CleanLogFolder();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var pagingLogger = new PagingLogger();
+                    hc.SetSingleton<IJobServerQueue>(_jobServerQueue.Object);
+                    pagingLogger.Initialize(hc);
+                    pagingLogger.Setup(Guid.NewGuid(), Guid.NewGuid());
+
+                    // Force partial-init state: _pageData set, _pageWriter null.
+                    var pagesFolder = Path.Combine(hc.GetDirectory(WellKnownDirectory.Diag), PagingLogger.PagingFolder);
+                    Directory.CreateDirectory(pagesFolder);
+                    var orphanPath = Path.Combine(pagesFolder, $"orphan-{Guid.NewGuid():N}.log");
+                    var orphanStream = new FileStream(orphanPath, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                    typeof(PagingLogger)
+                        .GetField("_pageData", BindingFlags.NonPublic | BindingFlags.Instance)
+                        .SetValue(pagingLogger, orphanStream);
+
+                    pagingLogger.Dispose();
+
+                    var closedStream = (FileStream)typeof(PagingLogger)
+                        .GetField("_pageData", BindingFlags.NonPublic | BindingFlags.Instance)
+                        .GetValue(pagingLogger);
+                    Assert.Null(closedStream);
+
+                    Assert.True(orphanStream.SafeFileHandle.IsClosed, "Dispose should have closed the orphaned FileStream's handle.");
+                    File.Delete(orphanPath);
+                }
+            }
+            finally
+            {
+                CleanLogFolder();
+            }
+        }
+
     }
 }
