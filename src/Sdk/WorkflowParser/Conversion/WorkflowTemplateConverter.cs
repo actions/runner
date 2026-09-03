@@ -1759,7 +1759,8 @@ namespace GitHub.Actions.WorkflowParser.Conversion
 
                 if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
                     !uses.Value.StartsWith("./") &&
-                    !uses.Value.StartsWith(".\\"))
+                    !uses.Value.StartsWith(".\\") &&
+                    !GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses.Value, out _))
                 {
                     var usesSegments = uses.Value.Split('@');
                     var pathSegments = usesSegments[0].Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);

@@ -413,6 +413,73 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_SelfRepositoryReferences_BothParsersAgree()
+        {
+            try
+            {
+                // Arrange — regression test: '$/' self-repository references must be
+                // accepted by the new parser exactly like the legacy parser, otherwise
+                // green jobs emit spurious template errors.
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
+
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
+
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
+
+                var manifestPath = Path.Combine(TestUtil.GetTestDataPath(), "self_repository_composite_action.yml");
+
+                // Act
+                var result = wrapper.Load(_ec.Object, manifestPath);
+
+                // Assert - no mismatch recorded between the two parsers
+                Assert.False(_ec.Object.Global.HasActionManifestMismatch);
+
+                Assert.NotNull(result);
+                Assert.Equal(ActionExecutionType.Composite, result.Execution.ExecutionType);
+
+                var compositeExecution = result.Execution as CompositeActionExecutionData;
+                Assert.NotNull(compositeExecution);
+                Assert.Equal(6, compositeExecution.Steps.Count);
+
+                // $/path resolves to the self-repository alias with the subpath preserved
+                var selfRepoRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[0].Reference);
+                Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias, selfRepoRef.RepositoryType);
+                Assert.Equal(".github/actions/inventory-client", selfRepoRef.Path);
+                Assert.Null(selfRepoRef.Name);
+                Assert.Null(selfRepoRef.Ref);
+
+                var nestedRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[1].Reference);
+                Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias, nestedRef.RepositoryType);
+                Assert.Equal("actions/nested/composite", nestedRef.Path);
+
+                // '$/foo@v1' — legacy folds the '@ref' into the path; the new parser must match
+                var withRefRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[2].Reference);
+                Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias, withRefRef.RepositoryType);
+                Assert.Equal("foo@v1", withRefRef.Path);
+
+                // Sanity: ordinary references are unaffected
+                var externalRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[3].Reference);
+                Assert.Equal("GitHub", externalRef.RepositoryType);
+                Assert.Equal("actions/checkout", externalRef.Name);
+                Assert.Equal("v4", externalRef.Ref);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private string GetFullExceptionMessage(Exception ex)
         {
             var messages = new List<string>();
