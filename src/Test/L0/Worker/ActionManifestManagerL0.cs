@@ -810,9 +810,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.NotNull(composite);
                 Assert.Equal(6, composite.Steps.Count);
 
-                Assert.Equal("$/.github/actions/inventory-client", (composite.Steps[0] as ActionStep).Uses.Value);
-                Assert.Equal("$/actions/nested/composite", (composite.Steps[1] as ActionStep).Uses.Value);
-                Assert.Equal("$/foo@v1", (composite.Steps[2] as ActionStep).Uses.Value);
+                Assert.Equal("$/.github/actions/inventory-client", Assert.IsType<ActionStep>(composite.Steps[0]).Uses.Value);
+                Assert.Equal("$/actions/nested/composite", Assert.IsType<ActionStep>(composite.Steps[1]).Uses.Value);
+                Assert.Equal("$/foo@v1", Assert.IsType<ActionStep>(composite.Steps[2]).Uses.Value);
 
                 // No template errors should have been reported for the $/ steps
                 _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Expected format")), It.IsAny<ExecutionContextLogOptions>()), Times.Never);

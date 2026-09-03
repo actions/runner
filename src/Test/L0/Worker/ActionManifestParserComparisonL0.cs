@@ -422,7 +422,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 // Arrange — regression test: '$/' self-repository references must be
                 // accepted by the new parser exactly like the legacy parser, otherwise
-                // otherwise-green jobs emit spurious template errors.
+                // green jobs emit spurious template errors.
                 Setup();
                 _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
 
