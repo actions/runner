@@ -1,32 +1,55 @@
 ## What's Changed
-* Canceled background steps should not impact job result by @lokesh755 in https://github.com/actions/runner/pull/4482
-* Report actions archive size in telemetry. by @TingluoHuang in https://github.com/actions/runner/pull/4509
-* Bump actions/checkout from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4511
-* Update Docker to v29.6.0 and Buildx to v0.35.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4516
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4519
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4530
-* feat: enhance telemetry for action download resolution and failures by @TingluoHuang in https://github.com/actions/runner/pull/4536
-* Update Docker version to 29.6.1 by @AllanGuigou in https://github.com/actions/runner/pull/4539
-* feat: add self-repository action reference syntax by @nodeselector in https://github.com/actions/runner/pull/4457
-* Update dotnet sdk to latest version @8.0.422 by @github-actions[bot] in https://github.com/actions/runner/pull/4504
-* Link config.sh and installdependencies.sh in docs by @Wuodan in https://github.com/actions/runner/pull/4526
-* Add support for $GITHUB_ARTIFACTS environment files by @bdehamer in https://github.com/actions/runner/pull/4527
-* feat: expose effective cache-mode to steps via ACTIONS_CACHE_MODE by @philip-gai in https://github.com/actions/runner/pull/4538
-* Setup Job: announce when running with locked dependencies by @nodeselector in https://github.com/actions/runner/pull/4546
-* Setup Job: reword locked-dependencies log line to use lockfile language by @nodeselector in https://github.com/actions/runner/pull/4550
-* Wait for worker to finish during cancel by @TingluoHuang in https://github.com/actions/runner/pull/4553
-* do not cap migrated setting retry is exception is session conflict by @aiqiaoy in https://github.com/actions/runner/pull/4557
-* Allow checking DNS with api.gihub.com. by @TingluoHuang in https://github.com/actions/runner/pull/4547
-* Exit ephemeral runners on broker acknowledge job-not-found by @rentziass in https://github.com/actions/runner/pull/4540
-* Cleanup session files on get message or session deleted error by @nikola-jokic in https://github.com/actions/runner/pull/4551
-* Recreate session on RunnerSessionInvalid from broker by @luketomlinson in https://github.com/actions/runner/pull/4556
+* Update dotnet sdk to latest version @8.0.423 by @github-actions[bot] in https://github.com/actions/runner/pull/4561
+* Bump actions/setup-node from 6 to 7 by @dependabot[bot] in https://github.com/actions/runner/pull/4554
+* Bump Azure.Storage.Blobs from 12.27.0 to 12.29.1 by @dependabot[bot] in https://github.com/actions/runner/pull/4545
+* Bump actions/stale from 10 to 11 by @dependabot[bot] in https://github.com/actions/runner/pull/4576
+* Bump Microsoft.DevTunnels.Connections from 1.3.48 to 1.3.50 by @dependabot[bot] in https://github.com/actions/runner/pull/4566
+* Bump eslint-plugin-github from 4.10.2 to 6.1.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4549
+* Bump @typescript-eslint/parser from 8.59.0 to 8.63.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4543
+* Mask and sanitize debugger welcome message before DAP console output by @rentziass in https://github.com/actions/runner/pull/4577
+* Bump @typescript-eslint/parser from 8.63.0 to 8.65.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4582
+* Bump undici from 6.24.1 to 6.27.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4522
+* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4584
+* Bump lint-staged from 16.4.0 to 17.2.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4580
+* Bump eslint-plugin-github from 6.1.0 to 6.1.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4590
+* Implement VSock secret notifier. by @TingluoHuang in https://github.com/actions/runner/pull/4565
+* Fix null ref exception when websocket client retries. by @TingluoHuang in https://github.com/actions/runner/pull/4589
+* Add regression tests for DAP debugger secret masking by @rentziass in https://github.com/actions/runner/pull/4579
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4602
+* Bump docker/login-action from 4 to 4.5.2 by @dependabot[bot] in https://github.com/actions/runner/pull/4592
+* Bump Microsoft.DevTunnels.Connections from 1.3.50 to 1.3.51 by @dependabot[bot] in https://github.com/actions/runner/pull/4594
+* Bump github/codeql-action from 4 to 4.37.3 by @dependabot[bot] in https://github.com/actions/runner/pull/4593
+* Update Docker to v29.7.1 and Buildx to v0.36.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4599
+* Bump github/codeql-action from 4.37.3 to 4.37.5 by @dependabot[bot] in https://github.com/actions/runner/pull/4609
+* Bump brace-expansion in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4604
+* Report an infrastructure failure when the debugger Dev Tunnel fails by @rentziass in https://github.com/actions/runner/pull/4610
+* Bump System.Text.Encoding.CodePages from 10.0.3 to 10.0.10 by @dependabot[bot] in https://github.com/actions/runner/pull/4568
+* Bump undici from 6.27.0 to 6.28.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4608
+* Bump docker/login-action from 4.5.2 to 4.6.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4607
+* Bump lint-staged from 17.2.0 to 17.3.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4605
+* Remove temp backcompat code. by @TingluoHuang in https://github.com/actions/runner/pull/4633
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4622
+* Update dotnet sdk to latest version @8.0.424 by @github-actions[bot] in https://github.com/actions/runner/pull/4639
+* Bump github/codeql-action from 4.37.5 to 4.37.7 by @dependabot[bot] in https://github.com/actions/runner/pull/4637
+* Implement retry logic for HTTP requests with support for Retry-After header by @TingluoHuang in https://github.com/actions/runner/pull/4636
+* Update Docker to v29.7.2 and Buildx to v0.36.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4621
+* Allow independent Docker and Buildx updates by @luketomlinson in https://github.com/actions/runner/pull/4596
+* Bump github/codeql-action from 4.37.7 to 4.37.8 by @dependabot[bot] in https://github.com/actions/runner/pull/4647
+* Bump System.ServiceProcess.ServiceController from 10.0.7 to 10.0.9 by @dependabot[bot] in https://github.com/actions/runner/pull/4497
+* Bump @vercel/ncc from 0.38.3 to 0.45.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4638
+* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4628
+* Bump @typescript-eslint/eslint-plugin from 8.59.0 to 8.63.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4544
+* Bump js-yaml from 4.3.0 to 4.3.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4625
+* Bump @typescript-eslint/parser from 8.65.0 to 8.67.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4634
+* Bump System.Text.Encoding.CodePages from 10.0.10 to 10.0.11 by @dependabot[bot] in https://github.com/actions/runner/pull/4630
+* Bump System.Security.Cryptography.ProtectedData from 10.0.3 to 10.0.11 by @dependabot[bot] in https://github.com/actions/runner/pull/4629
+* Bump System.Threading.Channels from 10.0.3 to 10.0.10 by @dependabot[bot] in https://github.com/actions/runner/pull/4585
+* Bump Azure.Storage.Blobs from 12.29.1 to 12.29.2 by @dependabot[bot] in https://github.com/actions/runner/pull/4650
+* Bump xunit.runner.visualstudio from 2.8.2 to 4.0.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4655
+* Bump @typescript-eslint/eslint-plugin from 8.63.0 to 8.67.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4649
 
-## New Contributors
-* @Wuodan made their first contribution in https://github.com/actions/runner/pull/4526
-* @bdehamer made their first contribution in https://github.com/actions/runner/pull/4527
-* @philip-gai made their first contribution in https://github.com/actions/runner/pull/4538
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.335.0...v2.336.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.336.0...v2.337.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.
