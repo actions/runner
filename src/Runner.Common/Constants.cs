@@ -216,7 +216,7 @@ namespace GitHub.Runner.Common
 
                 // Node 20 migration dates (hardcoded fallbacks, can be overridden via job variables)
                 public static readonly string Node24DefaultDate = "June 16th, 2026";
-                public static readonly string Node20RemovalDate = "September 16th, 2026";
+                public static readonly string Node20RemovalDate = "September 23rd, 2026";
 
                 // Variable keys for server-overridable dates
                 public static readonly string Node24DefaultDateVariable = "actions_runner_node24_default_date";
