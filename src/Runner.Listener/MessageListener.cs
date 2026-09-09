@@ -151,22 +151,37 @@ namespace GitHub.Runner.Listener
 
                     if (ex is VssOAuthTokenRequestException vssOAuthEx && _creds.Federated is VssOAuthCredential vssOAuthCred)
                     {
-                        // "invalid_client" means the runner registration has been deleted from the server.
-                        if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                        // A clock-skewed token request also comes back as "invalid_client", but its
+                        // message carries "Current server time is ..." - the same sentinel
+                        // IsSessionCreationExceptionRetriable checks below. That is not a deleted
+                        // registration; the request was rejected only because this machine's clock
+                        // hasn't caught up yet. Skip the deleted-registration classification and let
+                        // this fall through to the existing clock-skew retry path instead of
+                        // terminating the runner.
+                        if (vssOAuthEx.Message.Contains("Current server time is"))
                         {
-                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return CreateSessionResult.Failure;
+                            _term.WriteError($"Failed to create a session because of a clock-skewed invalid_client error: {vssOAuthEx.Message}");
+                            Trace.Info("invalid_client with a clock-skew signature detected; deferring to clock-skew retry classification instead of treating the registration as deleted.");
                         }
-
-                        // Check whether we get 401 because the runner registration already removed by the service.
-                        // If the runner registration get deleted, we can't exchange oauth token.
-                        Trace.Error("Test oauth app registration.");
-                        var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrl));
-                        var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
-                        if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                        else
                         {
-                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
-                            return CreateSessionResult.Failure;
+                            // "invalid_client" means the runner registration has been deleted from the server.
+                            if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
+                                return CreateSessionResult.Failure;
+                            }
+
+                            // Check whether we get 401 because the runner registration already removed by the service.
+                            // If the runner registration get deleted, we can't exchange oauth token.
+                            Trace.Error("Test oauth app registration.");
+                            var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrl));
+                            var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
+                            if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                            {
+                                _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
+                                return CreateSessionResult.Failure;
+                            }
                         }
                     }
 

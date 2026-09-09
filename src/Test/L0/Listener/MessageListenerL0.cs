@@ -10,6 +10,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
+using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
 using Moq;
 using Xunit;
@@ -735,6 +736,138 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Verify(x => x.ForceRefreshConnection(It.IsAny<VssCredentials>()), Times.Once());
 
                 Assert.True(tc.AllowAuthMigration);
+            }
+        }
+
+        // Covers actions/runner#4648: an OAuth "invalid_client" caused purely by clock skew
+        // (the token request itself carries "Current server time is ..." in its message, the
+        // same sentinel IsSessionCreationExceptionRetriable already checks) must not be treated
+        // as a deleted registration. It must fall through to the existing clock-skew retry path
+        // instead of returning CreateSessionResult.Failure (which Runner.cs maps to
+        // ReturnCode.TerminatedError, so systemd never retries).
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CreateSession_ClockSkewInvalidClient_RetriesInsteadOfTerminating()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                var mockTerm = new Mock<ITerminal>();
+                tc.SetSingleton<ITerminal>(mockTerm.Object);
+
+                var rsaKeyManager = new Mock<IRSAKeyManager>();
+                rsaKeyManager.Setup(x => x.GetKey()).Returns(RSA.Create(2048));
+                tc.SetSingleton<IRSAKeyManager>(rsaKeyManager.Object);
+
+                var oauth = new OAuthCredential();
+                oauth.CredentialData = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                oauth.CredentialData.Data.Add("clientId", "someClientId");
+                oauth.CredentialData.Data.Add("authorizationUrl", "https://s.server");
+                var federatedCreds = oauth.GetVssCredentials(tc, false);
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(federatedCreds);
+
+                var expectedSession = new TaskAgentSession();
+
+                // Reproduces the real message shape from the issue: a token-expiry check against
+                // the server's clock, surfaced by the service as an OAuth "invalid_client" error.
+                var skewException = new VssOAuthTokenRequestException(
+                    "The token expired on 08/24/2026 19:15:44. Current server time is 08/25/2026 01:44:14.")
+                {
+                    Error = "invalid_client",
+                };
+
+                _runnerServer
+                    .SetupSequence(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Throws(skewException)
+                    .Returns(Task.FromResult(expectedSession));
+
+                // Act.
+                MessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                trace.Info("result: {0}", result);
+
+                // Assert: the clock-skew invalid_client did not terminate the call - it fell
+                // through to the existing clock-skew retry path, and the next attempt (clock now
+                // caught up) succeeded.
+                Assert.Equal(CreateSessionResult.Success, result);
+                _runnerServer
+                    .Verify(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token), Times.Exactly(2));
+
+                mockTerm.Verify(x => x.WriteError(It.Is<string>(s => s.Contains("registration has been deleted"))), Times.Never);
+            }
+        }
+
+        // Companion to the test above: a genuine deleted-registration invalid_client (no
+        // clock-skew sentinel in the message) must keep terminating immediately, exactly as
+        // before. This fix must not weaken true deleted-registration handling.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CreateSession_InvalidClientWithoutClockSkew_StillTerminatesAsDeletedRegistration()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                var mockTerm = new Mock<ITerminal>();
+                tc.SetSingleton<ITerminal>(mockTerm.Object);
+
+                var rsaKeyManager = new Mock<IRSAKeyManager>();
+                rsaKeyManager.Setup(x => x.GetKey()).Returns(RSA.Create(2048));
+                tc.SetSingleton<IRSAKeyManager>(rsaKeyManager.Object);
+
+                var oauth = new OAuthCredential();
+                oauth.CredentialData = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                oauth.CredentialData.Data.Add("clientId", "someClientId");
+                oauth.CredentialData.Data.Add("authorizationUrl", "https://s.server");
+                var federatedCreds = oauth.GetVssCredentials(tc, false);
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(federatedCreds);
+
+                // A genuine deleted-registration response: invalid_client with no clock-skew
+                // sentinel anywhere in the message.
+                var deletedException = new VssOAuthTokenRequestException("Client authentication failed.")
+                {
+                    Error = "invalid_client",
+                };
+
+                _runnerServer
+                    .Setup(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Throws(deletedException);
+
+                // Act.
+                MessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                trace.Info("result: {0}", result);
+
+                // Assert: still terminates immediately as a deleted registration - exactly one
+                // attempt, no retry.
+                Assert.Equal(CreateSessionResult.Failure, result);
+                _runnerServer
+                    .Verify(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token), Times.Once());
+
+                mockTerm.Verify(x => x.WriteError(It.Is<string>(s => s.Contains("registration has been deleted"))), Times.Once);
             }
         }
     }
