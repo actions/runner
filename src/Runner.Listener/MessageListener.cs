@@ -157,10 +157,11 @@ namespace GitHub.Runner.Listener
                         // registration; the request was rejected only because this machine's clock
                         // hasn't caught up yet. Skip the deleted-registration classification and let
                         // this fall through to the existing clock-skew retry path instead of
-                        // terminating the runner.
-                        if (vssOAuthEx.Message.Contains("Current server time is"))
+                        // terminating the runner. Nothing user-facing is logged here: that retry
+                        // path already prints its own clock-skew message, and logging here too
+                        // would duplicate it on every retry attempt.
+                        if (vssOAuthEx.Message?.Contains("Current server time is") == true)
                         {
-                            _term.WriteError($"Failed to create a session because of a clock-skewed invalid_client error: {vssOAuthEx.Message}");
                             Trace.Info("invalid_client with a clock-skew signature detected; deferring to clock-skew retry classification instead of treating the registration as deleted.");
                         }
                         else
