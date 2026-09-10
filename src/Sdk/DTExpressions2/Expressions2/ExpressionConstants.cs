@@ -14,6 +14,7 @@ namespace GitHub.DistributedTask.Expressions2
             AddFunction<EndsWith>("endsWith", 2, 2);
             AddFunction<Format>("format", 1, Byte.MaxValue);
             AddFunction<Join>("join", 1, 2);
+            AddFunction<Count>("count", 1, 1);
             AddFunction<StartsWith>("startsWith", 2, 2);
             AddFunction<ToJson>("toJson", 1, 1);
             AddFunction<FromJson>("fromJson", 1, 1);
