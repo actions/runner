@@ -15,6 +15,10 @@ namespace GitHub.Runner.Worker
         public ContainerInfo Container { get; set; }
         public List<ServiceEndpoint> Endpoints { get; set; }
         public IDictionary<String, String> EnvironmentVariables { get; set; }
+        // Guards the once-per-job write of $GITHUB_EVENT_PATH (event.json), which
+        // can be reached concurrently from background/parallel steps.
+        public object EventPayloadLock { get; } = new object();
+        public bool EventPayloadWritten { get; set; }
         public PlanFeatures Features { get; set; }
         public IList<String> FileTable { get; set; }
         public IDictionary<String, IDictionary<String, String>> JobDefaults { get; set; }

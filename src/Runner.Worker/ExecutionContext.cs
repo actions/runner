@@ -1319,19 +1319,55 @@ namespace GitHub.Runner.Worker
 
         public void WriteWebhookPayload()
         {
-            // Makes directory for event_path data
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
             var workflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
-            Directory.CreateDirectory(workflowDirectory);
-            var gitHubEvent = GetGitHubContext("event");
+            var workflowFile = Path.Combine(workflowDirectory, "event.json");
 
-            // adds the GitHub event path/file if the event exists
-            if (gitHubEvent != null)
+            // Makes directory for event_path data
+            Directory.CreateDirectory(workflowDirectory);
+
+            // The event payload is delivered with the job message and never changes for
+            // the lifetime of the job, so it only needs to be serialized and written once.
+            // Every step (including each step of a composite action and job hooks) calls
+            // this method; rewriting the file each time is wasted work and, when steps run
+            // concurrently (background/parallel steps), a rewrite from one step truncates
+            // the file while another step's process is reading $GITHUB_EVENT_PATH.
+            // Still rewrite if the file has gone missing (e.g. removed by a previous step)
+            // so later steps always have a valid event file.
+            lock (Global.EventPayloadLock)
             {
-                var workflowFile = Path.Combine(workflowDirectory, "event.json");
-                Trace.Info($"Write event payload to {workflowFile}");
-                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
-                SetGitHubContext("event_path", workflowFile);
+                if (Global.EventPayloadWritten && File.Exists(workflowFile))
+                {
+                    SetGitHubContext("event_path", workflowFile);
+                    return;
+                }
+
+                var gitHubEvent = GetGitHubContext("event");
+
+                // adds the GitHub event path/file if the event exists
+                if (gitHubEvent != null)
+                {
+                    Trace.Info($"Write event payload to {workflowFile}");
+
+                    // Write to a temporary file in the same directory and move it into
+                    // place so a concurrent reader never observes a partially written file.
+                    var tempFile = Path.Combine(workflowDirectory, $".event.json.{Guid.NewGuid():N}.tmp");
+                    try
+                    {
+                        File.WriteAllText(tempFile, gitHubEvent, new UTF8Encoding(false));
+                        File.Move(tempFile, workflowFile, overwrite: true);
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempFile))
+                        {
+                            IOUtil.DeleteFile(tempFile);
+                        }
+                    }
+
+                    Global.EventPayloadWritten = true;
+                    SetGitHubContext("event_path", workflowFile);
+                }
             }
         }
 
