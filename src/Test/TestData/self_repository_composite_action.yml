@@ -1,0 +1,8 @@
+name: Self-repository composite
+description: Tests a self-repository action reference
+
+runs:
+  using: composite
+  steps:
+    - name: Nested action
+      uses: $/actions/nested

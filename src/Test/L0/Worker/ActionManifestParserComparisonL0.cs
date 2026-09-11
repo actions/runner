@@ -94,6 +94,46 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Load_SelfRepositoryReference_BothParsersAgree()
+        {
+            try
+            {
+                Setup();
+                _ec.Object.Global.Variables.Set(Constants.Runner.Features.CompareWorkflowParser, "true");
+
+                var legacyManager = new ActionManifestManagerLegacy();
+                legacyManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManagerLegacy>(legacyManager);
+
+                var newManager = new ActionManifestManager();
+                newManager.Initialize(_hc);
+                _hc.SetSingleton<IActionManifestManager>(newManager);
+
+                var wrapper = new ActionManifestManagerWrapper();
+                wrapper.Initialize(_hc);
+
+                var manifestPath = Path.Combine(TestUtil.GetTestDataPath(), "self_repository_composite_action.yml");
+
+                var result = wrapper.Load(_ec.Object, manifestPath);
+
+                Assert.NotNull(result);
+                var composite = Assert.IsType<CompositeActionExecutionData>(result.Execution);
+                var nestedAction = Assert.Single(composite.Steps);
+                var reference = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(nestedAction.Reference);
+                Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias, reference.RepositoryType);
+                Assert.Equal("actions/nested", reference.Path);
+                Assert.False(_ec.Object.Global.HasActionManifestMismatch);
+                _ec.Verify(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<ExecutionContextLogOptions>()), Times.Never);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void EvaluateJobContainer_EmptyImage_BothParsersReturnNull()
         {
             try
