@@ -292,6 +292,13 @@ namespace GitHub.Runner.Worker
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
 
+            if (result == TaskResult.Failed && ShouldApplyAllowFailure(jobContext, message))
+            {
+                jobContext.Debug("Job failed but allow-failure is set. Reporting as Neutral.");
+                result = TaskResult.Neutral;
+                jobContext.Result = result;
+            }
+
             var jobQueueTelemetry = await ShutdownQueue(throwOnFailure: false);
             // include any job telemetry from the background upload process.
             if (jobQueueTelemetry?.Count > 0)
@@ -365,6 +372,13 @@ namespace GitHub.Runner.Worker
         {
             jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
+
+            if (result == TaskResult.Failed && ShouldApplyAllowFailure(jobContext, message))
+            {
+                jobContext.Debug("Job failed but allow-failure is set. Reporting as Neutral.");
+                result = TaskResult.Neutral;
+                jobContext.Result = result;
+            }
 
             if (_runnerSettings.DisableUpdate == true)
             {
@@ -446,6 +460,23 @@ namespace GitHub.Runner.Worker
 
             // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
+        }
+
+        private bool ShouldApplyAllowFailure(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message)
+        {
+            if (message.AllowFailure)
+            {
+                return true;
+            }
+
+            var allowFailureEnv = Environment.GetEnvironmentVariable("ACTIONS_ALLOW_FAILURE");
+            if (string.Equals(allowFailureEnv, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                jobContext.Debug("allow-failure detected via ACTIONS_ALLOW_FAILURE environment variable.");
+                return true;
+            }
+
+            return false;
         }
 
         private void MaskTelemetrySecrets(List<JobTelemetry> jobTelemetry)
