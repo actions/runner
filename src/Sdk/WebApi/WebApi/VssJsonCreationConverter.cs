@@ -28,7 +28,7 @@ namespace GitHub.Services.WebApi
             return target;
         }
 
-        // fallback to default behavior for writes
+        // fall back to default behavior for writes
         public override bool CanWrite => false;
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)

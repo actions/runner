@@ -451,7 +451,7 @@ namespace GitHub.Runner.Plugins.Repository
                     }
                     else
                     {
-                        context.Debug($"The Origin fetch url from git config: {remoteFetchUrl} is not a absolute well formed url.");
+                        context.Debug($"The Origin fetch url from git config: {remoteFetchUrl} is not a well-formed absolute url.");
                     }
                 }
                 else

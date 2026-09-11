@@ -189,7 +189,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                     int exitCode_clean = await gitCommandManager.GitClean(executionContext, targetPath);
                     if (exitCode_clean != 0)
                     {
-                        executionContext.Debug($"'git clean -ffdx' failed with exit code {exitCode_clean}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor futher investigation, manually run 'git clean -ffdx' on repo root: {targetPath} after each build.");
+                        executionContext.Debug($"'git clean -ffdx' failed with exit code {exitCode_clean}, this normally caused by:\n    1) Path too long\n    2) Permission issue\n    3) File in use\nFor further investigation, manually run 'git clean -ffdx' on repo root: {targetPath} after each build.");
                         softCleanSucceed = false;
                     }
 
@@ -199,7 +199,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                         int exitCode_reset = await gitCommandManager.GitReset(executionContext, targetPath);
                         if (exitCode_reset != 0)
                         {
-                            executionContext.Debug($"'git reset --hard HEAD' failed with exit code {exitCode_reset}\nFor futher investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
+                            executionContext.Debug($"'git reset --hard HEAD' failed with exit code {exitCode_reset}\nFor further investigation, manually run 'git reset --hard HEAD' on repo root: {targetPath} after each build.");
                             softCleanSucceed = false;
                         }
                     }
@@ -212,7 +212,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                             int exitCode_submoduleclean = await gitCommandManager.GitSubmoduleClean(executionContext, targetPath);
                             if (exitCode_submoduleclean != 0)
                             {
-                                executionContext.Debug($"'git submodule foreach git clean -ffdx' failed with exit code {exitCode_submoduleclean}\nFor futher investigation, manually run 'git submodule foreach git clean -ffdx' on repo root: {targetPath} after each build.");
+                                executionContext.Debug($"'git submodule foreach git clean -ffdx' failed with exit code {exitCode_submoduleclean}\nFor further investigation, manually run 'git submodule foreach git clean -ffdx' on repo root: {targetPath} after each build.");
                                 softCleanSucceed = false;
                             }
                         }
@@ -222,7 +222,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                             int exitCode_submodulereset = await gitCommandManager.GitSubmoduleReset(executionContext, targetPath);
                             if (exitCode_submodulereset != 0)
                             {
-                                executionContext.Debug($"'git submodule foreach git reset --hard HEAD' failed with exit code {exitCode_submodulereset}\nFor futher investigation, manually run 'git submodule foreach git reset --hard HEAD' on repo root: {targetPath} after each build.");
+                                executionContext.Debug($"'git submodule foreach git reset --hard HEAD' failed with exit code {exitCode_submodulereset}\nFor further investigation, manually run 'git submodule foreach git reset --hard HEAD' on repo root: {targetPath} after each build.");
                                 softCleanSucceed = false;
                             }
                         }
@@ -295,7 +295,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             if (gitLfsSupport)
             {
                 // Initialize git lfs by execute 'git lfs install'
-                executionContext.Debug("Setup the local Git hooks for Git LFS.");
+                executionContext.Debug("Set up the local Git hooks for Git LFS.");
                 int exitCode_lfsInstall = await gitCommandManager.GitLFSInstall(executionContext, targetPath);
                 if (exitCode_lfsInstall != 0)
                 {
@@ -334,7 +334,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             }
 
             // fetch lfs object upfront, this will avoid fetch lfs object during checkout which cause checkout taking forever
-            // since checkout will fetch lfs object 1 at a time, while git lfs fetch will fetch lfs object in parallel.
+            // since checkout will fetch lfs object one at a time, while git lfs fetch will fetch lfs object in parallel.
             if (gitLfsSupport)
             {
                 int exitCode_lfsFetch = await gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalLfsFetchArgs), cancellationToken);

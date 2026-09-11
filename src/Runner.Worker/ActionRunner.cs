@@ -153,7 +153,7 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("action_ref", null);
             }
 
-            // Setup container stephost for running inside the container.
+            // Set up container step host for running inside the container.
             if (ExecutionContext.Global.Container != null)
             {
                 // Make sure the required container is already created
@@ -245,7 +245,7 @@ namespace GitHub.Runner.Worker
 #else
             var envContext = ExecutionContext.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
 #endif
-            // Apply environment from env context, env context contains job level env and action's evn block
+            // Apply environment from env context, env context contains job level env and action's env block
             foreach (var env in envContext)
             {
                 environment[env.Key] = env.Value.ToString();
@@ -312,7 +312,7 @@ namespace GitHub.Runner.Worker
             }
             catch (Exception ex)
             {
-                Trace.Warning("Caught exception while attempting to evaulate/update the step's DisplayName.  Exception Details:  {0}", ex);
+                Trace.Warning("Caught exception while attempting to evaluate/update the step's DisplayName.  Exception Details:  {0}", ex);
             }
 
             // For consistency with other implementations of TryUpdateDisplayName we use !string.IsNullOrEmpty below,
