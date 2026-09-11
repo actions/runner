@@ -59,7 +59,8 @@ namespace GitHub.Runner.Common
             X86,
             X64,
             Arm,
-            Arm64
+            Arm64,
+            LoongArch64
         }
 
         public static class Runner
@@ -82,6 +83,8 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
 #elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#elif LOONGARCH64
+            public static readonly Architecture PlatformArchitecture = Architecture.LoongArch64;
 #else
             public static readonly Architecture PlatformArchitecture = Architecture.X64;
 #endif
