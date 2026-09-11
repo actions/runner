@@ -789,6 +789,72 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Load_SelfRepositoryCompositeAction()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                //Act
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "self_repository_composite_action.yml"));
+
+                //Assert
+                Assert.Equal("Self Repository Composite", result.Name);
+                Assert.Equal(ActionExecutionType.Composite, result.Execution.ExecutionType);
+
+                var composite = result.Execution as CompositeActionExecutionDataNew;
+                Assert.NotNull(composite);
+                Assert.Equal(7, composite.Steps.Count);
+
+                Assert.Equal("$/", Assert.IsType<ActionStep>(composite.Steps[0]).Uses.Value);
+                Assert.Equal("$/.github/actions/inventory-client", Assert.IsType<ActionStep>(composite.Steps[1]).Uses.Value);
+                Assert.Equal("$/actions/nested/composite", Assert.IsType<ActionStep>(composite.Steps[2]).Uses.Value);
+
+                // No template errors should have been reported for the $/ steps
+                _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Expected format")), It.IsAny<ExecutionContextLogOptions>()), Times.Never);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_SelfRepositoryRefRejected()
+        {
+            try
+            {
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+                var manifestPath = Path.Combine(TestUtil.GetTestDataPath(), "self_repository_ref_composite_action.yml");
+
+                Assert.Throws<ArgumentException>(() =>
+                    actionManifest.Load(_ec.Object, manifestPath));
+                _ec.Verify(
+                    x => x.AddIssue(
+                        It.Is<Issue>(s =>
+                            s.Message.StartsWith(manifestPath) &&
+                            s.Message.EndsWith("Self-repository references do not support an '@ref' suffix. Actual '$/foo@v1'")),
+                        It.IsAny<ExecutionContextLogOptions>()),
+                    Times.Once);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Load_CompositeActionNoUsing()
         {
             try
