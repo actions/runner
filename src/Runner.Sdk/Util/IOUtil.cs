@@ -414,7 +414,14 @@ namespace GitHub.Runner.Sdk
                     sourceFile.LastWriteTime != targetFile.LastWriteTime)
                 {
                     // Copy the file.
-                    sourceFile.CopyTo(targetFile.FullName, true);
+                    if (string.IsNullOrEmpty(sourceFile.LinkTarget))
+                    {
+                        sourceFile.CopyTo(targetFile.FullName, true);
+                    }
+                    else
+                    {
+                        targetFile.CreateAsSymbolicLink(sourceFile.LinkTarget);
+                    }
                 }
             }
 
