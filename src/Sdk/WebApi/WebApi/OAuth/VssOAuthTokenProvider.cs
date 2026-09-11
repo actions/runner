@@ -119,13 +119,17 @@ namespace GitHub.Services.OAuth
             }
         }
 
-        public async Task<string> ValidateCredentialAsync(CancellationToken cancellationToken)
+        // Returns the underlying authentication error together with its description. Callers that
+        // need to distinguish a clock-skewed "invalid_client" (the description carries "Current
+        // server time is ...") from a genuine one (e.g. a deleted registration) need the
+        // description - the error code alone is identical in both cases.
+        public async Task<(string Error, string ErrorDescription)> ValidateCredentialAsync(CancellationToken cancellationToken)
         {
             var tokenHttpClient = new VssOAuthTokenHttpClient(this.SignInUrl);
             var tokenResponse = await tokenHttpClient.GetTokenAsync(this.Grant, this.ClientCredential, this.TokenParameters, cancellationToken);
 
-            // return the underlying authentication error
-            return tokenResponse.Error;
+            // return the underlying authentication error and its description
+            return (tokenResponse.Error, tokenResponse.ErrorDescription);
         }
 
         /// <summary>

@@ -177,8 +177,15 @@ namespace GitHub.Runner.Listener
                             // If the runner registration get deleted, we can't exchange oauth token.
                             Trace.Error("Test oauth app registration.");
                             var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrl));
-                            var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
-                            if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                            var (authError, authErrorDescription) = await oauthTokenProvider.ValidateCredentialAsync(token);
+                            if (authErrorDescription?.Contains("Current server time is") == true)
+                            {
+                                // Same clock-skew signature as above, just surfaced through this
+                                // re-validation call instead of the original exception. Defer to the
+                                // clock-skew retry path instead of treating the registration as deleted.
+                                Trace.Info("invalid_client from credential re-validation with a clock-skew signature detected; deferring to clock-skew retry classification instead of treating the registration as deleted.");
+                            }
+                            else if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                             {
                                 _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
                                 return CreateSessionResult.Failure;
