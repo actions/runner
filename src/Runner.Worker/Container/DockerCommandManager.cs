@@ -111,19 +111,19 @@ namespace GitHub.Runner.Worker.Container
         {
             IList<string> dockerOptions = new List<string>();
             // OPTIONS
-            dockerOptions.Add($"--name {container.ContainerDisplayName}");
+            dockerOptions.Add(DockerUtil.CreateEscapedOption("--name", container.ContainerDisplayName));
             dockerOptions.Add($"--label {DockerInstanceLabel}");
             if (!string.IsNullOrEmpty(container.ContainerWorkDirectory))
             {
-                dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
+                dockerOptions.Add(DockerUtil.CreateEscapedOption("--workdir", container.ContainerWorkDirectory));
             }
             if (!string.IsNullOrEmpty(container.ContainerNetwork))
             {
-                dockerOptions.Add($"--network {container.ContainerNetwork}");
+                dockerOptions.Add(DockerUtil.CreateEscapedOption("--network", container.ContainerNetwork));
             }
             if (!string.IsNullOrEmpty(container.ContainerNetworkAlias))
             {
-                dockerOptions.Add($"--network-alias {container.ContainerNetworkAlias}");
+                dockerOptions.Add(DockerUtil.CreateEscapedOption("--network-alias", container.ContainerNetworkAlias));
             }
             foreach (var port in container.UserPortMappings)
             {
@@ -195,10 +195,10 @@ namespace GitHub.Runner.Worker.Container
         {
             IList<string> dockerOptions = new List<string>();
             // OPTIONS
-            dockerOptions.Add($"--name {container.ContainerDisplayName}");
+            dockerOptions.Add(DockerUtil.CreateEscapedOption("--name", container.ContainerDisplayName));
             dockerOptions.Add($"--label {DockerInstanceLabel}");
 
-            dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
+            dockerOptions.Add(DockerUtil.CreateEscapedOption("--workdir", container.ContainerWorkDirectory));
             dockerOptions.Add($"--rm");
 
             foreach (var env in container.ContainerEnvironmentVariables)
