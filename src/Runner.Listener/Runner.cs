@@ -740,6 +740,23 @@ namespace GitHub.Runner.Listener
                                             ex is TaskOrchestrationJobAlreadyAcquiredException ||   // HTTP status 409
                                             ex is TaskOrchestrationJobUnprocessableException)       // HTTP status 422
                                         {
+                                            // 404 and 409 mean the assignment is gone, and the service consumes an
+                                            // ephemeral runner's registration when it assigns the job, so there is no
+                                            // session left to listen on: skipping would leave the runner alive but
+                                            // deregistered, never assigned work again. 422 says the job itself is
+                                            // unprocessable, not that the assignment moved, so it keeps skipping.
+                                            if (settings.Ephemeral &&
+                                                (ex is TaskOrchestrationJobNotFoundException || ex is TaskOrchestrationJobAlreadyAcquiredException))
+                                            {
+                                                _term.WriteLine("The job assigned to this ephemeral runner is no longer available. Cleaning up local configuration.");
+                                                Trace.Info($"Ephemeral runner lost its job assignment. Exiting runner. {ex.Message}");
+                                                // The registration is already gone, so deleting the session would only
+                                                // stall on a call the service is bound to reject.
+                                                skipSessionDeletion = true;
+                                                runOnceJobCompleted = true;
+                                                return Constants.Runner.ReturnCode.Success;
+                                            }
+
                                             Trace.Info($"Skipping message Job. {ex.Message}");
                                             await _acquireJobThrottler.IncrementAndWaitAsync(messageQueueLoopTokenSource.Token);
                                             continue;
