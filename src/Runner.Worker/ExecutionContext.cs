@@ -1330,7 +1330,11 @@ namespace GitHub.Runner.Worker
             {
                 var workflowFile = Path.Combine(workflowDirectory, "event.json");
                 Trace.Info($"Write event payload to {workflowFile}");
-                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
+
+                // Ensure "parallel:" does not cause crashes here
+                var tempEventFile = Path.Combine(workflowDirectory, $"event.{Guid.NewGuid():N}.tmp");
+                File.WriteAllText(tempEventFile, gitHubEvent, new UTF8Encoding(false));
+                File.Move(tempEventFile, workflowFile, overwrite: true);
                 SetGitHubContext("event_path", workflowFile);
             }
         }
