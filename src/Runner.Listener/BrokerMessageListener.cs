@@ -272,6 +272,13 @@ namespace GitHub.Runner.Listener
             }
         }
 
+        private Func<bool> _idleDrainRequested = () => false;
+
+        public void SetIdleDrainCheck(Func<bool> drainRequested)
+        {
+            _idleDrainRequested = drainRequested;
+        }
+
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             bool encounteringError = false;
@@ -282,6 +289,11 @@ namespace GitHub.Runner.Listener
 
             while (true)
             {
+                // Finish an outstanding response before checking for idle drain.
+                if (_idleDrainRequested())
+                {
+                    return null;
+                }
                 TaskAgentMessage message = null;
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
