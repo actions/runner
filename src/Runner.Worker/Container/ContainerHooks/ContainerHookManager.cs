@@ -137,6 +137,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
         private async Task<T> ExecuteHookScript<T>(IExecutionContext context, HookInput input, ActionRunStage stage, string prependPath) where T : HookResponse
         {
+            bool stepFailed = false;
             try
             {
                 ValidateHookExecutable();
@@ -167,12 +168,13 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 await handler.RunAsync(stage);
                 if (handler.ExecutionContext.Result == TaskResult.Failed)
                 {
+                    stepFailed = true;
                     throw new Exception($"The hook script at '{HookScriptPath}' running command '{input.Command}' did not execute successfully");
                 }
                 var response = GetResponse<T>(input);
                 return response;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!stepFailed)
             {
                 throw new Exception($"Executing the custom container implementation failed. Please contact your self hosted runner administrator.", ex);
             }
