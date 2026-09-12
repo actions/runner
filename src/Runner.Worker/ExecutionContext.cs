@@ -116,6 +116,7 @@ namespace GitHub.Runner.Worker
         void FlushDeferredOutcomeConclusion();
 
         void AddIssue(Issue issue, ExecutionContextLogOptions logOptions);
+        int GetErrorCount();
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
@@ -237,6 +238,13 @@ namespace GitHub.Runner.Worker
         // An embedded execution context shares the same record ID, record name, and logger
         // as its enclosing execution context.
         public bool IsEmbedded { get; private init; }
+
+        public int GetErrorCount()
+        {
+            return IsEmbedded
+                ? (_embeddedIssueCollector?.Count(x => x.Type == IssueType.Error) ?? 0)
+                : _record.ErrorCount;
+        }
 
         public TaskResult? Result
         {
