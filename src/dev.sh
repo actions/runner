@@ -54,6 +54,8 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
         case $CPU_NAME in
             armv7l) RUNTIME_ID="linux-arm";;
             aarch64) RUNTIME_ID="linux-arm64";;
+            ppc64le) RUNTIME_ID="linux-ppc64le";;  # PowerPC 64-bit LE (IBM Power)
+            s390x) RUNTIME_ID="linux-s390x";;      # IBM Z mainframe
         esac
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
@@ -72,7 +74,7 @@ fi
 
 # Make sure current platform support publish the dotnet runtime
 # Windows can publish win-x86/x64/arm64
-# Linux can publish linux-x64/arm/arm64
+# Linux can publish linux-x64/x86/arm/arm64/ppc64le/s390x
 # OSX can publish osx-x64/arm64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') && ("$RUNTIME_ID" != 'win-arm64') ]]; then
@@ -80,7 +82,7 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
         exit 1
     fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') ]]; then
+    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') && ("$RUNTIME_ID" != 'linux-ppc64le') && ("$RUNTIME_ID" != 'linux-s390x') ]]; then
        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
        exit 1
     fi
@@ -200,7 +202,8 @@ function package ()
 }
 
 # Install .NET SDK
-if [[ (! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet") ]]; then
+# Skip SDK installation for ppc64le/s390x (use system-installed .NET runtime)
+if [[ ("$RUNTIME_ID" != "linux-ppc64le") && ("$RUNTIME_ID" != "linux-s390x") && ((! -d "${DOTNETSDK_INSTALLDIR}") || (! -e "${DOTNETSDK_INSTALLDIR}/.${DOTNETSDK_VERSION}") || (! -e "${DOTNETSDK_INSTALLDIR}/dotnet")) ]]; then
 
     # Download dotnet SDK to ../_dotnetsdk directory
     heading "Ensure Dotnet SDK"
