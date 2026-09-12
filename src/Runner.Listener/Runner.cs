@@ -512,6 +512,12 @@ namespace GitHub.Runner.Listener
 
                     jobDispatcher.JobStatus += _listener.OnJobStatus;
 
+                    // The supervisor owns the sentinel lifecycle. Restrict this
+                    // check to one-job runners: after acquisition, keep job
+                    // cancellation polling alive until RunOnceJobCompleted fires.
+                    string drainPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), ".drain");
+                    _listener.SetIdleDrainCheck(() => settings.Ephemeral && !runOnceJobReceived && File.Exists(drainPath));
+
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         // Check if we need to restart the session and can do so (job dispatcher not busy)
@@ -604,6 +610,11 @@ namespace GitHub.Runner.Listener
                             }
 
                             message = await getNextMessage; //get next message
+                            if (message == null && settings.Ephemeral && !runOnceJobReceived && File.Exists(drainPath))
+                            {
+                                Trace.Info("Idle drain completed without interrupting a job acquisition.");
+                                return Constants.Runner.ReturnCode.Success;
+                            }
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
@@ -688,7 +699,7 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-                                    
+
                                     // Acknowledge (best-effort)
                                     if (messageRef.ShouldAcknowledge) // Temporary feature flag
                                     {
