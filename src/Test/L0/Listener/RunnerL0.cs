@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
@@ -305,6 +306,44 @@ namespace GitHub.Runner.Common.Tests.Listener
                 await runner.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), expectedTimes);
+            }
+        }
+
+        [Theory]
+        [InlineData(true, Constants.Runner.ReturnCode.Success)]
+        [InlineData(false, Constants.Runner.ReturnCode.TerminatedError)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestCheckCommandReturnsNonZeroWhenCheckFails(bool checkResult, int expectedReturnCode)
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var extensionManager = new Mock<IExtensionManager>();
+                var check = new Mock<ICheckExtension>();
+                check.Setup(x => x.Order).Returns(1);
+                check.Setup(x => x.CheckName).Returns("test check");
+                check.Setup(x => x.CheckDescription).Returns("test description");
+                check.Setup(x => x.CheckLog).Returns("test log");
+                check.Setup(x => x.HelpLink).Returns("test help");
+                check.Setup(x => x.RunCheck("https://github.com/actions/runner", "token"))
+                    .ReturnsAsync(checkResult);
+
+                extensionManager.Setup(x => x.GetExtensions<ICheckExtension>())
+                    .Returns(new List<ICheckExtension> { check.Object });
+
+                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+                hc.SetSingleton<IPromptManager>(_promptManager.Object);
+                hc.SetSingleton<IExtensionManager>(extensionManager.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+
+                var command = new CommandSettings(hc, new[] { "--check", "--url", "https://github.com/actions/runner", "--pat", "token" });
+
+                var runner = new Runner.Listener.Runner();
+                runner.Initialize(hc);
+                var result = await runner.ExecuteCommand(command);
+
+                Assert.Equal(expectedReturnCode, result);
             }
         }
 
