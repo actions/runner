@@ -44,6 +44,8 @@ namespace GitHub.Runner.Common.Tests.Listener
         [InlineData("acquire", true)]
         [InlineData("worker", true)]
         [InlineData("cancel", true)]
+        [InlineData("persistent-options", true)]
+        [InlineData("persistent-options", false)]
         public async Task DrainAtBoundary(string boundary, bool brokerFlow)
         {
             using var hc = new TestHostContext(this, $"{boundary}-{brokerFlow}");
@@ -55,7 +57,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 ServerUrl = "https://github.example",
                 ServerUrlV2 = "https://broker.example",
                 UseV2Flow = brokerFlow,
-                Ephemeral = true,
+                Ephemeral = boundary != "persistent-options",
                 WorkFolder = "_work"
             };
             var config = new Mock<IConfigurationManager>();
@@ -176,7 +178,14 @@ namespace GitHub.Runner.Common.Tests.Listener
                 if (boundary == "before-listening") File.WriteAllText(sentinel, "drain");
                 var runner = new Runner.Listener.Runner();
                 runner.Initialize(hc);
-                execution = runner.ExecuteCommand(new CommandSettings(hc, new[] { "run" }));
+                execution = runner.ExecuteCommand(new CommandSettings(hc, new[] { "run", "--drain-file", sentinel }));
+                if (boundary == "persistent-options")
+                {
+                    Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, await execution.WaitAsync(TimeSpan.FromSeconds(8)));
+                    Assert.Equal(0, polls);
+                    Assert.False(ran);
+                    return;
+                }
                 if (boundary == "before-listening")
                 {
                     Assert.Equal(0, await execution.WaitAsync(TimeSpan.FromSeconds(8)));

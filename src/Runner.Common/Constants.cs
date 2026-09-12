@@ -95,6 +95,7 @@ namespace GitHub.Runner.Common
                 public static class Args
                 {
                     public static readonly string Auth = "auth";
+                    public static readonly string DrainFile = "drain-file";
                     public static readonly string Labels = "labels";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
@@ -131,6 +132,7 @@ namespace GitHub.Runner.Common
                 //validOptions dictionary as well present in the CommandSettings.cs
                 public static class Flags
                 {
+                    public static readonly string DrainOnSigusr1 = "drain-on-sigusr1";
                     public static readonly string Check = "check";
                     public static readonly string Commit = "commit";
                     public static readonly string Ephemeral = "ephemeral";
