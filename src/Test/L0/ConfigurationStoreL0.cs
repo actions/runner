@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common.Tests
                 string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings oldSettings = CreateSettings("agent-a");
                 RunnerSettings newSettings = CreateSettings("agent-b");
-                store.SaveMigratedSettings(oldSettings);
+                IOUtil.SaveObject(oldSettings, migratedConfigFile);
 
                 Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
 
@@ -40,7 +40,7 @@ namespace GitHub.Runner.Common.Tests
                 string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings oldSettings = CreateSettings("agent-a");
                 RunnerSettings newSettings = CreateSettings("agent-b");
-                store.SaveMigratedSettings(oldSettings);
+                IOUtil.SaveObject(oldSettings, migratedConfigFile);
 
                 Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
                 File.Delete(migratedConfigFile);
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Common.Tests
                 var store = CreateStore(hc);
                 string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings settings = CreateSettings("agent-a");
-                store.SaveMigratedSettings(settings);
+                IOUtil.SaveObject(settings, migratedConfigFile);
 
                 Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
 
@@ -92,7 +92,7 @@ namespace GitHub.Runner.Common.Tests
                 var store = CreateStore(hc);
                 string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings settings = CreateSettings("agent-a");
-                store.SaveMigratedSettings(settings);
+                IOUtil.SaveObject(settings, migratedConfigFile);
 
                 Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
 
