@@ -458,10 +458,22 @@ namespace GitHub.Runner.Listener
                             settings = migratedSettings; // Use migrated settings for the rest of the process
                             usedMigratedSettings = true;
                         }
+                        else if (createSessionResult == CreateSessionResult.SessionConflict)
+                        {
+                            return Constants.Runner.ReturnCode.SessionConflict;
+                        }
                         else
                         {
                             Trace.Warning($"Failed to create session with migrated settings: {createSessionResult}");
                         }
+                    }
+                    catch (OperationCanceledException) when (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex) when (ex is TaskAgentAccessTokenExpiredException || ex is HostedRunnerDeprovisionedException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -862,21 +874,22 @@ namespace GitHub.Runner.Listener
                                 var runnerRefreshConfigMessage = JsonUtility.FromString<RunnerRefreshConfigMessage>(message.Body);
                                 Trace.Info($"Received RunnerRefreshConfigMessage for '{runnerRefreshConfigMessage.ConfigType}' config file");
                                 var configUpdater = HostContext.GetService<IRunnerConfigUpdater>();
-                                await configUpdater.UpdateRunnerConfigAsync(
+                                var updateResult = await configUpdater.UpdateRunnerConfigAsync(
                                     runnerQualifiedId: runnerRefreshConfigMessage.RunnerQualifiedId,
                                     configType: runnerRefreshConfigMessage.ConfigType,
                                     serviceType: runnerRefreshConfigMessage.ServiceType,
                                     configRefreshUrl: runnerRefreshConfigMessage.ConfigRefreshUrl);
 
-                                // Set flag to schedule session restart if ConfigType is "runner"
-                                if (string.Equals(runnerRefreshConfigMessage.ConfigType, "runner", StringComparison.OrdinalIgnoreCase))
+                                if (string.Equals(runnerRefreshConfigMessage.ConfigType, "runner", StringComparison.OrdinalIgnoreCase) &&
+                                    updateResult.Status == RunnerConfigUpdateStatus.Updated &&
+                                    HasRunnerSettingsChanged(settings, updateResult.TargetRunnerSettings))
                                 {
                                     Trace.Info("Runner configuration was updated. Session restart has been scheduled");
                                     restartSessionPending = true;
                                 }
                                 else
                                 {
-                                    Trace.Info($"No session restart needed for config type: {runnerRefreshConfigMessage.ConfigType}");
+                                    Trace.Info($"No session restart needed for config type: {runnerRefreshConfigMessage.ConfigType}, update status: {updateResult.Status}");
                                 }
                             }
                             else
@@ -988,6 +1001,19 @@ namespace GitHub.Runner.Listener
             } while (restart);
 
             return returnCode;
+        }
+
+        private static bool HasRunnerSettingsChanged(RunnerSettings activeSettings, RunnerSettings targetSettings)
+        {
+            if (activeSettings == null || targetSettings == null)
+            {
+                return false;
+            }
+
+            return !string.Equals(
+                StringUtil.ConvertToJson(activeSettings),
+                StringUtil.ConvertToJson(targetSettings),
+                StringComparison.Ordinal);
         }
 
         private void HandleAuthMigrationChanged(object sender, AuthMigrationEventArgs e)

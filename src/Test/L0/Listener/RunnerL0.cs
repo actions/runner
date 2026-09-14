@@ -22,6 +22,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IPromptManager> _promptManager;
         private Mock<IJobDispatcher> _jobDispatcher;
         private Mock<IRunnerServer> _runnerServer;
+        private Mock<IRunnerConfigUpdater> _runnerConfigUpdater;
         private Mock<ITerminal> _term;
         private Mock<IConfigurationStore> _configStore;
         private Mock<ISelfUpdater> _updater;
@@ -30,7 +31,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IActionsRunServer> _actionsRunServer;
         private Mock<IRunServer> _runServer;
         private Mock<IBrokerServer> _brokerServer;
-        private Mock<IRunnerConfigUpdater> _configUpdater;
         private readonly string _returnJobResultForHosted;
 
         public RunnerL0()
@@ -41,6 +41,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _promptManager = new Mock<IPromptManager>();
             _jobDispatcher = new Mock<IJobDispatcher>();
             _runnerServer = new Mock<IRunnerServer>();
+            _runnerConfigUpdater = new Mock<IRunnerConfigUpdater>();
             _term = new Mock<ITerminal>();
             _configStore = new Mock<IConfigurationStore>();
             _updater = new Mock<ISelfUpdater>();
@@ -49,7 +50,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             _actionsRunServer = new Mock<IActionsRunServer>();
             _runServer = new Mock<IRunServer>();
             _brokerServer = new Mock<IBrokerServer>();
-            _configUpdater = new Mock<IRunnerConfigUpdater>();
 
             _returnJobResultForHosted = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED");
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED", null);
@@ -74,11 +74,39 @@ namespace GitHub.Runner.Common.Tests.Listener
             return message;
         }
 
-        private TaskAgentMessage CreateRunnerRefreshConfigTaskAgentMessage(long messageId)
+        private RunnerSettings CreateRunnerSettings(bool ephemeral = false)
+        {
+            return new RunnerSettings
+            {
+                PoolId = 43242,
+                AgentId = 5678,
+                AgentName = "agent1",
+                ServerUrl = "https://github.com",
+                Ephemeral = ephemeral
+            };
+        }
+
+        private RunnerSettings CreateChangedRunnerSettings(RunnerSettings settings)
+        {
+            return new RunnerSettings
+            {
+                PoolId = settings.PoolId + 1,
+                AgentId = settings.AgentId,
+                AgentName = settings.AgentName,
+                ServerUrl = settings.ServerUrl,
+                Ephemeral = settings.Ephemeral
+            };
+        }
+
+        private TaskAgentMessage CreateRunnerRefreshConfigTaskAgentMessage(long messageId, RunnerSettings settings)
         {
             return new TaskAgentMessage()
             {
-                Body = JsonUtility.ToString(new RunnerRefreshConfigMessage("1.runner", "runner", "actions", "https://example.com/config")),
+                Body = JsonUtility.ToString(new RunnerRefreshConfigMessage(
+                    runnerQualifiedId: $"valid/runner/qualifiedid/{settings.AgentId}",
+                    configType: "runner",
+                    serviceType: "pipelines",
+                    configRefreshUrl: "https://example.test/refresh")),
                 MessageId = messageId,
                 MessageType = RunnerRefreshConfigMessage.MessageType
             };
@@ -114,7 +142,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             };
         }
 
-        private void SetupRunnerMessageLoop(TestHostContext hc, RunnerSettings settings, IJobDispatcher jobDispatcher)
+        private void SetupRunCommandWithMigratedSettings(TestHostContext hc, RunnerSettings settings, RunnerSettings migratedSettings)
         {
             hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
             hc.SetSingleton<IJobNotification>(_jobNotification.Object);
@@ -122,13 +150,38 @@ namespace GitHub.Runner.Common.Tests.Listener
             hc.SetSingleton<IPromptManager>(_promptManager.Object);
             hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-            hc.SetSingleton<IRunnerConfigUpdater>(_configUpdater.Object);
+            hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+
+            _configurationManager.Setup(x => x.LoadSettings())
+                .Returns(settings);
+            _configurationManager.Setup(x => x.LoadMigratedSettings())
+                .Returns(migratedSettings);
+            _configurationManager.Setup(x => x.IsConfigured())
+                .Returns(true);
+            _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+        }
+
+        private void SetupRunnerMessageLoop(
+            TestHostContext hc,
+            RunnerSettings settings,
+            IJobDispatcher jobDispatcher,
+            RunnerConfigUpdateResult updateResult)
+        {
+            hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+            hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+            hc.SetSingleton<IMessageListener>(_messageListener.Object);
+            hc.SetSingleton<IPromptManager>(_promptManager.Object);
+            hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+            hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+            hc.SetSingleton<IRunnerConfigUpdater>(_runnerConfigUpdater.Object);
             hc.SetSingleton<ISelfUpdater>(_updater.Object);
             hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
             hc.EnqueueInstance<IJobDispatcher>(jobDispatcher);
 
             _configurationManager.Setup(x => x.LoadSettings())
                 .Returns(settings);
+            _configurationManager.Setup(x => x.LoadMigratedSettings())
+                .Returns((RunnerSettings)null);
             _configurationManager.Setup(x => x.IsConfigured())
                 .Returns(true);
             _messageListener.Setup(x => x.DeleteSessionAsync())
@@ -137,8 +190,81 @@ namespace GitHub.Runner.Common.Tests.Listener
                 .Returns(Task.CompletedTask);
             _jobNotification.Setup(x => x.StartClient(It.IsAny<string>()));
             _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
-            _configUpdater.Setup(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            _runnerConfigUpdater.Setup(x => x.UpdateRunnerConfigAsync(
+                    It.IsAny<string>(),
+                    "runner",
+                    "pipelines",
+                    It.IsAny<string>()))
+                .ReturnsAsync(updateResult);
+        }
+
+        private async Task<int> RunRefreshConfigMessages(
+            TestHostContext hc,
+            RunnerSettings activeSettings,
+            RunnerSettings settingsAfterRestart,
+            RunnerConfigUpdateResult updateResult)
+        {
+            var runner = new Runner.Listener.Runner();
+            hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+            hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+            hc.SetSingleton<IMessageListener>(_messageListener.Object);
+            hc.SetSingleton<IPromptManager>(_promptManager.Object);
+            hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+            hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+            hc.SetSingleton<IRunnerConfigUpdater>(_runnerConfigUpdater.Object);
+            hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+            hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+            hc.EnqueueInstance<IJobDispatcher>(_jobDispatcher.Object);
+
+            runner.Initialize(hc);
+
+            var messages = new Queue<TaskAgentMessage>();
+            messages.Enqueue(new TaskAgentMessage()
+            {
+                Body = JsonUtility.ToString(new RunnerRefreshConfigMessage(
+                    runnerQualifiedId: $"valid/runner/qualifiedid/{activeSettings.AgentId}",
+                    configType: "runner",
+                    serviceType: "pipelines",
+                    configRefreshUrl: "https://example.test/refresh")),
+                MessageId = 4234,
+                MessageType = RunnerRefreshConfigMessage.MessageType
+            });
+            messages.Enqueue(new Pipelines.HostedRunnerShutdownMessage("L0 test complete").GetAgentMessage());
+
+            _configurationManager.SetupSequence(x => x.LoadSettings())
+                .Returns(activeSettings)
+                .Returns(settingsAfterRestart ?? activeSettings);
+            _configurationManager.Setup(x => x.LoadMigratedSettings())
+                .Returns((RunnerSettings)null);
+            _configurationManager.Setup(x => x.IsConfigured())
+                .Returns(true);
+            _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Success));
+            _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => messages.Dequeue());
+            _messageListener.Setup(x => x.DeleteSessionAsync())
                 .Returns(Task.CompletedTask);
+            _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
+                .Returns(Task.CompletedTask);
+            _jobNotification.Setup(x => x.StartClient(It.IsAny<String>()))
+                .Callback(() =>
+                {
+                });
+            _runnerConfigUpdater.Setup(x => x.UpdateRunnerConfigAsync(
+                    It.IsAny<string>(),
+                    "runner",
+                    "pipelines",
+                    It.IsAny<string>()))
+                .ReturnsAsync(updateResult);
+            _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+
+            var command = new CommandSettings(hc, new string[] { "run" });
+            Task<int> runnerTask = runner.ExecuteCommand(command);
+
+            await Task.WhenAny(runnerTask, Task.Delay(30000));
+            Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
+            Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
+            return await runnerTask;
         }
 
         private static async Task WaitForSignal(Task task, string message)
@@ -226,18 +352,116 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async Task RunnerRefreshConfigMessage_FailedUpdate_DoesNotRestartSession()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    AgentName = "agent1",
+                    ServerUrl = "https://github.com"
+                };
+
+                var result = await RunRefreshConfigMessages(hc, settings, null, RunnerConfigUpdateResult.Failed());
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _runnerConfigUpdater.Verify(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), "runner", "pipelines", It.IsAny<string>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task RunnerRefreshConfigMessage_NoTargetUpdate_DoesNotRestartSession()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    AgentName = "agent1",
+                    ServerUrl = "https://github.com"
+                };
+
+                var result = await RunRefreshConfigMessages(hc, settings, null, RunnerConfigUpdateResult.NoTarget());
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _runnerConfigUpdater.Verify(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), "runner", "pipelines", It.IsAny<string>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task RunnerRefreshConfigMessage_UpdatedActiveSettings_DoesNotRestartSession()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var settings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    AgentName = "agent1",
+                    ServerUrl = "https://github.com"
+                };
+
+                var result = await RunRefreshConfigMessages(hc, settings, null, RunnerConfigUpdateResult.Updated(settings));
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _runnerConfigUpdater.Verify(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), "runner", "pipelines", It.IsAny<string>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task RunnerRefreshConfigMessage_UpdatedInactiveMigratedSettings_RestartsSession()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var activeSettings = new RunnerSettings
+                {
+                    PoolId = 43242,
+                    AgentId = 5678,
+                    AgentName = "agent1",
+                    ServerUrl = "https://github.com"
+                };
+                var targetSettings = new RunnerSettings
+                {
+                    PoolId = 43243,
+                    AgentId = 5678,
+                    AgentName = "agent1",
+                    ServerUrl = "https://github.com"
+                };
+
+                var result = await RunRefreshConfigMessages(hc, activeSettings, targetSettings, RunnerConfigUpdateResult.Updated(targetSettings));
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+                _runnerConfigUpdater.Verify(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), "runner", "pipelines", It.IsAny<string>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async Task TestRunnerRefreshConfigRestartsWhenBusyJobBecomesIdleWithoutMessage()
         {
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var secondFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -249,7 +473,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         fetchCount++;
                         if (fetchCount == 1)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4234);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4234, settings);
                         }
 
                         secondFetchStarted.TrySetResult(true);
@@ -266,7 +490,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, result);
                 Assert.Equal(2, fetchCount);
-                _configUpdater.Verify(x => x.UpdateRunnerConfigAsync("1.runner", "runner", "actions", "https://example.com/config"), Times.Once());
+                _runnerConfigUpdater.Verify(x => x.UpdateRunnerConfigAsync($"valid/runner/qualifiedid/{settings.AgentId}", "runner", "pipelines", "https://example.test/refresh"), Times.Once());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.Is<TaskAgentMessage>(m => m.MessageId == 4234)), Times.Once());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
@@ -282,13 +506,13 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -300,7 +524,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         fetchCount++;
                         if (fetchCount == 1)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4234);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4234, settings);
                         }
 
                         if (fetchCount == 2)
@@ -336,7 +560,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var secondFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -344,7 +568,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -356,7 +580,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         fetchCount++;
                         if (fetchCount == 1)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4234);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4234, settings);
                         }
 
                         if (fetchCount == 2)
@@ -398,13 +622,13 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -416,7 +640,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         fetchCount++;
                         if (fetchCount == 1)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4234);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4234, settings);
                         }
 
                         if (fetchCount == 2)
@@ -452,7 +676,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var firstFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -461,7 +685,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var secondFetchCanceled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -475,7 +699,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         {
                             firstFetchStarted.TrySetResult(true);
                             await releaseFirstFetch.Task;
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4234);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4234, settings);
                         }
 
                         secondFetchStarted.TrySetResult(true);
@@ -518,12 +742,12 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -533,11 +757,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Returns((CancellationToken token) =>
                     {
                         fetchCount++;
-                        return Task.FromResult(CreateRunnerRefreshConfigTaskAgentMessage(4234));
+                        return Task.FromResult(CreateRunnerRefreshConfigTaskAgentMessage(4234, settings));
                     });
-                _configUpdater.Setup(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                _runnerConfigUpdater.Setup(x => x.UpdateRunnerConfigAsync(It.IsAny<string>(), "runner", "pipelines", It.IsAny<string>()))
                     .Callback(() => jobDispatcher.SetBusy(false))
-                    .Returns(Task.CompletedTask);
+                    .ReturnsAsync(RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
 
                 var command = new CommandSettings(hc, new string[] { "run" });
                 var result = await WaitForRunnerTask(runner.ExecuteCommand(command));
@@ -556,13 +780,13 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var secondFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -574,7 +798,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         fetchCount++;
                         if (fetchCount == 1)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4234);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4234, settings);
                         }
 
                         secondFetchStarted.TrySetResult(true);
@@ -603,12 +827,12 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242, Ephemeral = true };
+                var settings = CreateRunnerSettings(ephemeral: true);
                 var jobDispatcher = new TestJobDispatcher();
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -624,7 +848,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                         if (fetchCount == 2)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4235);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4235, settings);
                         }
 
                         thirdFetchStarted.TrySetResult(true);
@@ -654,13 +878,13 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242, Ephemeral = true };
+                var settings = CreateRunnerSettings(ephemeral: true);
                 var jobDispatcher = new TestJobDispatcher();
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var runOnceCompletionStarted = false;
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -676,7 +900,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                         if (fetchCount == 2)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4235);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4235, settings);
                         }
 
                         if (fetchCount == 3)
@@ -723,14 +947,14 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242, AgentId = 5678 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 jobDispatcher.SetBusy(true);
                 var selfUpdateCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -746,7 +970,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                         if (fetchCount == 2)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4235);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4235, settings);
                         }
 
                         thirdFetchStarted.TrySetResult(true);
@@ -779,13 +1003,13 @@ namespace GitHub.Runner.Common.Tests.Listener
             using (var hc = new TestHostContext(this))
             {
                 var runner = new Runner.Listener.Runner();
-                var settings = new RunnerSettings { PoolId = 43242, AgentId = 5678 };
+                var settings = CreateRunnerSettings();
                 var jobDispatcher = new TestJobDispatcher();
                 var selfUpdateCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 var fetchCount = 0;
 
-                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher, RunnerConfigUpdateResult.Updated(CreateChangedRunnerSettings(settings)));
                 runner.Initialize(hc);
 
                 _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
@@ -802,7 +1026,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                         if (fetchCount == 2)
                         {
-                            return CreateRunnerRefreshConfigTaskAgentMessage(4235);
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4235, settings);
                         }
 
                         thirdFetchStarted.TrySetResult(true);
@@ -1096,6 +1320,117 @@ namespace GitHub.Runner.Common.Tests.Listener
                 await runner.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionConflictReturnsSessionConflict()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.SessionConflict));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.SessionConflict, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionFailureFallsBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionTokenRevokedDoesNotFallBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new TaskAgentAccessTokenExpiredException("token revoked"));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionHostedDeprovisionDoesNotFallBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new HostedRunnerDeprovisionedException("hosted runner deprovisioned"));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionShutdownCancellationDoesNotFallBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Callback(() => hc.ShutdownRunner(ShutdownReason.UserCancelled))
+                    .ThrowsAsync(new OperationCanceledException(hc.RunnerShutdownToken));
+
+                runner.Initialize(hc);
+
+                await Assert.ThrowsAsync<OperationCanceledException>(() => runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" })));
+
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
             }
         }
 
