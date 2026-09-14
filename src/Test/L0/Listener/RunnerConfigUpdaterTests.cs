@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -142,12 +142,87 @@ namespace GitHub.Runner.Tests.Listener
                 var configRefreshUrl = "http://example.com";
 
                 // Act
-                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
 
                 // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.Updated, result.Status);
+                Assert.Equal(setting.AgentId, result.TargetRunnerSettings.AgentId);
                 _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(1, "runner", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Runner settings updated successfully")), It.IsAny<CancellationToken>()), Times.Once);
                 _configurationStore.Verify(x => x.SaveMigratedSettings(It.IsAny<RunnerSettings>()), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task UpdateRunnerConfigAsync_UpdateRunnerSettings_TelemetryFailureShouldStillReturnUpdated()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+
+                // Arrange
+                var setting = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                _configurationStore.Setup(x => x.GetSettings()).Returns(setting);
+                IOUtil.SaveObject(setting, hc.GetConfigFile(WellKnownConfigFile.Runner));
+
+                var encodedConfig = Convert.ToBase64String(Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(setting)));
+                _runnerServer.Setup(x => x.RefreshRunnerConfigAsync(It.IsAny<int>(), It.Is<string>(s => s == "runner"), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(encodedConfig);
+                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("Telemetry failed"));
+
+                var _runnerConfigUpdater = new RunnerConfigUpdater();
+                _runnerConfigUpdater.Initialize(hc);
+
+                var validRunnerQualifiedId = "valid/runner/qualifiedid/1";
+                var configType = "runner";
+                var serviceType = "pipelines";
+                var configRefreshUrl = "http://example.com";
+
+                // Act
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+
+                // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.Updated, result.Status);
+                Assert.Equal(setting.AgentId, result.TargetRunnerSettings.AgentId);
+                _configurationStore.Verify(x => x.SaveMigratedSettings(It.IsAny<RunnerSettings>()), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task UpdateRunnerConfigAsync_UpdateRunnerSettings_SaveFailureShouldReturnFailed()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+
+                // Arrange
+                var setting = new RunnerSettings { AgentId = 1, AgentName = "agent1" };
+                _configurationStore.Setup(x => x.GetSettings()).Returns(setting);
+                _configurationStore.Setup(x => x.SaveMigratedSettings(It.IsAny<RunnerSettings>())).Throws(new UnauthorizedAccessException("Access denied"));
+                IOUtil.SaveObject(setting, hc.GetConfigFile(WellKnownConfigFile.Runner));
+
+                var encodedConfig = Convert.ToBase64String(Encoding.UTF8.GetBytes(StringUtil.ConvertToJson(setting)));
+                _runnerServer.Setup(x => x.RefreshRunnerConfigAsync(It.IsAny<int>(), It.Is<string>(s => s == "runner"), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(encodedConfig);
+
+                var _runnerConfigUpdater = new RunnerConfigUpdater();
+                _runnerConfigUpdater.Initialize(hc);
+
+                var validRunnerQualifiedId = "valid/runner/qualifiedid/1";
+                var configType = "runner";
+                var serviceType = "pipelines";
+                var configRefreshUrl = "http://example.com";
+
+                // Act
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+
+                // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.Failed, result.Status);
+                _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Failed to save refreshed runner settings")), It.IsAny<CancellationToken>()), Times.Once);
             }
         }
 
@@ -175,9 +250,10 @@ namespace GitHub.Runner.Tests.Listener
                 var configRefreshUrl = "http://example.com";
 
                 // Act
-                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
 
                 // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.NoTarget, result.Status);
                 _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(1, "runner", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Runner settings updated successfully")), It.IsAny<CancellationToken>()), Times.Never);
                 _configurationStore.Verify(x => x.SaveMigratedSettings(It.IsAny<RunnerSettings>()), Times.Never);
@@ -220,9 +296,10 @@ namespace GitHub.Runner.Tests.Listener
                 var configRefreshUrl = "http://example.com";
 
                 // Act
-                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
 
                 // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.Updated, result.Status);
                 _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(1, "credentials", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Runner credentials updated successfully")), It.IsAny<CancellationToken>()), Times.Once);
                 _configurationStore.Verify(x => x.SaveMigratedCredential(It.IsAny<CredentialData>()), Times.Once);
@@ -262,9 +339,10 @@ namespace GitHub.Runner.Tests.Listener
                 var configRefreshUrl = "http://example.com";
 
                 // Act
-                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
 
                 // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.NoTarget, result.Status);
                 _runnerServer.Verify(x => x.RefreshRunnerConfigAsync(1, "credentials", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>(s => s.Contains("Runner credentials updated successfully")), It.IsAny<CancellationToken>()), Times.Never);
                 _configurationStore.Verify(x => x.SaveMigratedCredential(It.IsAny<CredentialData>()), Times.Never);
@@ -296,9 +374,10 @@ namespace GitHub.Runner.Tests.Listener
                 var configRefreshUrl = "http://example.com";
 
                 // Act
-                await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
+                var result = await _runnerConfigUpdater.UpdateRunnerConfigAsync(validRunnerQualifiedId, configType, serviceType, configRefreshUrl);
 
                 // Assert
+                Assert.Equal(RunnerConfigUpdateStatus.Failed, result.Status);
                 _runnerServer.Verify(x => x.UpdateAgentUpdateStateAsync(It.IsAny<int>(), It.IsAny<ulong>(), It.IsAny<string>(), It.Is<string>((s) => s.Contains("Failed to refresh")), It.IsAny<CancellationToken>()), Times.Once);
                 _configurationStore.Verify(x => x.SaveMigratedSettings(It.IsAny<RunnerSettings>()), Times.Never);
             }

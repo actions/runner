@@ -13,7 +13,42 @@ namespace GitHub.Runner.Listener
     [ServiceLocator(Default = typeof(RunnerConfigUpdater))]
     public interface IRunnerConfigUpdater : IRunnerService
     {
-        Task UpdateRunnerConfigAsync(string runnerQualifiedId, string configType, string serviceType, string configRefreshUrl);
+        Task<RunnerConfigUpdateResult> UpdateRunnerConfigAsync(string runnerQualifiedId, string configType, string serviceType, string configRefreshUrl);
+    }
+
+    public enum RunnerConfigUpdateStatus
+    {
+        Failed,
+        NoTarget,
+        Updated
+    }
+
+    public sealed class RunnerConfigUpdateResult
+    {
+        private RunnerConfigUpdateResult(RunnerConfigUpdateStatus status, RunnerSettings targetRunnerSettings = null)
+        {
+            Status = status;
+            TargetRunnerSettings = targetRunnerSettings;
+        }
+
+        public RunnerConfigUpdateStatus Status { get; }
+
+        public RunnerSettings TargetRunnerSettings { get; }
+
+        public static RunnerConfigUpdateResult Failed()
+        {
+            return new RunnerConfigUpdateResult(RunnerConfigUpdateStatus.Failed);
+        }
+
+        public static RunnerConfigUpdateResult NoTarget()
+        {
+            return new RunnerConfigUpdateResult(RunnerConfigUpdateStatus.NoTarget);
+        }
+
+        public static RunnerConfigUpdateResult Updated(RunnerSettings targetRunnerSettings = null)
+        {
+            return new RunnerConfigUpdateResult(RunnerConfigUpdateStatus.Updated, targetRunnerSettings);
+        }
     }
 
     public sealed class RunnerConfigUpdater : RunnerService, IRunnerConfigUpdater
@@ -32,7 +67,7 @@ namespace GitHub.Runner.Listener
             _runnerServer = HostContext.GetService<IRunnerServer>();
         }
 
-        public async Task UpdateRunnerConfigAsync(string runnerQualifiedId, string configType, string serviceType, string configRefreshUrl)
+        public async Task<RunnerConfigUpdateResult> UpdateRunnerConfigAsync(string runnerQualifiedId, string configType, string serviceType, string configRefreshUrl)
         {
             Trace.Entering();
             try
@@ -45,7 +80,7 @@ namespace GitHub.Runner.Listener
                 // make sure the runner qualified id matches the current runner
                 if (!await VerifyRunnerQualifiedId(runnerQualifiedId))
                 {
-                    return;
+                    return RunnerConfigUpdateResult.Failed();
                 }
 
                 // keep the timeout short to avoid blocking the main thread
@@ -54,15 +89,13 @@ namespace GitHub.Runner.Listener
                     switch (configType.ToLowerInvariant())
                     {
                         case "runner":
-                            await UpdateRunnerSettingsAsync(serviceType, configRefreshUrl, tokenSource.Token);
-                            break;
+                            return await UpdateRunnerSettingsAsync(serviceType, configRefreshUrl, tokenSource.Token);
                         case "credentials":
-                            await UpdateRunnerCredentialsAsync(serviceType, configRefreshUrl, tokenSource.Token);
-                            break;
+                            return await UpdateRunnerCredentialsAsync(serviceType, configRefreshUrl, tokenSource.Token);
                         default:
                             Trace.Error($"Invalid config type '{configType}'.");
                             await ReportTelemetryAsync($"Invalid config type '{configType}'.");
-                            return;
+                            return RunnerConfigUpdateResult.Failed();
                     }
                 }
             }
@@ -71,10 +104,11 @@ namespace GitHub.Runner.Listener
                 Trace.Error($"Failed to update runner '{configType}' config.");
                 Trace.Error(ex);
                 await ReportTelemetryAsync($"Failed to update runner '{configType}' config: {ex}");
+                return RunnerConfigUpdateResult.Failed();
             }
         }
 
-        private async Task UpdateRunnerSettingsAsync(string serviceType, string configRefreshUrl, CancellationToken token)
+        private async Task<RunnerConfigUpdateResult> UpdateRunnerSettingsAsync(string serviceType, string configRefreshUrl, CancellationToken token)
         {
             Trace.Entering();
             // read the current runner settings and encode with base64
@@ -84,18 +118,23 @@ namespace GitHub.Runner.Listener
             if (string.IsNullOrEmpty(encodedConfig))
             {
                 await ReportTelemetryAsync("Failed to get encoded runner settings.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             // exchange the encoded runner settings with the service
-            string refreshedEncodedConfig = await RefreshRunnerConfigAsync(encodedConfig, serviceType, "runner", configRefreshUrl, token);
-            if (string.IsNullOrEmpty(refreshedEncodedConfig))
+            var refreshedConfig = await RefreshRunnerConfigAsync(encodedConfig, serviceType, "runner", configRefreshUrl, token);
+            if (refreshedConfig.Status == RunnerConfigUpdateStatus.Failed)
             {
-                // service will return empty string if there is no change in the config
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
-            var decodedConfig = Encoding.UTF8.GetString(Convert.FromBase64String(refreshedEncodedConfig));
+            if (refreshedConfig.Status == RunnerConfigUpdateStatus.NoTarget)
+            {
+                // service will return empty string if there is no change in the config
+                return RunnerConfigUpdateResult.NoTarget();
+            }
+
+            var decodedConfig = Encoding.UTF8.GetString(Convert.FromBase64String(refreshedConfig.EncodedConfig));
             RunnerSettings refreshedRunnerConfig;
             try
             {
@@ -106,7 +145,7 @@ namespace GitHub.Runner.Listener
                 Trace.Error($"Failed to convert runner config from json '{decodedConfig}'.");
                 Trace.Error(ex);
                 await ReportTelemetryAsync($"Failed to convert runner config '{decodedConfig}' from json: {ex}");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             // make sure the runner id and name in the refreshed config match the current runner
@@ -114,22 +153,34 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error($"Runner id in refreshed config '{refreshedRunnerConfig?.AgentId.ToString() ?? "Empty"}' does not match the current runner '{_settings.AgentId}'.");
                 await ReportTelemetryAsync($"Runner id in refreshed config '{refreshedRunnerConfig?.AgentId.ToString() ?? "Empty"}' does not match the current runner '{_settings.AgentId}'.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             if (refreshedRunnerConfig?.AgentName != _settings.AgentName)
             {
                 Trace.Error($"Runner name in refreshed config '{refreshedRunnerConfig?.AgentName ?? "Empty"}' does not match the current runner '{_settings.AgentName}'.");
                 await ReportTelemetryAsync($"Runner name in refreshed config '{refreshedRunnerConfig?.AgentName ?? "Empty"}' does not match the current runner '{_settings.AgentName}'.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             // save the refreshed runner settings as a separate file
-            _store.SaveMigratedSettings(refreshedRunnerConfig);
+            try
+            {
+                _store.SaveMigratedSettings(refreshedRunnerConfig);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Failed to save refreshed runner settings.");
+                Trace.Error(ex);
+                await ReportTelemetryAsync($"Failed to save refreshed runner settings: {ex}");
+                return RunnerConfigUpdateResult.Failed();
+            }
+
             await ReportTelemetryAsync("Runner settings updated successfully.");
+            return RunnerConfigUpdateResult.Updated(refreshedRunnerConfig);
         }
 
-        private async Task UpdateRunnerCredentialsAsync(string serviceType, string configRefreshUrl, CancellationToken token)
+        private async Task<RunnerConfigUpdateResult> UpdateRunnerCredentialsAsync(string serviceType, string configRefreshUrl, CancellationToken token)
         {
             Trace.Entering();
             // read the current runner credentials and encode with base64
@@ -139,32 +190,37 @@ namespace GitHub.Runner.Listener
             if (string.IsNullOrEmpty(encodedConfig))
             {
                 await ReportTelemetryAsync("Failed to get encoded credentials.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             CredentialData currentCred = _store.GetCredentials();
             if (currentCred == null)
             {
                 await ReportTelemetryAsync("Failed to get current credentials.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             // we only support refreshing OAuth credentials which is used by self-hosted runners.
             if (currentCred.Scheme != Constants.Configuration.OAuth)
             {
                 await ReportTelemetryAsync($"Not supported credential scheme '{currentCred.Scheme}'.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             // exchange the encoded runner credentials with the service
-            string refreshedEncodedConfig = await RefreshRunnerConfigAsync(encodedConfig, serviceType, "credentials", configRefreshUrl, token);
-            if (string.IsNullOrEmpty(refreshedEncodedConfig))
+            var refreshedConfig = await RefreshRunnerConfigAsync(encodedConfig, serviceType, "credentials", configRefreshUrl, token);
+            if (refreshedConfig.Status == RunnerConfigUpdateStatus.Failed)
             {
-                // service will return empty string if there is no change in the config
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
-            var decodedConfig = Encoding.UTF8.GetString(Convert.FromBase64String(refreshedEncodedConfig));
+            if (refreshedConfig.Status == RunnerConfigUpdateStatus.NoTarget)
+            {
+                // service will return empty string if there is no change in the config
+                return RunnerConfigUpdateResult.NoTarget();
+            }
+
+            var decodedConfig = Encoding.UTF8.GetString(Convert.FromBase64String(refreshedConfig.EncodedConfig));
             CredentialData refreshedCredConfig;
             try
             {
@@ -175,7 +231,7 @@ namespace GitHub.Runner.Listener
                 Trace.Error($"Failed to convert credentials config from json '{decodedConfig}'.");
                 Trace.Error(ex);
                 await ReportTelemetryAsync($"Failed to convert credentials config '{decodedConfig}' from json: {ex}");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             // make sure the credential scheme in the refreshed config match the current credential scheme
@@ -183,7 +239,7 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error($"Credential scheme in refreshed config '{refreshedCredConfig?.Scheme ?? "Empty"}' does not match the current credential scheme '{_credData.Scheme}'.");
                 await ReportTelemetryAsync($"Credential scheme in refreshed config '{refreshedCredConfig?.Scheme ?? "Empty"}' does not match the current credential scheme '{_credData.Scheme}'.");
-                return;
+                return RunnerConfigUpdateResult.Failed();
             }
 
             if (_credData.Scheme == Constants.Configuration.OAuth)
@@ -195,7 +251,7 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error($"Credential clientId in refreshed config '{refreshedClientId ?? "Empty"}' does not match the current credential clientId '{clientId}'.");
                     await ReportTelemetryAsync($"Credential clientId in refreshed config '{refreshedClientId ?? "Empty"}' does not match the current credential clientId '{clientId}'.");
-                    return;
+                    return RunnerConfigUpdateResult.Failed();
                 }
 
                 //  make sure the credential authorizationUrl in the refreshed config match the current credential authorizationUrl for OAuth auth scheme
@@ -205,7 +261,7 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error($"Credential authorizationUrl in refreshed config '{refreshedAuthorizationUrl ?? "Empty"}' does not match the current credential authorizationUrl '{authorizationUrl}'.");
                     await ReportTelemetryAsync($"Credential authorizationUrl in refreshed config '{refreshedAuthorizationUrl ?? "Empty"}' does not match the current credential authorizationUrl '{authorizationUrl}'.");
-                    return;
+                    return RunnerConfigUpdateResult.Failed();
                 }
             }
 
@@ -222,6 +278,8 @@ namespace GitHub.Runner.Listener
                 HostContext.DeferAuthMigration(TimeSpan.FromDays(365), "Credential file does not contain authorizationUrlV2");
                 await ReportTelemetryAsync("Runner credentials updated successfully. Auth migration is disabled.");
             }
+
+            return RunnerConfigUpdateResult.Updated();
         }
 
         private async Task<bool> VerifyRunnerQualifiedId(string runnerQualifiedId)
@@ -238,7 +296,7 @@ namespace GitHub.Runner.Listener
             return true;
         }
 
-        private async Task<string> RefreshRunnerConfigAsync(string encodedConfig, string serviceType, string configType, string configRefreshUrl, CancellationToken token)
+        private async Task<RefreshRunnerConfigResult> RefreshRunnerConfigAsync(string encodedConfig, string serviceType, string configType, string configRefreshUrl, CancellationToken token)
         {
             string refreshedEncodedConfig;
             switch (serviceType.ToLowerInvariant())
@@ -253,7 +311,7 @@ namespace GitHub.Runner.Listener
                         Trace.Error($"Failed to refresh runner {configType} config with service.");
                         Trace.Error(ex);
                         await ReportTelemetryAsync($"Failed to refresh {configType} config: {ex}");
-                        return null;
+                        return RefreshRunnerConfigResult.Failed();
                     }
                     break;
                 case "runner-admin":
@@ -261,10 +319,43 @@ namespace GitHub.Runner.Listener
                 default:
                     Trace.Error($"Invalid service type '{serviceType}'.");
                     await ReportTelemetryAsync($"Invalid service type '{serviceType}'.");
-                    return null;
+                    return RefreshRunnerConfigResult.Failed();
             }
 
-            return refreshedEncodedConfig;
+            if (string.IsNullOrEmpty(refreshedEncodedConfig))
+            {
+                return RefreshRunnerConfigResult.NoTarget();
+            }
+
+            return RefreshRunnerConfigResult.Updated(refreshedEncodedConfig);
+        }
+
+        private sealed class RefreshRunnerConfigResult
+        {
+            private RefreshRunnerConfigResult(RunnerConfigUpdateStatus status, string encodedConfig = null)
+            {
+                Status = status;
+                EncodedConfig = encodedConfig;
+            }
+
+            public RunnerConfigUpdateStatus Status { get; }
+
+            public string EncodedConfig { get; }
+
+            public static RefreshRunnerConfigResult Failed()
+            {
+                return new RefreshRunnerConfigResult(RunnerConfigUpdateStatus.Failed);
+            }
+
+            public static RefreshRunnerConfigResult NoTarget()
+            {
+                return new RefreshRunnerConfigResult(RunnerConfigUpdateStatus.NoTarget);
+            }
+
+            public static RefreshRunnerConfigResult Updated(string encodedConfig)
+            {
+                return new RefreshRunnerConfigResult(RunnerConfigUpdateStatus.Updated, encodedConfig);
+            }
         }
 
         private async Task ReportTelemetryAsync(string telemetry)

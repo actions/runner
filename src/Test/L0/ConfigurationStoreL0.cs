@@ -122,6 +122,104 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_ReplacesExistingFileAndPreservesHiddenAttribute()
+        {
+            using (var fixture = CreateFixture())
+            {
+                var migratedSettingsPath = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
+
+                fixture.Store.SaveMigratedSettings(previousSettings);
+                fixture.Store.SaveMigratedSettings(nextSettings);
+
+                var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
+                Assert.Equal(nextSettings.PoolId, savedSettings.PoolId);
+                Assert.Equal(nextSettings.AgentId, savedSettings.AgentId);
+                Assert.Equal(nextSettings.AgentName, savedSettings.AgentName);
+                Assert.True((File.GetAttributes(migratedSettingsPath) & FileAttributes.Hidden) == FileAttributes.Hidden);
+                Assert.Empty(Directory.GetFiles(fixture.RootDirectory, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
+            }
+        }
+
+#if !OS_WINDOWS
+#pragma warning disable CA1416
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_ReplacesExistingFileAndPreservesUserOnlyUnixMode()
+        {
+            AssertMigratedSettingsPreservesUnixMode(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_ReplacesExistingFileAndPreservesGroupReadUnixMode()
+        {
+            AssertMigratedSettingsPreservesUnixMode(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_WriteFailurePreservesPreviousFile()
+        {
+            using (var fixture = CreateFixture())
+            {
+                var originalMode = File.GetUnixFileMode(fixture.RootDirectory);
+                try
+                {
+                    var migratedSettingsPath = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                    var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                    var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
+                    fixture.Store.SaveMigratedSettings(previousSettings);
+                    var previousFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+                    File.SetUnixFileMode(migratedSettingsPath, previousFileMode);
+
+                    File.SetUnixFileMode(
+                        fixture.RootDirectory,
+                        originalMode & ~UnixFileMode.UserWrite & ~UnixFileMode.GroupWrite & ~UnixFileMode.OtherWrite);
+
+                    Assert.ThrowsAny<Exception>(() => fixture.Store.SaveMigratedSettings(nextSettings));
+
+                    File.SetUnixFileMode(fixture.RootDirectory, originalMode);
+                    var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
+                    Assert.Equal(previousSettings.PoolId, savedSettings.PoolId);
+                    Assert.Equal(previousFileMode, File.GetUnixFileMode(migratedSettingsPath));
+                    Assert.Empty(Directory.GetFiles(fixture.RootDirectory, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
+                }
+                finally
+                {
+                    File.SetUnixFileMode(fixture.RootDirectory, originalMode);
+                }
+            }
+        }
+
+        private void AssertMigratedSettingsPreservesUnixMode(UnixFileMode expectedMode)
+        {
+            using (var fixture = CreateFixture())
+            {
+                var migratedSettingsPath = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
+                fixture.Store.SaveMigratedSettings(previousSettings);
+                File.SetUnixFileMode(migratedSettingsPath, expectedMode);
+
+                fixture.Store.SaveMigratedSettings(nextSettings);
+
+                var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
+                Assert.Equal(nextSettings.PoolId, savedSettings.PoolId);
+                Assert.Equal(expectedMode, File.GetUnixFileMode(migratedSettingsPath));
+                Assert.Empty(Directory.GetFiles(fixture.RootDirectory, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
+            }
+        }
+#pragma warning restore CA1416
+#endif
+
         private ConfigurationStoreFixture CreateFixture([CallerMemberName] string testName = "")
         {
             return new ConfigurationStoreFixture(this, testName);
@@ -142,13 +240,12 @@ namespace GitHub.Runner.Common.Tests
         private sealed class ConfigurationStoreFixture : IDisposable
         {
             private readonly string _previousBinOverride;
-            private readonly string _rootDirectory;
 
             public ConfigurationStoreFixture(object testClass, string testName)
             {
                 _previousBinOverride = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
-                _rootDirectory = Path.Combine(Path.GetTempPath(), nameof(ConfigurationStoreL0), Guid.NewGuid().ToString("D"));
-                string binDirectory = Path.Combine(_rootDirectory, "bin");
+                RootDirectory = Path.Combine(Path.GetTempPath(), nameof(ConfigurationStoreL0), Guid.NewGuid().ToString("D"));
+                string binDirectory = Path.Combine(RootDirectory, "bin");
                 Directory.CreateDirectory(binDirectory);
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", binDirectory);
 
@@ -161,11 +258,13 @@ namespace GitHub.Runner.Common.Tests
 
             public ConfigurationStore Store { get; }
 
+            public string RootDirectory { get; }
+
             public void Dispose()
             {
                 HostContext.Dispose();
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", _previousBinOverride);
-                IOUtil.Delete(_rootDirectory, CancellationToken.None);
+                IOUtil.Delete(RootDirectory, CancellationToken.None);
             }
         }
     }
