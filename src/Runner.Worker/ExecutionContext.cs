@@ -1330,8 +1330,33 @@ namespace GitHub.Runner.Worker
             {
                 var workflowFile = Path.Combine(workflowDirectory, "event.json");
                 Trace.Info($"Write event payload to {workflowFile}");
-                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
+                WriteWebhookPayloadFile(workflowFile, gitHubEvent);
                 SetGitHubContext("event_path", workflowFile);
+            }
+        }
+
+        // Every step writes the very same webhook payload to the very same file before it runs, and
+        // steps can run concurrently (parallel/background steps). This implements an atomic write
+        // that avoids file corruption.
+        private static void WriteWebhookPayloadFile(string workflowFile, string gitHubEvent)
+        {
+            if (File.Exists(workflowFile))
+            {
+                return;
+            }
+
+            var tempFile = $"{workflowFile}.{Guid.NewGuid():N}.tmp";
+            File.WriteAllText(tempFile, gitHubEvent, new UTF8Encoding(false));
+            try
+            {
+                File.Move(tempFile, workflowFile);
+            }
+            catch (IOException) when (File.Exists(workflowFile))
+            {
+            }
+            finally
+            {
+                File.Delete(tempFile);
             }
         }
 
