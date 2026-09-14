@@ -9,7 +9,17 @@ const packageUrl = new URL(
 )
 const require = createRequire(new URL('package.json', packageUrl))
 const {ESLint} = require('eslint')
-const eslint = new ESLint({cwd: fileURLToPath(packageUrl)})
+const eslint = new ESLint({
+  cwd: fileURLToPath(packageUrl),
+  overrideConfig: {
+    languageOptions: {
+      parserOptions: {
+        // Repeated lintText calls need project types, not single-run isolated programs.
+        disallowAutomaticSingleRunInference: true
+      }
+    }
+  }
+})
 
 test('hashFiles source passes lint with type-aware rules enabled', async () => {
   const results = await eslint.lintFiles(['src/**/*.ts'])
