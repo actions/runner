@@ -405,6 +405,7 @@ namespace GitHub.Runner.Common
 
                 migratedSettingsSaved = true;
                 Trace.Info("Migrated Settings Saved.");
+                _migratedSettings = settings;
             }
             finally
             {
@@ -443,11 +444,13 @@ namespace GitHub.Runner.Common
         {
             IOUtil.Delete(_configFilePath, default(CancellationToken));
             IOUtil.Delete(_migratedConfigFilePath, default(CancellationToken));
+            _migratedSettings = null;
         }
 
         public void DeleteMigratedSettings()
         {
             IOUtil.Delete(_migratedConfigFilePath, default(CancellationToken));
+            _migratedSettings = null;
         }
     }
 }

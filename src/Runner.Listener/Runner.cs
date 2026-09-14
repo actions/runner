@@ -458,10 +458,22 @@ namespace GitHub.Runner.Listener
                             settings = migratedSettings; // Use migrated settings for the rest of the process
                             usedMigratedSettings = true;
                         }
+                        else if (createSessionResult == CreateSessionResult.SessionConflict)
+                        {
+                            return Constants.Runner.ReturnCode.SessionConflict;
+                        }
                         else
                         {
                             Trace.Warning($"Failed to create session with migrated settings: {createSessionResult}");
                         }
+                    }
+                    catch (OperationCanceledException) when (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex) when (ex is TaskAgentAccessTokenExpiredException || ex is HostedRunnerDeprovisionedException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {

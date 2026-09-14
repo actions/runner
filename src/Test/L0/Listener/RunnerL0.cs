@@ -74,6 +74,25 @@ namespace GitHub.Runner.Common.Tests.Listener
             return message;
         }
 
+        private void SetupRunCommandWithMigratedSettings(TestHostContext hc, RunnerSettings settings, RunnerSettings migratedSettings)
+        {
+            hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
+            hc.SetSingleton<IJobNotification>(_jobNotification.Object);
+            hc.SetSingleton<IMessageListener>(_messageListener.Object);
+            hc.SetSingleton<IPromptManager>(_promptManager.Object);
+            hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+            hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+            hc.EnqueueInstance<IErrorThrottler>(_acquireJobThrottler.Object);
+
+            _configurationManager.Setup(x => x.LoadSettings())
+                .Returns(settings);
+            _configurationManager.Setup(x => x.LoadMigratedSettings())
+                .Returns(migratedSettings);
+            _configurationManager.Setup(x => x.IsConfigured())
+                .Returns(true);
+            _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
+        }
+
         private async Task<int> RunRefreshConfigMessages(
             TestHostContext hc,
             RunnerSettings activeSettings,
@@ -510,6 +529,117 @@ namespace GitHub.Runner.Common.Tests.Listener
                 await runner.ExecuteCommand(command);
 
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionConflictReturnsSessionConflict()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.SessionConflict));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.SessionConflict, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionFailureFallsBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure))
+                    .Returns(Task.FromResult<CreateSessionResult>(CreateSessionResult.Failure));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionTokenRevokedDoesNotFallBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new TaskAgentAccessTokenExpiredException("token revoked"));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionHostedDeprovisionDoesNotFallBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new HostedRunnerDeprovisionedException("hosted runner deprovisioned"));
+
+                runner.Initialize(hc);
+
+                var returnCode = await runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" }));
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, returnCode);
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunWithMigratedSessionShutdownCancellationDoesNotFallBackToOriginalSettings()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                SetupRunCommandWithMigratedSettings(hc, new RunnerSettings(), new RunnerSettings());
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .Callback(() => hc.ShutdownRunner(ShutdownReason.UserCancelled))
+                    .ThrowsAsync(new OperationCanceledException(hc.RunnerShutdownToken));
+
+                runner.Initialize(hc);
+
+                await Assert.ThrowsAsync<OperationCanceledException>(() => runner.ExecuteCommand(new CommandSettings(hc, new string[] { "run" })));
+
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
+                _jobNotification.Verify(x => x.StartClient(It.IsAny<string>()), Times.Never());
             }
         }
 
