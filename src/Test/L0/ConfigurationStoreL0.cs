@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using GitHub.Runner.Sdk;
 using Xunit;
 
@@ -12,19 +14,18 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void SaveMigratedSettings_UpdatesLoadedMigratedSettingsCache()
         {
-            using (TestHostContext hc = new(this))
+            using (var fixture = CreateFixture())
             {
-                var store = CreateStore(hc);
-                string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                string migratedConfigFile = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings oldSettings = CreateSettings("agent-a");
                 RunnerSettings newSettings = CreateSettings("agent-b");
                 IOUtil.SaveObject(oldSettings, migratedConfigFile);
 
-                Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
+                Assert.Equal("agent-a", fixture.Store.GetMigratedSettings().AgentName);
 
-                store.SaveMigratedSettings(newSettings);
+                fixture.Store.SaveMigratedSettings(newSettings);
 
-                Assert.Equal("agent-b", store.GetMigratedSettings().AgentName);
+                Assert.Equal("agent-b", fixture.Store.GetMigratedSettings().AgentName);
                 Assert.Equal("agent-b", IOUtil.LoadObject<RunnerSettings>(migratedConfigFile).AgentName);
             }
         }
@@ -34,22 +35,21 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void SaveMigratedSettings_WhenWriteFails_DoesNotExposeUnsavedSettings()
         {
-            using (TestHostContext hc = new(this))
+            using (var fixture = CreateFixture())
             {
-                var store = CreateStore(hc);
-                string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                string migratedConfigFile = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings oldSettings = CreateSettings("agent-a");
                 RunnerSettings newSettings = CreateSettings("agent-b");
                 IOUtil.SaveObject(oldSettings, migratedConfigFile);
 
-                Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
+                Assert.Equal("agent-a", fixture.Store.GetMigratedSettings().AgentName);
                 File.Delete(migratedConfigFile);
                 Directory.CreateDirectory(migratedConfigFile);
 
                 try
                 {
-                    Assert.ThrowsAny<Exception>(() => store.SaveMigratedSettings(newSettings));
-                    Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
+                    Assert.ThrowsAny<Exception>(() => fixture.Store.SaveMigratedSettings(newSettings));
+                    Assert.Equal("agent-a", fixture.Store.GetMigratedSettings().AgentName);
                 }
                 finally
                 {
@@ -66,19 +66,18 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void DeleteMigratedSettings_InvalidatesLoadedMigratedSettingsCache()
         {
-            using (TestHostContext hc = new(this))
+            using (var fixture = CreateFixture())
             {
-                var store = CreateStore(hc);
-                string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                string migratedConfigFile = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings settings = CreateSettings("agent-a");
                 IOUtil.SaveObject(settings, migratedConfigFile);
 
-                Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
+                Assert.Equal("agent-a", fixture.Store.GetMigratedSettings().AgentName);
 
-                store.DeleteMigratedSettings();
+                fixture.Store.DeleteMigratedSettings();
 
                 Assert.False(File.Exists(migratedConfigFile));
-                Assert.Throws<ArgumentNullException>(() => store.GetMigratedSettings());
+                Assert.Throws<ArgumentNullException>(() => fixture.Store.GetMigratedSettings());
             }
         }
 
@@ -87,19 +86,18 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void DeleteSettings_InvalidatesLoadedMigratedSettingsCache()
         {
-            using (TestHostContext hc = new(this))
+            using (var fixture = CreateFixture())
             {
-                var store = CreateStore(hc);
-                string migratedConfigFile = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                string migratedConfigFile = fixture.HostContext.GetConfigFile(WellKnownConfigFile.MigratedRunner);
                 RunnerSettings settings = CreateSettings("agent-a");
                 IOUtil.SaveObject(settings, migratedConfigFile);
 
-                Assert.Equal("agent-a", store.GetMigratedSettings().AgentName);
+                Assert.Equal("agent-a", fixture.Store.GetMigratedSettings().AgentName);
 
-                store.DeleteSettings();
+                fixture.Store.DeleteSettings();
 
                 Assert.False(File.Exists(migratedConfigFile));
-                Assert.Throws<ArgumentNullException>(() => store.GetMigratedSettings());
+                Assert.Throws<ArgumentNullException>(() => fixture.Store.GetMigratedSettings());
             }
         }
 
@@ -108,28 +106,25 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Common")]
         public void SaveMigratedSettings_DoesNotChangeOriginalSettings()
         {
-            using (TestHostContext hc = new(this))
+            using (var fixture = CreateFixture())
             {
-                var store = CreateStore(hc);
-                string configFile = hc.GetConfigFile(WellKnownConfigFile.Runner);
+                string configFile = fixture.HostContext.GetConfigFile(WellKnownConfigFile.Runner);
                 RunnerSettings originalSettings = CreateSettings("agent-a");
                 RunnerSettings migratedSettings = CreateSettings("agent-b");
                 IOUtil.SaveObject(originalSettings, configFile);
 
-                Assert.Equal("agent-a", store.GetSettings().AgentName);
+                Assert.Equal("agent-a", fixture.Store.GetSettings().AgentName);
 
-                store.SaveMigratedSettings(migratedSettings);
+                fixture.Store.SaveMigratedSettings(migratedSettings);
 
-                Assert.Equal("agent-a", store.GetSettings().AgentName);
+                Assert.Equal("agent-a", fixture.Store.GetSettings().AgentName);
                 Assert.Equal("agent-a", IOUtil.LoadObject<RunnerSettings>(configFile).AgentName);
             }
         }
 
-        private static ConfigurationStore CreateStore(TestHostContext hc)
+        private ConfigurationStoreFixture CreateFixture([CallerMemberName] string testName = "")
         {
-            var store = new ConfigurationStore();
-            store.Initialize(hc);
-            return store;
+            return new ConfigurationStoreFixture(this, testName);
         }
 
         private static RunnerSettings CreateSettings(string agentName)
@@ -142,6 +137,36 @@ namespace GitHub.Runner.Common.Tests
                 ServerUrl = "https://example.test/org",
                 WorkFolder = "_work",
             };
+        }
+
+        private sealed class ConfigurationStoreFixture : IDisposable
+        {
+            private readonly string _previousBinOverride;
+            private readonly string _rootDirectory;
+
+            public ConfigurationStoreFixture(object testClass, string testName)
+            {
+                _previousBinOverride = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
+                _rootDirectory = Path.Combine(Path.GetTempPath(), nameof(ConfigurationStoreL0), Guid.NewGuid().ToString("D"));
+                string binDirectory = Path.Combine(_rootDirectory, "bin");
+                Directory.CreateDirectory(binDirectory);
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", binDirectory);
+
+                HostContext = new TestHostContext(testClass, testName);
+                Store = new ConfigurationStore();
+                Store.Initialize(HostContext);
+            }
+
+            public TestHostContext HostContext { get; }
+
+            public ConfigurationStore Store { get; }
+
+            public void Dispose()
+            {
+                HostContext.Dispose();
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", _previousBinOverride);
+                IOUtil.Delete(_rootDirectory, CancellationToken.None);
+            }
         }
     }
 }
