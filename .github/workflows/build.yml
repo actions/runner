@@ -127,4 +127,12 @@ jobs:
     - name: Test Docker image
       run: |
         docker run --rm ${{ github.sha }}:latest ./run.sh --version
+
+    # Regression test for https://github.com/actions/runner/issues/4591.
+    # Node.js 25+ links against libatomic.so.1, which the dotnet/runtime-deps base image does not ship,
+    # so actions/setup-node with a modern Node version breaks unless the image installs libatomic1.
+    - name: Test Docker image provides Node.js 25+ runtime dependencies
+      run: |
+        docker run --rm ${{ github.sha }}:latest \
+          bash -c 'set -euo pipefail; "$(command -v ldconfig || echo /sbin/ldconfig)" -p | grep -F -- "libatomic.so.1"'
   
