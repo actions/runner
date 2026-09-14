@@ -8,6 +8,8 @@
 
         Cancelled = 2,
 
-        Skipped = 3
+        Skipped = 3,
+
+        Neutral = 4
     }
 }
