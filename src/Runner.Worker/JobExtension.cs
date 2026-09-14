@@ -20,6 +20,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Dap;
 using GitHub.Services.Common;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -159,6 +160,19 @@ namespace GitHub.Runner.Worker
                                 context.Output($"{entry.Key}: {entry.Value}");
                             }
                             context.Output("##[endgroup]");
+
+                            try {
+                                // serialize permissions into an env var
+                                var contractResolver = new DefaultContractResolver() { NamingStrategy = new SnakeCaseNamingStrategy(true, false) };
+                                var permissionsJson = JsonConvert.SerializeObject(permissions, new JsonSerializerSettings() { ContractResolver = contractResolver, Formatting = Formatting.None });
+                                context.Global.EnvironmentVariables["GITHUB_TOKEN_PERMISSIONS"] = permissionsJson;
+                                context.SetEnvContext("GITHUB_TOKEN_PERMISSIONS", permissionsJson);
+                            }
+                            catch (Exception ex)
+                            {
+                                context.Output($"Fail to serialize GITHUB_TOKEN_PERMISSIONS: {ex.Message}");
+                                Trace.Error(ex);
+                            }
                         }
                     }
                     catch (Exception ex)
