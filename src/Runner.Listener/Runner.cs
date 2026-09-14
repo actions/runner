@@ -511,6 +511,7 @@ namespace GitHub.Runner.Listener
                 bool restartSession = false; // Flag to indicate session restart
                 bool restartSessionPending = false;
                 bool cleanupLocalConfigAfter404 = false;
+                EventHandler<JobStatusEventArgs> runnerIdleRestartHandler = null;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -520,36 +521,94 @@ namespace GitHub.Runner.Listener
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;
                     bool runOnceJobReceived = false;
+                    TaskCompletionSource<bool> idleRestartSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
                     jobDispatcher = HostContext.CreateService<IJobDispatcher>();
 
                     jobDispatcher.JobStatus += _listener.OnJobStatus;
+                    runnerIdleRestartHandler = (sender, args) =>
+                    {
+                        if (args.Status == TaskAgentStatus.Online)
+                        {
+                            idleRestartSignal.TrySetResult(true);
+                        }
+                    };
+                    jobDispatcher.JobStatus += runnerIdleRestartHandler;
 
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         // Check if we need to restart the session and can do so (job dispatcher not busy)
-                        if (restartSessionPending && !jobDispatcher.Busy)
+                        if (restartSessionPending)
                         {
-                            Trace.Info("Pending session restart detected and job dispatcher is not busy. Restarting session now.");
-                            messageQueueLoopTokenSource.Cancel();
-                            restartSession = true;
-                            break;
+                            idleRestartSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                            if (!jobDispatcher.Busy && !autoUpdateInProgress && !runOnceJobReceived)
+                            {
+                                Trace.Info("Pending session restart detected and job dispatcher is not busy. Restarting session now.");
+                                messageQueueLoopTokenSource.Cancel();
+                                restartSession = true;
+                                break;
+                            }
                         }
 
                         TaskAgentMessage message = null;
                         bool skipMessageDeletion = false;
                         try
                         {
-                            Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(messageQueueLoopTokenSource.Token);
-                            if (autoUpdateInProgress)
+                            using (var getNextMessageTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageQueueLoopTokenSource.Token))
                             {
-                                Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
-                                Task completeTask = await Task.WhenAny(getNextMessage, selfUpdateTask);
-                                if (completeTask == selfUpdateTask)
+                                Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(getNextMessageTokenSource.Token);
+                                Task idleRestartTask = restartSessionPending && !autoUpdateInProgress && !runOnceJobReceived ? idleRestartSignal.Task : null;
+
+                                if (autoUpdateInProgress)
                                 {
-                                    autoUpdateInProgress = false;
-                                    if (await selfUpdateTask)
+                                    Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
+                                    await Task.WhenAny(getNextMessage, selfUpdateTask);
+
+                                    if (selfUpdateTask.IsCompleted)
                                     {
-                                        Trace.Info("Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
+                                        autoUpdateInProgress = false;
+                                        if (await selfUpdateTask)
+                                        {
+                                            Trace.Info("Auto update task finished at backend, an runner update is ready to apply exit the current runner instance.");
+                                            Trace.Info("Stop message queue looping.");
+                                            messageQueueLoopTokenSource.Cancel();
+                                            try
+                                            {
+                                                await getNextMessage;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                            }
+
+                                            if (runOnce)
+                                            {
+                                                return Constants.Runner.ReturnCode.RunOnceRunnerUpdating;
+                                            }
+                                            else
+                                            {
+                                                return Constants.Runner.ReturnCode.RunnerUpdating;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Trace.Info("Auto update task finished at backend, there is no available runner update needs to apply, continue message queue looping.");
+                                            if (restartSessionPending && !runOnceJobReceived)
+                                            {
+                                                idleRestartTask = jobDispatcher.Busy ? idleRestartSignal.Task : Task.CompletedTask;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (runOnceJobReceived)
+                                {
+                                    Trace.Verbose("One time used runner has start running its job, waiting for getNextMessage or the job to finish.");
+                                    await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
+
+                                    if (jobDispatcher.RunOnceJobCompleted.Task.IsCompleted)
+                                    {
+                                        runOnceJobCompleted = true;
+                                        Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
                                         Trace.Info("Stop message queue looping.");
                                         messageQueueLoopTokenSource.Cancel();
                                         try
@@ -561,61 +620,66 @@ namespace GitHub.Runner.Listener
                                             Trace.Info($"Ignore any exception after cancel message loop. {ex}");
                                         }
 
-                                        if (runOnce)
+                                        if (returnRunOnceJobResult)
                                         {
-                                            return Constants.Runner.ReturnCode.RunOnceRunnerUpdating;
+                                            try
+                                            {
+                                                var jobResult = await jobDispatcher.RunOnceJobCompleted.Task;
+                                                return TaskResultUtil.TranslateToReturnCode(jobResult);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Trace.Error("run once job finished with error.");
+                                                Trace.Error(ex);
+                                                return Constants.Runner.ReturnCode.TerminatedError;
+                                            }
                                         }
-                                        else
-                                        {
-                                            return Constants.Runner.ReturnCode.RunnerUpdating;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Trace.Info("Auto update task finished at backend, there is no available runner update needs to apply, continue message queue looping.");
+
+                                        return Constants.Runner.ReturnCode.Success;
                                     }
                                 }
-                            }
-
-                            if (runOnceJobReceived)
-                            {
-                                Trace.Verbose("One time used runner has start running its job, waiting for getNextMessage or the job to finish.");
-                                Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
-                                if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
+                                else if (!autoUpdateInProgress && idleRestartTask != null)
                                 {
-                                    runOnceJobCompleted = true;
-                                    Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
-                                    Trace.Info("Stop message queue looping.");
-                                    messageQueueLoopTokenSource.Cancel();
+                                    await Task.WhenAny(getNextMessage, idleRestartTask);
+                                }
+
+                                if (idleRestartTask != null && idleRestartTask.IsCompleted)
+                                {
+                                    Trace.Info("Pending session restart detected after job dispatcher became idle. Checking pending message before restarting session.");
+                                    getNextMessageTokenSource.Cancel();
                                     try
                                     {
-                                        await getNextMessage;
+                                        message = await getNextMessage;
                                     }
-                                    catch (Exception ex)
+                                    catch (OperationCanceledException) when (getNextMessageTokenSource.IsCancellationRequested && !messageQueueLoopTokenSource.IsCancellationRequested && !HostContext.RunnerShutdownToken.IsCancellationRequested)
                                     {
-                                        Trace.Info($"Ignore any exception after cancel message loop. {ex}");
+                                        Trace.Info("Get next message cancelled after runner became idle with pending session restart.");
                                     }
 
-                                    if (returnRunOnceJobResult)
+                                    if (message == null)
                                     {
-                                        try
+                                        if (restartSessionPending && !jobDispatcher.Busy && !autoUpdateInProgress && !runOnceJobReceived)
                                         {
-                                            var jobResult = await jobDispatcher.RunOnceJobCompleted.Task;
-                                            return TaskResultUtil.TranslateToReturnCode(jobResult);
+                                            Trace.Info("No pending message received after idle wake. Restarting session now.");
+                                            messageQueueLoopTokenSource.Cancel();
+                                            restartSession = true;
+                                            break;
                                         }
-                                        catch (Exception ex)
-                                        {
-                                            Trace.Error("run once job finished with error.");
-                                            Trace.Error(ex);
-                                            return Constants.Runner.ReturnCode.TerminatedError;
-                                        }
-                                    }
 
-                                    return Constants.Runner.ReturnCode.Success;
+                                        continue;
+                                    }
+                                }
+                                else
+                                {
+                                    message = await getNextMessage; //get next message
                                 }
                             }
 
-                            message = await getNextMessage; //get next message
+                            if (message == null)
+                            {
+                                continue;
+                            }
+
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
@@ -867,6 +931,11 @@ namespace GitHub.Runner.Listener
                     if (jobDispatcher != null)
                     {
                         jobDispatcher.JobStatus -= _listener.OnJobStatus;
+                        if (runnerIdleRestartHandler != null)
+                        {
+                            jobDispatcher.JobStatus -= runnerIdleRestartHandler;
+                        }
+
                         await jobDispatcher.ShutdownAsync();
                     }
 
