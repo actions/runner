@@ -8,8 +8,9 @@
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*.ts",
     "lint": "eslint src/**/*.ts",
+    "test": "node --test ../../../Test/L0/HashFilesL0.mjs",
     "pack": "ncc build -o ../../layoutbin/hashFiles",
-    "all": "npm run format && npm run lint && npm run build && npm run pack",
+    "all": "npm run format && npm run lint && npm test && npm run build && npm run pack",
     "prepare": "cd ../../../../ && husky"
   },
   "repository": {
@@ -40,9 +41,10 @@
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
     "@vercel/ncc": "^0.45.0",
-    "eslint": "^8.47.0",
+    "eslint": "^10.8.1",
     "eslint-plugin-github": "^6.1.2",
     "eslint-plugin-prettier": "^5.0.0",
+    "globals": "^17.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
     "prettier": "^3.0.3",
