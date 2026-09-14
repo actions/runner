@@ -363,16 +363,45 @@ namespace GitHub.Runner.Common
         public void SaveMigratedSettings(RunnerSettings settings)
         {
             Trace.Info("Saving runner migrated settings");
+            var tempConfigFilePath = Path.Combine(
+                Path.GetDirectoryName(_migratedConfigFilePath),
+                $".{Path.GetFileName(_migratedConfigFilePath)}.{Guid.NewGuid():N}.tmp");
+            var targetAttributes = FileAttributes.Hidden;
             if (File.Exists(_migratedConfigFilePath))
             {
-                // Delete existing settings file first, since the file is hidden and not able to overwrite.
-                Trace.Info("Delete exist runner migrated settings file.");
-                IOUtil.DeleteFile(_migratedConfigFilePath);
+                targetAttributes = File.GetAttributes(_migratedConfigFilePath) | FileAttributes.Hidden;
             }
 
-            IOUtil.SaveObject(settings, _migratedConfigFilePath);
-            Trace.Info("Migrated Settings Saved.");
-            File.SetAttributes(_migratedConfigFilePath, File.GetAttributes(_migratedConfigFilePath) | FileAttributes.Hidden);
+            try
+            {
+                IOUtil.SaveObject(settings, tempConfigFilePath);
+                File.SetAttributes(tempConfigFilePath, targetAttributes & ~FileAttributes.ReadOnly);
+
+                if (File.Exists(_migratedConfigFilePath))
+                {
+                    File.SetAttributes(_migratedConfigFilePath, targetAttributes & ~FileAttributes.Hidden & ~FileAttributes.ReadOnly);
+                    File.Replace(tempConfigFilePath, _migratedConfigFilePath, null);
+                }
+                else
+                {
+                    File.Move(tempConfigFilePath, _migratedConfigFilePath);
+                }
+
+                File.SetAttributes(_migratedConfigFilePath, targetAttributes);
+                Trace.Info("Migrated Settings Saved.");
+            }
+            finally
+            {
+                if (File.Exists(tempConfigFilePath))
+                {
+                    IOUtil.DeleteFile(tempConfigFilePath);
+                }
+
+                if (File.Exists(_migratedConfigFilePath))
+                {
+                    File.SetAttributes(_migratedConfigFilePath, targetAttributes);
+                }
+            }
         }
 
         public void DeleteCredential()

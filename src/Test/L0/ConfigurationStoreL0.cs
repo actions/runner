@@ -1,0 +1,108 @@
+﻿using System;
+using System.IO;
+using GitHub.Runner.Sdk;
+using Xunit;
+
+namespace GitHub.Runner.Common.Tests
+{
+    public sealed class ConfigurationStoreL0
+    {
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_ReplacesExistingFileAndPreservesHiddenAttribute()
+        {
+            var originalOverrideBinDir = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
+            var root = SetIsolatedBinDirectory();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var store = new ConfigurationStore();
+                    store.Initialize(hc);
+
+                    var migratedSettingsPath = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                    var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                    var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
+
+                    store.SaveMigratedSettings(previousSettings);
+                    store.SaveMigratedSettings(nextSettings);
+
+                    var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
+                    Assert.Equal(nextSettings.PoolId, savedSettings.PoolId);
+                    Assert.Equal(nextSettings.AgentId, savedSettings.AgentId);
+                    Assert.Equal(nextSettings.AgentName, savedSettings.AgentName);
+                    Assert.True((File.GetAttributes(migratedSettingsPath) & FileAttributes.Hidden) == FileAttributes.Hidden);
+                    Assert.Empty(Directory.GetFiles(root, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", originalOverrideBinDir);
+                DeleteDirectory(root);
+            }
+        }
+
+#if !OS_WINDOWS
+#pragma warning disable CA1416
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_WriteFailurePreservesPreviousFile()
+        {
+            var originalOverrideBinDir = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
+            var root = SetIsolatedBinDirectory();
+            var originalMode = File.GetUnixFileMode(root);
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var store = new ConfigurationStore();
+                    store.Initialize(hc);
+
+                    var migratedSettingsPath = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                    var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                    var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
+                    store.SaveMigratedSettings(previousSettings);
+
+                    File.SetUnixFileMode(
+                        root,
+                        originalMode & ~UnixFileMode.UserWrite & ~UnixFileMode.GroupWrite & ~UnixFileMode.OtherWrite);
+
+                    Assert.ThrowsAny<Exception>(() => store.SaveMigratedSettings(nextSettings));
+
+                    File.SetUnixFileMode(root, originalMode);
+                    var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
+                    Assert.Equal(previousSettings.PoolId, savedSettings.PoolId);
+                    Assert.Empty(Directory.GetFiles(root, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
+                }
+            }
+            finally
+            {
+                File.SetUnixFileMode(root, originalMode);
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", originalOverrideBinDir);
+                DeleteDirectory(root);
+            }
+        }
+#pragma warning restore CA1416
+#endif
+
+        private static string SetIsolatedBinDirectory()
+        {
+            var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("D"));
+            Directory.CreateDirectory(Path.Combine(root, "bin"));
+            Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.Combine(root, "bin"));
+            return root;
+        }
+
+        private static void DeleteDirectory(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+    }
+}
