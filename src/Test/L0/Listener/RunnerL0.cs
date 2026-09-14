@@ -649,6 +649,75 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async Task TestRunnerRefreshConfigDoesNotUseIdleWakeBeforeRunOnceCompletion()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                var settings = new RunnerSettings { PoolId = 43242, Ephemeral = true };
+                var jobDispatcher = new TestJobDispatcher();
+                var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var runOnceCompletionStarted = false;
+                var fetchCount = 0;
+
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                runner.Initialize(hc);
+
+                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(CreateSessionResult.Success);
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                    .Returns(async (CancellationToken token) =>
+                    {
+                        fetchCount++;
+                        if (fetchCount == 1)
+                        {
+                            return CreateJobRequestTaskAgentMessage(4234);
+                        }
+
+                        if (fetchCount == 2)
+                        {
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4235);
+                        }
+
+                        if (fetchCount == 3)
+                        {
+                            thirdFetchStarted.TrySetResult(true);
+                            try
+                            {
+                                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                            }
+                            catch (OperationCanceledException) when (!runOnceCompletionStarted)
+                            {
+                                throw new InvalidOperationException("Idle restart cancelled run-once fetch before job completion.");
+                            }
+
+                            throw new OperationCanceledException(token);
+                        }
+
+                        throw new InvalidOperationException("Runner should exit after run-once completion without starting another fetch.");
+                    });
+
+                var command = new CommandSettings(hc, new string[] { "run" });
+                Task<int> runnerTask = runner.ExecuteCommand(command);
+
+                await WaitForSignal(thirdFetchStarted.Task, "Third message fetch was not started.");
+                jobDispatcher.SetBusy(false);
+                await Task.Yield();
+                await Task.Yield();
+                runOnceCompletionStarted = true;
+                jobDispatcher.CompleteRunOnce(TaskResult.Succeeded);
+                var result = await WaitForRunnerTask(runnerTask);
+
+                Assert.Equal(Constants.Runner.ReturnCode.Success, result);
+                Assert.Equal(3, fetchCount);
+                Assert.Equal(1, jobDispatcher.RunCount);
+                _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async Task TestRunnerRefreshConfigDoesNotOverrideSelfUpdateCompletion()
         {
             using (var hc = new TestHostContext(this))
@@ -699,6 +768,63 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _updater.Verify(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.Is<TaskAgentMessage>(m => m.MessageId == 4234)), Times.Once());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.Is<TaskAgentMessage>(m => m.MessageId == 4235)), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task TestRunnerRefreshConfigRestartsAfterSelfUpdateCompletesWithoutUpdateWhileIdle()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var runner = new Runner.Listener.Runner();
+                var settings = new RunnerSettings { PoolId = 43242, AgentId = 5678 };
+                var jobDispatcher = new TestJobDispatcher();
+                var selfUpdateCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var thirdFetchStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var fetchCount = 0;
+
+                SetupRunnerMessageLoop(hc, settings, jobDispatcher);
+                runner.Initialize(hc);
+
+                _messageListener.SetupSequence(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(CreateSessionResult.Success)
+                    .ReturnsAsync(CreateSessionResult.Failure);
+                _messageListener.Setup(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()))
+                    .Returns(async (CancellationToken token) =>
+                    {
+                        fetchCount++;
+                        if (fetchCount == 1)
+                        {
+                            return CreateAgentRefreshTaskAgentMessage(4234, settings.AgentId);
+                        }
+
+                        if (fetchCount == 2)
+                        {
+                            return CreateRunnerRefreshConfigTaskAgentMessage(4235);
+                        }
+
+                        thirdFetchStarted.TrySetResult(true);
+                        await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                        return null;
+                    });
+                _updater.Setup(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()))
+                    .Returns(selfUpdateCompleted.Task);
+
+                var command = new CommandSettings(hc, new string[] { "run" });
+                Task<int> runnerTask = runner.ExecuteCommand(command);
+
+                await WaitForSignal(thirdFetchStarted.Task, "Third message fetch was not started.");
+                selfUpdateCompleted.SetResult(false);
+                var result = await WaitForRunnerTask(runnerTask);
+
+                Assert.Equal(Constants.Runner.ReturnCode.TerminatedError, result);
+                Assert.Equal(3, fetchCount);
+                _updater.Verify(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()), Times.Once());
+                _messageListener.Verify(x => x.DeleteMessageAsync(It.Is<TaskAgentMessage>(m => m.MessageId == 4234)), Times.Once());
+                _messageListener.Verify(x => x.DeleteMessageAsync(It.Is<TaskAgentMessage>(m => m.MessageId == 4235)), Times.Once());
+                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
             }
         }
 

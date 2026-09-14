@@ -544,19 +544,12 @@ namespace GitHub.Runner.Listener
                             using (var getNextMessageTokenSource = CancellationTokenSource.CreateLinkedTokenSource(messageQueueLoopTokenSource.Token))
                             {
                                 Task<TaskAgentMessage> getNextMessage = _listener.GetNextMessageAsync(getNextMessageTokenSource.Token);
-                                Task idleRestartTask = restartSessionPending ? idleRestartSignal.Task : null;
+                                Task idleRestartTask = restartSessionPending && !autoUpdateInProgress && !runOnceJobReceived ? idleRestartSignal.Task : null;
 
                                 if (autoUpdateInProgress)
                                 {
                                     Trace.Verbose("Auto update task running at backend, waiting for getNextMessage or selfUpdateTask to finish.");
-                                    if (idleRestartTask != null)
-                                    {
-                                        await Task.WhenAny(getNextMessage, selfUpdateTask, idleRestartTask);
-                                    }
-                                    else
-                                    {
-                                        await Task.WhenAny(getNextMessage, selfUpdateTask);
-                                    }
+                                    await Task.WhenAny(getNextMessage, selfUpdateTask);
 
                                     if (selfUpdateTask.IsCompleted)
                                     {
@@ -587,6 +580,10 @@ namespace GitHub.Runner.Listener
                                         else
                                         {
                                             Trace.Info("Auto update task finished at backend, there is no available runner update needs to apply, continue message queue looping.");
+                                            if (restartSessionPending && !runOnceJobReceived)
+                                            {
+                                                idleRestartTask = jobDispatcher.Busy ? idleRestartSignal.Task : Task.CompletedTask;
+                                            }
                                         }
                                     }
                                 }
@@ -594,14 +591,7 @@ namespace GitHub.Runner.Listener
                                 if (runOnceJobReceived)
                                 {
                                     Trace.Verbose("One time used runner has start running its job, waiting for getNextMessage or the job to finish.");
-                                    if (idleRestartTask != null)
-                                    {
-                                        await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task, idleRestartTask);
-                                    }
-                                    else
-                                    {
-                                        await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
-                                    }
+                                    await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
 
                                     if (jobDispatcher.RunOnceJobCompleted.Task.IsCompleted)
                                     {
