@@ -53,6 +53,10 @@ namespace GitHub.Runner.Common.Util
                         return "ARM";
                     case Constants.Architecture.Arm64:
                         return "ARM64";
+                    case Constants.Architecture.Ppc64le:
+                        return "PPC64LE";  // Used in RUNNER_ARCH environment variable
+                    case Constants.Architecture.S390x:
+                        return "S390X";    // Used in RUNNER_ARCH environment variable
                     default:
                         throw new NotSupportedException(); // Should never reach here.
                 }
