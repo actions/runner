@@ -227,7 +227,7 @@ namespace GitHub.Services.WebApi
 
             if (exception == null)
             {
-                //no standard mapping, fallback to 
+                //no standard mapping, fall back to 
                 exception = UnWrap(innerException);
             }
 
@@ -320,7 +320,7 @@ namespace GitHub.Services.WebApi
                         // to make code changes to exceptions that we don't own.
                         Debug.Assert(!(exception is VssException) || exception.Message == Message,
                             "The unwrapped exception message does not match the original exception message.",
-                            "Type: {0}{1}Expected: {2}{1}Actual: {3}{1}{1}This can happen if the exception has a contructor that manipulates the input string.  You can work around this by creating a constructor that takes in a WrappedException which sets the message verbatim and optionally the inner exception.",
+                            "Type: {0}{1}Expected: {2}{1}Actual: {3}{1}{1}This can happen if the exception has a constructor that manipulates the input string.  You can work around this by creating a constructor that takes in a WrappedException which sets the message verbatim and optionally the inner exception.",
                             exception.GetType(),
                             Environment.NewLine,
                             Message,
@@ -340,8 +340,8 @@ namespace GitHub.Services.WebApi
 
         private static Type LoadType(String typeName)
         {
-            // For rest api version < 3.0, the server transmits the fulllAssemblyQualifiedName of exception at time that version was initially released,
-            // which means normal loading will fail due to version mismatch, as the version will alwyas be <= 14.0.0.0.
+            // For rest api version < 3.0, the server transmits the fullAssemblyQualifiedName of exception at time that version was initially released,
+            // which means normal loading will fail due to version mismatch, as the version will always be <= 14.0.0.0.
             // Example: typeName=GitHub.Core.WebApi.ProjectDoesNotExistWithNameException, GitHub.Core.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a
 
             // For rest api version >= 3.0 (dev15), it just sends an assembly qualified type name without Version and PublicKeyToken, so it is version agnostic.
@@ -408,7 +408,7 @@ namespace GitHub.Services.WebApi
                 // DEVNOTE: Do not tack-on the version information, instead let the
                 // assembly load without it so that it may resolve to the appropriate.
                 // Otherwise, translation down the stack may fail due to version mismatch
-                // and that end's up creating un-necessary retries on certain user defined exceptions.
+                // and that ends up creating unnecessary retries on certain user defined exceptions.
                 // newName.Version = Assembly.GetExecutingAssembly().GetName().Version;
                 newName.SetPublicKeyToken(asmName.GetPublicKeyToken());
 
@@ -477,12 +477,12 @@ namespace GitHub.Services.WebApi
                         IEnumerable<Type> types;
                         try
                         {
-                            // calling GetTypes has side effect of loading direct dependancies of the assembly.
+                            // calling GetTypes has side effect of loading direct dependencies of the assembly.
                             types = assembly.GetTypes();
                         }
                         catch (ReflectionTypeLoadException ex)
                         {
-                            // if dependant assembly fails to load, we should still be able to get all the exceptions, since it would be unlikely,
+                            // if dependent assembly fails to load, we should still be able to get all the exceptions, since it would be unlikely,
                             // that an exception is referencing a type from the assembly that failed to load.
                             types = ex.Types.Where<Type>(t => t != null);
                         }
@@ -494,7 +494,7 @@ namespace GitHub.Services.WebApi
                                 Tuple<Version, Type> cachedValue;
 
                                 // Check if the TypeName already exists in cache and add it if not.  if it does exist, update if it has a higher ExclusiveMaxApiVersion.
-                                // (In theory an old exception could be mapped to more then one type in the case we want the latest server
+                                // (In theory an old exception could be mapped to more than one type in the case we want the latest server
                                 // to send different older types to different versions of older clients.  This method is used only on client when converting a type 
                                 // from an older server, so we want the latest mapping of the older type.)
                                 if (!s_exceptionsWithAttributeMapping.TryGetValue(attribute.TypeName, out cachedValue) || attribute.ExclusiveMaxApiVersion > cachedValue.Item1)

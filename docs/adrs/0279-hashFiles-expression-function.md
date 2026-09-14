@@ -5,7 +5,7 @@
 **Status**: Accepted
 
 ## Context
-First party action `actions/cache` needs a input which is an explicit `key` used for restoring and saving the cache. For packages caching, the most common `key` might be the hash result of contents from all `package-lock.json` under `node_modules` folder.
+First party action `actions/cache` needs an input which is an explicit `key` used for restoring and saving the cache. For packages caching, the most common `key` might be the hash result of contents from all `package-lock.json` under `node_modules` folder.
   
 There are serval different ways to get the hash `key` input for `actions/cache` action.
 

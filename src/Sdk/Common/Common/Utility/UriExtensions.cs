@@ -62,7 +62,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Performs an Add similar to the NameValuCollection 'Add' method where the value gets added as an item in a comma delimited list if the key is already present.
+        /// Performs an Add similar to the NameValueCollection 'Add' method where the value gets added as an item in a comma delimited list if the key is already present.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="collection"></param>

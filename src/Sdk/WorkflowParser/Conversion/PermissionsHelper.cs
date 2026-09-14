@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 using System;
 using System.Linq;
@@ -17,7 +17,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
         /// <param name="requested">The permissions within the reusable workflow file. These may be defined either at the root of the file, or may be defined on a job within the file.</param>
         /// <param name="explicitMax">(Optional) The max permissions explicitly allowed by the caller</param>
         /// <param name="permissionsPolicy">The default permissions policy</param>
-        /// <param name="isTrusted">Indicates whether the reusable workflow exists within the same trust boundary (e.g. enterprise/organization) as a the root workflow</param>
+        /// <param name="isTrusted">Indicates whether the reusable workflow exists within the same trust boundary (e.g. enterprise/organization) as the root workflow</param>
         internal static void ValidateEmbeddedPermissions(
             TemplateContext context,
             ReusableWorkflowJob workflowJob,

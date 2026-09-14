@@ -332,7 +332,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "configure",
                        "--url", _expectedServerUrl,
                        "--name", _expectedAgentName,
-                       "--runnergroup", "notexists",
+                       "--runnergroup", "nonexistent",
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
                        "--token", _expectedToken,
@@ -344,7 +344,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Ensuring all the required parameters are available in the command line parameter");
                 var ex = await Assert.ThrowsAsync<TaskAgentPoolNotFoundException>(() => configManager.ConfigureAsync(command));
 
-                Assert.Contains("notexists", ex.Message);
+                Assert.Contains("nonexistent", ex.Message);
 
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(1));
             }
@@ -375,7 +375,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 trace.Info("Constructed");
                 _store.Setup(x => x.IsConfigured()).Returns(false);
 
-                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                trace.Info("Ensuring service generation mode fails when on deconfigured runners");
                 var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => configManager.ConfigureAsync(command));
 
                 Assert.Contains("requires that the runner is already configured", ex.Message);
@@ -407,7 +407,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
                 _store.Setup(x => x.IsConfigured()).Returns(true);
 
-                trace.Info("Ensuring service generation mode fails when on un-configured runners");
+                trace.Info("Ensuring service generation mode fails when on deconfigured runners");
                 await configManager.ConfigureAsync(command);
 
                 _serviceControlManager.Verify(x => x.GenerateScripts(It.IsAny<RunnerSettings>()), Times.Once);

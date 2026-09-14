@@ -248,9 +248,9 @@ namespace GitHub.Services.WebApi.Location
 
         private class ProviderCache
         {
-            public Boolean TryGetValue(Guid locationAreaIdentfier, out ILocationDataProvider provider)
+            public Boolean TryGetValue(Guid locationAreaIdentifier, out ILocationDataProvider provider)
             {
-                return m_guidCache.TryGetValue(locationAreaIdentfier, out provider);
+                return m_guidCache.TryGetValue(locationAreaIdentifier, out provider);
             }
 
             public Boolean TryGetValue(String locationUrl, out ILocationDataProvider provider)

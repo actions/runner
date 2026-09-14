@@ -102,7 +102,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ConvertNullOrEmptryStringToBool()
+        public void ConvertNullOrEmptyStringToBool()
         {
             using (TestHostContext hc = new(this))
             {
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Common.Tests.Util
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ConvertNullOrEmptryStringToDefaultBool()
+        public void ConvertNullOrEmptyStringToDefaultBool()
         {
             using (TestHostContext hc = new(this))
             {

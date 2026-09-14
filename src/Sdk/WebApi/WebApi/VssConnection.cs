@@ -120,7 +120,7 @@ namespace GitHub.Services.WebApi
                 IVssCredentialPrompts credentialPrompts = Credentials.Federated.Prompt as IVssCredentialPrompts;
                 if (credentialPrompts != null && credentialPrompts.FederatedPrompt != null)
                 {
-                    // IVssCredentialPrompts contains an inner federatedPrompt, then set the paramaters on the inner one
+                    // IVssCredentialPrompts contains an inner federatedPrompt, then set the parameters on the inner one
                     promptToSetParametersOn = credentialPrompts.FederatedPrompt;
                 }
                 else

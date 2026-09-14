@@ -76,7 +76,7 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
-        /// Gets or sets the credentials used for pulling the container iamge.
+        /// Gets or sets the credentials used for pulling the container image.
         /// </summary>
         public ContainerRegistryCredentials Credentials
         {
