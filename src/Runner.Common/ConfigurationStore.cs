@@ -372,10 +372,26 @@ namespace GitHub.Runner.Common
                 targetAttributes = File.GetAttributes(_migratedConfigFilePath) | FileAttributes.Hidden;
             }
 
+#if !OS_WINDOWS
+#pragma warning disable CA1416
+            UnixFileMode? targetUnixFileMode = File.Exists(_migratedConfigFilePath)
+                ? File.GetUnixFileMode(_migratedConfigFilePath)
+                : null;
+#pragma warning restore CA1416
+#endif
+            var migratedSettingsSaved = false;
             try
             {
                 IOUtil.SaveObject(settings, tempConfigFilePath);
-                File.SetAttributes(tempConfigFilePath, targetAttributes & ~FileAttributes.ReadOnly);
+                File.SetAttributes(tempConfigFilePath, targetAttributes);
+#if !OS_WINDOWS
+#pragma warning disable CA1416
+                if (targetUnixFileMode.HasValue)
+                {
+                    File.SetUnixFileMode(tempConfigFilePath, targetUnixFileMode.Value);
+                }
+#pragma warning restore CA1416
+#endif
 
                 if (File.Exists(_migratedConfigFilePath))
                 {
@@ -387,7 +403,7 @@ namespace GitHub.Runner.Common
                     File.Move(tempConfigFilePath, _migratedConfigFilePath);
                 }
 
-                File.SetAttributes(_migratedConfigFilePath, targetAttributes);
+                migratedSettingsSaved = true;
                 Trace.Info("Migrated Settings Saved.");
             }
             finally
@@ -397,9 +413,17 @@ namespace GitHub.Runner.Common
                     IOUtil.DeleteFile(tempConfigFilePath);
                 }
 
-                if (File.Exists(_migratedConfigFilePath))
+                if (!migratedSettingsSaved && File.Exists(_migratedConfigFilePath))
                 {
                     File.SetAttributes(_migratedConfigFilePath, targetAttributes);
+#if !OS_WINDOWS
+#pragma warning disable CA1416
+                    if (targetUnixFileMode.HasValue)
+                    {
+                        File.SetUnixFileMode(_migratedConfigFilePath, targetUnixFileMode.Value);
+                    }
+#pragma warning restore CA1416
+#endif
                 }
             }
         }

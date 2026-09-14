@@ -49,6 +49,22 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
+        public void SaveMigratedSettings_ReplacesExistingFileAndPreservesUserOnlyUnixMode()
+        {
+            AssertMigratedSettingsPreservesUnixMode(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void SaveMigratedSettings_ReplacesExistingFileAndPreservesGroupReadUnixMode()
+        {
+            AssertMigratedSettingsPreservesUnixMode(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
         public void SaveMigratedSettings_WriteFailurePreservesPreviousFile()
         {
             var originalOverrideBinDir = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
@@ -66,6 +82,8 @@ namespace GitHub.Runner.Common.Tests
                     var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
                     var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
                     store.SaveMigratedSettings(previousSettings);
+                    var previousFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+                    File.SetUnixFileMode(migratedSettingsPath, previousFileMode);
 
                     File.SetUnixFileMode(
                         root,
@@ -76,12 +94,46 @@ namespace GitHub.Runner.Common.Tests
                     File.SetUnixFileMode(root, originalMode);
                     var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
                     Assert.Equal(previousSettings.PoolId, savedSettings.PoolId);
+                    Assert.Equal(previousFileMode, File.GetUnixFileMode(migratedSettingsPath));
                     Assert.Empty(Directory.GetFiles(root, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
                 }
             }
             finally
             {
                 File.SetUnixFileMode(root, originalMode);
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", originalOverrideBinDir);
+                DeleteDirectory(root);
+            }
+        }
+
+        private void AssertMigratedSettingsPreservesUnixMode(UnixFileMode expectedMode)
+        {
+            var originalOverrideBinDir = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
+            var root = SetIsolatedBinDirectory();
+
+            try
+            {
+                using (var hc = new TestHostContext(this))
+                {
+                    var store = new ConfigurationStore();
+                    store.Initialize(hc);
+
+                    var migratedSettingsPath = hc.GetConfigFile(WellKnownConfigFile.MigratedRunner);
+                    var previousSettings = new RunnerSettings { PoolId = 1, AgentId = 1, AgentName = "agent1" };
+                    var nextSettings = new RunnerSettings { PoolId = 2, AgentId = 1, AgentName = "agent1" };
+                    store.SaveMigratedSettings(previousSettings);
+                    File.SetUnixFileMode(migratedSettingsPath, expectedMode);
+
+                    store.SaveMigratedSettings(nextSettings);
+
+                    var savedSettings = IOUtil.LoadObject<RunnerSettings>(migratedSettingsPath);
+                    Assert.Equal(nextSettings.PoolId, savedSettings.PoolId);
+                    Assert.Equal(expectedMode, File.GetUnixFileMode(migratedSettingsPath));
+                    Assert.Empty(Directory.GetFiles(root, $".{Path.GetFileName(migratedSettingsPath)}.*.tmp"));
+                }
+            }
+            finally
+            {
                 Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", originalOverrideBinDir);
                 DeleteDirectory(root);
             }
