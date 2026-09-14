@@ -395,7 +395,7 @@ namespace GitHub.Runner.Common
 
                 if (File.Exists(_migratedConfigFilePath))
                 {
-                    File.SetAttributes(_migratedConfigFilePath, targetAttributes & ~FileAttributes.Hidden & ~FileAttributes.ReadOnly);
+                    File.SetAttributes(_migratedConfigFilePath, targetAttributes & ~FileAttributes.ReadOnly);
                     File.Replace(tempConfigFilePath, _migratedConfigFilePath, null);
                 }
                 else
