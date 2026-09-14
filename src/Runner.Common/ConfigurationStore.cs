@@ -373,6 +373,7 @@ namespace GitHub.Runner.Common
             IOUtil.SaveObject(settings, _migratedConfigFilePath);
             Trace.Info("Migrated Settings Saved.");
             File.SetAttributes(_migratedConfigFilePath, File.GetAttributes(_migratedConfigFilePath) | FileAttributes.Hidden);
+            _migratedSettings = settings;
         }
 
         public void DeleteCredential()
@@ -390,11 +391,13 @@ namespace GitHub.Runner.Common
         {
             IOUtil.Delete(_configFilePath, default(CancellationToken));
             IOUtil.Delete(_migratedConfigFilePath, default(CancellationToken));
+            _migratedSettings = null;
         }
 
         public void DeleteMigratedSettings()
         {
             IOUtil.Delete(_migratedConfigFilePath, default(CancellationToken));
+            _migratedSettings = null;
         }
     }
 }
