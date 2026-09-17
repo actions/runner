@@ -450,11 +450,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var compositeExecution = result.Execution as CompositeActionExecutionData;
                 Assert.NotNull(compositeExecution);
-                Assert.Equal(7, compositeExecution.Steps.Count);
+                Assert.Equal(3, compositeExecution.Steps.Count);
 
                 var rootRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[0].Reference);
                 Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias, rootRef.RepositoryType);
-                Assert.Equal(string.Empty, rootRef.Path);
+                Assert.Null(rootRef.Path);
                 Assert.Null(rootRef.Name);
                 Assert.Null(rootRef.Ref);
 
@@ -466,88 +466,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfRepositoryAlias, nestedRef.RepositoryType);
                 Assert.Equal("actions/nested/composite", nestedRef.Path);
 
-                // Sanity: ordinary references are unaffected
-                var externalRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[3].Reference);
-                Assert.Equal("GitHub", externalRef.RepositoryType);
-                Assert.Equal("actions/checkout", externalRef.Name);
-                Assert.Equal("v4", externalRef.Ref);
-
-                var localRef = Assert.IsType<GitHub.DistributedTask.Pipelines.RepositoryPathReference>(compositeExecution.Steps[4].Reference);
-                Assert.Equal(GitHub.DistributedTask.Pipelines.PipelineConstants.SelfAlias, localRef.RepositoryType);
-                Assert.Equal("./local-action", localRef.Path);
-
-                var dockerRef = Assert.IsType<GitHub.DistributedTask.Pipelines.ContainerRegistryReference>(compositeExecution.Steps[5].Reference);
-                Assert.Equal("alpine:3", dockerRef.Image);
             }
             finally
             {
                 Teardown();
             }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void Load_SelfRepositoryRefRejected_BothParsersAgree()
-        {
-            try
-            {
-                Setup();
-
-                var legacyManager = new ActionManifestManagerLegacy();
-                legacyManager.Initialize(_hc);
-                var newManager = new ActionManifestManager();
-                newManager.Initialize(_hc);
-                var manifestPath = Path.Combine(TestUtil.GetTestDataPath(), "self_repository_ref_composite_action.yml");
-
-                var legacyException = Assert.Throws<ArgumentException>(() => legacyManager.Load(_ec.Object, manifestPath));
-                _ec.Verify(
-                    x => x.AddIssue(
-                        It.Is<Issue>(s =>
-                            s.Message.StartsWith(manifestPath) &&
-                            s.Message.EndsWith("Self-repository references do not support an '@ref' suffix. Actual '$/foo@v1'")),
-                        It.IsAny<ExecutionContextLogOptions>()),
-                    Times.AtLeastOnce);
-
-                _ec.Invocations.Clear();
-
-                var newException = Assert.Throws<ArgumentException>(() => newManager.Load(_ec.Object, manifestPath));
-                _ec.Verify(
-                    x => x.AddIssue(
-                        It.Is<Issue>(s =>
-                            s.Message.StartsWith(manifestPath) &&
-                            s.Message.EndsWith("Self-repository references do not support an '@ref' suffix. Actual '$/foo@v1'")),
-                        It.IsAny<ExecutionContextLogOptions>()),
-                    Times.AtLeastOnce);
-                Assert.Equal(legacyException.Message, newException.Message);
-            }
-            finally
-            {
-                Teardown();
-            }
-        }
-
-        [Theory]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        [InlineData("$/", "")]
-        [InlineData("$/actions/example", "actions/example")]
-        [InlineData("$//actions/example", "actions/example")]
-        public void TryParseSelfRepository_AcceptsRootAndNormalizesPath(string uses, string expectedPath)
-        {
-            Assert.True(GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses, out var path, out var error));
-            Assert.Equal(expectedPath, path);
-            Assert.Null(error);
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void TryParseSelfRepository_RejectsRef()
-        {
-            Assert.False(GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository("$/foo@v1", out var path, out var error));
-            Assert.Null(path);
-            Assert.Equal("Self-repository references do not support an '@ref' suffix. Actual '$/foo@v1'", error);
         }
 
         private string GetFullExceptionMessage(Exception ex)

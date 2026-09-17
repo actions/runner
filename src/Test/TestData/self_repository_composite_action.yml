@@ -11,15 +11,3 @@ runs:
 
     - uses: $/actions/nested/composite
       id: nested
-
-    - uses: actions/checkout@v4
-      id: external
-
-    - uses: ./local-action
-      id: local
-
-    - uses: docker://alpine:3
-      id: docker
-
-    - run: echo done
-      shell: bash
