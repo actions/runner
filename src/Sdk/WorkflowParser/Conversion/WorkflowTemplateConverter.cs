@@ -1605,7 +1605,8 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         id = WorkflowConstants.SelfAlias;
                     }
-                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(action.Uses!.Value, out _))
+                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(action.Uses!.Value, out _, out var selfError) ||
+                        selfError != null)
                     {
                         id = WorkflowConstants.SelfRepositoryAlias;
                     }
@@ -1757,8 +1758,12 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     With = with,
                 };
 
-                var isSelfRepository = GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses.Value, out _);
-                if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
+                var isSelfRepository = GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses.Value, out _, out var selfError);
+                if (selfError != null)
+                {
+                    context.Error(uses, selfError);
+                }
+                else if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
                     !uses.Value.StartsWith("./") &&
                     !uses.Value.StartsWith(".\\") &&
                     !isSelfRepository)
