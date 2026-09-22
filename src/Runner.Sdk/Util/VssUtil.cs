@@ -34,6 +34,7 @@ namespace GitHub.Runner.Sdk
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
             VssHttpMessageHandler.DefaultWebProxy = proxy;
+            RawHttpMessageHandler.DefaultWebProxy = proxy;
 
             if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
             {

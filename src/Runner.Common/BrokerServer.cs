@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Actions.RunService.WebApi;
@@ -28,6 +30,9 @@ namespace GitHub.Runner.Common
         Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
 
         Task ForceRefreshConnection(VssCredentials credentials);
+
+        // Temporary probe: holds/reconnects a websocket to the broker listener until cancelled.
+        Task<BrokerWebSocketProbeResult> RunLongPollWebSocketProbeAsync(CancellationToken cancellationToken);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -36,6 +41,9 @@ namespace GitHub.Runner.Common
         private Uri _brokerUri;
         private RawConnection _connection;
         private BrokerHttpClient _brokerHttpClient;
+
+        private static readonly TimeSpan MinDelayForWebSocketReconnect = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan MaxDelayForWebSocketReconnect = TimeSpan.FromSeconds(300);
 
         public async Task ConnectAsync(Uri serverUri, VssCredentials credentials)
         {
@@ -78,6 +86,108 @@ namespace GitHub.Runner.Common
 
             // No retries
             await _brokerHttpClient.AcknowledgeRunnerRequestAsync(runnerRequestId, sessionId, version, status, os, architecture, cancellationToken);
+        }
+
+        public async Task<BrokerWebSocketProbeResult> RunLongPollWebSocketProbeAsync(CancellationToken cancellationToken)
+        {
+            CheckConnection();
+
+            var result = new BrokerWebSocketProbeResult();
+            var stopwatch = Stopwatch.StartNew();
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var socket = await ConnectWebSocketAsync(cancellationToken);
+                if (socket == null)
+                {
+                    result.ConnectFailures++;
+                    result.LastCloseReason = "connect_failed";
+
+                    var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebSocketReconnect, MaxDelayForWebSocketReconnect);
+                    try
+                    {
+                        await Task.Delay(delay, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                result.Connected = true;
+                result.ConnectCount++;
+
+                using (socket)
+                {
+                    var buffer = new byte[4096];
+                    try
+                    {
+                        while (socket.State == WebSocketState.Open)
+                        {
+                            var receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                            if (receiveResult.MessageType == WebSocketMessageType.Close)
+                            {
+                                result.LastCloseReason = $"server_closed:{receiveResult.CloseStatus}:{receiveResult.CloseStatusDescription}";
+                                Trace.Info($"Runner long-poll websocket closed by server. CloseStatus: {receiveResult.CloseStatus}, Description: {receiveResult.CloseStatusDescription}");
+                                break;
+                            }
+
+                            result.PingsReceived++;
+                        }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        result.LastCloseReason = "job_completed";
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info("Exception caught while holding runner long-poll websocket, will reconnect.");
+                        Trace.Error(ex);
+                        result.Errors.Add(ex.Message);
+                        result.LastCloseReason = "error";
+                    }
+                    finally
+                    {
+                        CloseWebSocket(socket, WebSocketCloseStatus.NormalClosure, CancellationToken.None);
+                    }
+                }
+            }
+
+            stopwatch.Stop();
+            result.TotalDurationMs = stopwatch.ElapsedMilliseconds;
+            return result;
+        }
+
+        private async Task<ClientWebSocket> ConnectWebSocketAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                Trace.Info("Attempting to start runner long-poll websocket client.");
+                var socket = await _brokerHttpClient.ConnectRunnerLongPollWebSocketAsync(cancellationToken);
+                Trace.Info("Successfully started runner long-poll websocket client.");
+                return socket;
+            }
+            catch (Exception ex)
+            {
+                Trace.Info("Exception caught during runner long-poll websocket connect, will retry.");
+                Trace.Error(ex);
+                return null;
+            }
+        }
+
+        // Best-effort close; the socket may already be closed/faulted.
+        private void CloseWebSocket(ClientWebSocket socket, WebSocketCloseStatus closeStatus, CancellationToken cancellationToken)
+        {
+            try
+            {
+                socket?.CloseOutputAsync(closeStatus, "Closing websocket", cancellationToken);
+            }
+            catch (Exception websocketEx)
+            {
+                Trace.Info($"Failed to close websocket gracefully {websocketEx.GetType().Name}");
+            }
         }
 
         public async Task DeleteSessionAsync(CancellationToken cancellationToken)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
@@ -164,6 +165,27 @@ namespace GitHub.Actions.RunService.WebApi
             }
 
             throw new Exception($"Failed to create broker session: {result.Error}");
+        }
+
+        // Temporary probe: validates websocket connectivity to the broker listener
+        // using the same authenticated pipeline (Client) as other broker calls.
+        // Client.BaseAddress is the full probe URL (including the .sock path)
+        // sent down by run-service.
+        public async Task<ClientWebSocket> ConnectRunnerLongPollWebSocketAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var socket = new ClientWebSocket();
+            try
+            {
+                await socket.ConnectAsync(Client.BaseAddress, Client, cancellationToken);
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+
+            return socket;
         }
 
         public async Task DeleteSessionAsync(

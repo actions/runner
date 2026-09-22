@@ -53,6 +53,8 @@ namespace GitHub.Runner.Worker
         private Task _diskSpaceCheckTask = null;
         private CancellationTokenSource _serviceConnectivityCheckToken = new();
         private Task _serviceConnectivityCheckTask = null;
+        private CancellationTokenSource _brokerWebSocketProbeToken = new();
+        private Task<BrokerWebSocketProbeResult> _brokerWebSocketProbeTask = null;
         private IDapDebugger _dapDebugger;
 
         // Download all required actions.
@@ -639,6 +641,15 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Start checking service connectivity in background.");
                     _serviceConnectivityCheckTask = CheckServiceConnectivityAsync(context, _serviceConnectivityCheckToken.Token);
 
+                    // Temporary probe: gauge websocket compatibility with the broker listener,
+                    // only when run-service sends down a probe URL via the job message.
+                    var brokerWebSocketProbeUrl = context.Global.Variables?.Get(WellKnownDistributedTaskVariables.RunnerBrokerWebSocketProbeUrl);
+                    if (!string.IsNullOrEmpty(brokerWebSocketProbeUrl))
+                    {
+                        Trace.Info($"Start checking runner long-poll websocket connectivity in background.");
+                        _brokerWebSocketProbeTask = CheckBrokerLongPollWebSocketAsync(brokerWebSocketProbeUrl, message, _brokerWebSocketProbeToken.Token);
+                    }
+
                     // Start the DAP debugger and wait for a client connection inside
                     // "Set up job" so the step stays in-progress while we wait.
                     if (jobContext.Global.Debugger?.Enabled == true)
@@ -991,6 +1002,28 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Collect runner long-poll websocket probe result
+                    if (_brokerWebSocketProbeTask != null)
+                    {
+                        _brokerWebSocketProbeToken.Cancel();
+                        try
+                        {
+                            var probeResult = await _brokerWebSocketProbeTask;
+                            if (probeResult != null)
+                            {
+                                var telemetryData = StringUtil.ConvertToJson(probeResult, Formatting.None);
+                                Trace.Info($"Runner long-poll websocket probe result: {telemetryData}");
+                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"broker_websocket_telemetry:{telemetryData}" });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to check runner long-poll websocket connectivity.");
+                            Trace.Error(ex);
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check runner long-poll websocket connectivity. {ex.Message}" });
+                        }
+                    }
+
                     // Read dates from server variables with hardcoded fallbacks
                     var node24DefaultDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node24DefaultDateVariable);
                     var node24DefaultDate = string.IsNullOrEmpty(node24DefaultDateRaw) ? Constants.Runner.NodeMigration.Node24DefaultDate : node24DefaultDateRaw;
@@ -1258,6 +1291,35 @@ namespace GitHub.Runner.Worker
             var telemetryData = StringUtil.ConvertToJson(testResult, Formatting.None);
             Trace.Verbose($"Connectivity check result: {telemetryData}");
             context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = telemetryData });
+        }
+
+        // Temporary probe: connects to the broker listener websocket using the job's
+        // SystemVssConnection credential and holds/reconnects until cancelled. Never throws.
+        private async Task<BrokerWebSocketProbeResult> CheckBrokerLongPollWebSocketAsync(
+            string probeUrl,
+            Pipelines.AgentJobRequestMessage message,
+            CancellationToken token)
+        {
+            try
+            {
+                ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+
+                var brokerServer = HostContext.CreateService<IBrokerServer>();
+                await brokerServer.ConnectAsync(new Uri(probeUrl), jobServerCredential);
+
+                return await brokerServer.RunLongPollWebSocketProbeAsync(token);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info("Exception caught while setting up runner long-poll websocket probe.");
+                Trace.Error(ex);
+                return new BrokerWebSocketProbeResult
+                {
+                    Connected = false,
+                    Errors = new List<string> { ex.Message },
+                };
+            }
         }
 
         private Dictionary<int, Process> SnapshotProcesses()
