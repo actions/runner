@@ -827,7 +827,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             // would receive (preferred="node20", final="node20") and never return true.
             string originalPreferred = "node24";
             string finalAfterArm32Downgrade = "node20";
-            string deprecationWarning = "Linux ARM32 runners are deprecated and will no longer be supported after September 16th, 2026. Please migrate to a supported platform.";
+            string deprecationWarning = "Linux ARM32 runners are deprecated and will no longer be supported after September 23rd, 2026. Please migrate to a supported platform.";
 
             // Correct: use the original preferred version before assignment
             bool correctTracking = HandlerFactory.ShouldTrackAsArm32Node20(
