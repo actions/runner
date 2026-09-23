@@ -160,6 +160,8 @@ namespace GitHub.Runner.Worker.Handlers
                 StepHost.OutputDataReceived += stdoutManager.OnDataReceived;
                 StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
+                var errorCountBeforeRun = ExecutionContext.GetErrorCount();
+
                 // Execute the process. Exit code 0 should always be returned.
                 // A non-zero exit code indicates infrastructural failure.
                 // Task failure should be communicated over STDOUT using ## commands.
@@ -188,6 +190,11 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Debug($"Node Action run completed with exit code {exitCode}");
                     if (exitCode != 0)
                     {
+                        if (ExecutionContext.GetErrorCount() == errorCountBeforeRun)
+                        {
+                            ExecutionContext.Error($"Node Action run completed with exit code {exitCode}.");
+                        }
+
                         ExecutionContext.Result = TaskResult.Failed;
                     }
                 }
