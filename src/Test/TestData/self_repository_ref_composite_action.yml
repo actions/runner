@@ -1,0 +1,6 @@
+name: 'Invalid Self Repository Ref'
+description: 'Test rejection of a ref on a self-repository action'
+runs:
+  using: "composite"
+  steps:
+    - uses: $/foo@v1
