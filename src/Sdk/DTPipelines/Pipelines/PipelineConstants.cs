@@ -55,23 +55,27 @@ namespace GitHub.DistributedTask.Pipelines
         public const String SelfRepositoryPrefix = "$/";
 
         /// <summary>
-        /// Returns true if the uses value is a self-repository reference (starts with $/),
-        /// and outputs the subpath after the prefix.
+        /// Returns true if the uses value is a valid self-repository reference (starts with $/),
+        /// and outputs the normalized subpath after the prefix.
         /// </summary>
-        public static bool TryParseSelfRepository(string usesValue, out string path)
+        public static bool TryParseSelfRepository(string usesValue, out string path, out string error)
         {
             if (usesValue != null && usesValue.StartsWith(SelfRepositoryPrefix, StringComparison.Ordinal))
             {
                 path = usesValue.Substring(SelfRepositoryPrefix.Length).TrimStart('/');
-                if (string.IsNullOrEmpty(path))
+                if (path.Contains('@'))
                 {
                     path = null;
+                    error = $"Self-repository references do not support an '@ref' suffix. Actual '{usesValue}'";
                     return false;
                 }
+
+                error = null;
                 return true;
             }
 
             path = null;
+            error = null;
             return false;
         }
 
