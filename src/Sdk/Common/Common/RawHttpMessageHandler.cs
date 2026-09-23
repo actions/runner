@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -213,6 +214,8 @@ namespace GitHub.Services.Common
                     throw unauthorizedException;
                 }
 
+                ApplyResponseBodyTimeout(traceActivity, request, response);
+
                 return response;
             }
             catch (OperationCanceledException ex)
@@ -236,6 +239,41 @@ namespace GitHub.Services.Common
                     tokenSource.Dispose();
                 }
             }
+        }
+
+        private void ApplyResponseBodyTimeout(
+            VssTraceActivity traceActivity,
+            HttpRequestMessage request,
+            HttpResponseMessage response)
+        {
+            if (response == null ||
+                response.StatusCode == HttpStatusCode.NoContent ||
+                response.Content == null ||
+                request.Method == HttpMethod.Head ||
+                this.Settings.SendTimeout <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            if (!request.Options.TryGetValue(
+                new HttpRequestOptionsKey<HttpCompletionOption>(VssHttpRequestSettings.HttpCompletionOptionPropertyName),
+                out HttpCompletionOption completionOption))
+            {
+                completionOption = HttpCompletionOption.ResponseContentRead;
+            }
+
+            if (completionOption != HttpCompletionOption.ResponseContentRead)
+            {
+                return;
+            }
+
+            var timedContent = new ResponseBodyTimeoutContent(response.Content, this.Settings.SendTimeout, traceActivity, request);
+            foreach (var header in response.Content.Headers)
+            {
+                timedContent.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            response.Content = timedContent;
         }
 
         private static async Task BufferRequestContentAsync(
@@ -310,6 +348,79 @@ namespace GitHub.Services.Common
         private object m_thisLock;
         private const Int32 m_maxAuthRetries = 3;
         private IssuedTokenProvider m_tokenProvider;
+
+        private sealed class ResponseBodyTimeoutContent : HttpContent
+        {
+            public ResponseBodyTimeoutContent(
+                HttpContent content,
+                TimeSpan timeout,
+                VssTraceActivity traceActivity,
+                HttpRequestMessage request)
+            {
+                m_content = content;
+                m_timeout = timeout;
+                m_traceActivity = traceActivity;
+                m_request = request;
+            }
+
+            protected override Task SerializeToStreamAsync(
+                Stream stream,
+                TransportContext context)
+            {
+                return SerializeToStreamAsync(stream, context, CancellationToken.None);
+            }
+
+            protected override async Task SerializeToStreamAsync(
+                Stream stream,
+                TransportContext context,
+                CancellationToken cancellationToken)
+            {
+                using (CancellationTokenSource tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+                {
+                    try
+                    {
+                        tokenSource.CancelAfter(m_timeout);
+                        using (Stream body = await m_content.ReadAsStreamAsync(tokenSource.Token).ConfigureAwait(false))
+                        {
+                            var chunk = new Byte[c_readChunkSize];
+                            Int32 bytesRead;
+                            while ((bytesRead = await body.ReadAsync(chunk, tokenSource.Token).ConfigureAwait(false)) > 0)
+                            {
+                                await stream.WriteAsync(chunk.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+                                tokenSource.CancelAfter(m_timeout);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        VssHttpEventSource.Log.HttpRequestTimedOut(m_traceActivity, m_request, m_timeout);
+                        throw new TimeoutException(CommonResources.HttpRequestTimeout(m_timeout), ex);
+                    }
+                }
+            }
+
+            protected override Boolean TryComputeLength(out Int64 length)
+            {
+                length = 0;
+                return false;
+            }
+
+            protected override void Dispose(Boolean disposing)
+            {
+                if (disposing)
+                {
+                    m_content.Dispose();
+                }
+
+                base.Dispose(disposing);
+            }
+
+            private readonly HttpContent m_content;
+            private readonly TimeSpan m_timeout;
+            private readonly VssTraceActivity m_traceActivity;
+            private readonly HttpRequestMessage m_request;
+            private const Int32 c_readChunkSize = 81920;
+        }
 
         //.Net Core does not attempt NTLM schema on Linux, unless ICredentials is a CredentialCache instance
         //This workaround may not be needed after this corefx fix is consumed: https://github.com/dotnet/corefx/pull/7923
