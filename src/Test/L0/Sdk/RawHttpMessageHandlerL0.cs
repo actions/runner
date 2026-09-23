@@ -248,6 +248,18 @@ public sealed class RawHttpMessageHandlerL0
     }
 
     [Fact]
+    public async Task StalledBodyTimesOutWithoutCompletionOption()
+    {
+        await using var server = new ResponseServer();
+        using var transport = new SocketsHttpHandler { UseProxy = false };
+        using var handler = new RawHttpMessageHandler(new NoOpCredentials(null), CreateSettingsFromRunnerDefaults(), transport);
+        using var client = new HttpClient(handler, disposeHandler: false) { Timeout = Timeout.InfiniteTimeSpan };
+
+        await AssertThrowsWithoutHangingAsync<TimeoutException>(() => client.GetAsync(server.Address));
+        await server.ConnectionClosed.WaitAsync(s_hangWatchdog);
+    }
+
+    [Fact]
     public async Task NormalBodyRemainsReadable()
     {
         var body = new string('x', 1024 * 1024);
