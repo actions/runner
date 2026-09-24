@@ -57,9 +57,12 @@ namespace GitHub.Runner.Worker
             var repoName = repoFullName.Substring(repoFullName.LastIndexOf('/') + 1);
             ArgUtil.NotNullOrEmpty(repoName, nameof(repoName));
 
+            var orgName = repoFullName.Substring(0, repoFullName.LastIndexOf('/'));
+            ArgUtil.NotNullOrEmpty(orgName, nameof(orgName));
+
             // Set the directories.
             PipelineDirectory = repoName.ToString(CultureInfo.InvariantCulture);
-            WorkspaceDirectory = Path.Combine(PipelineDirectory, repoName);
+            WorkspaceDirectory = Path.Combine(orgName.ToString(CultureInfo.InvariantCulture), repoName.ToString(CultureInfo.InvariantCulture));
 
             Repositories[repoFullName] = new RepositoryTrackingConfig()
             {
