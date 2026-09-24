@@ -9,7 +9,8 @@ if [ $user_id -eq 0 -a -z "$RUNNER_ALLOW_RUNASROOT" ]; then
 fi
 
 # Check dotnet Core 6.0 dependencies for Linux
-if [[ (`uname` == "Linux") ]]
+# Skip dependency checks for ppc64le/s390x (non-self-contained deployment uses system .NET runtime)
+if [[ (`uname` == "Linux") && (`uname -m` != "ppc64le") && (`uname -m` != "s390x") ]]
 then
     command -v ldd > /dev/null
     if [ $? -ne 0 ]
