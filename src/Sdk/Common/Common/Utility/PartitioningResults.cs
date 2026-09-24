@@ -3,7 +3,7 @@
 namespace GitHub.Services.Common
 {
     /// <summary>
-    /// Contains results from two-way variant of EnuemrableExtensions.Partition()
+    /// Contains results from two-way variant of EnumerableExtensions.Partition()
     /// </summary>
     /// <typeparam name="T">The type of the elements in the contained lists.</typeparam>
     public sealed class PartitionResults<T>
@@ -14,7 +14,7 @@ namespace GitHub.Services.Common
     }
 
     /// <summary>
-    /// Contains results from multi-partitioning variant of EnuemrableExtensions.Partition()
+    /// Contains results from multi-partitioning variant of EnumerableExtensions.Partition()
     /// </summary>
     /// <typeparam name="T">The type of the elements in the contained lists.</typeparam>
     public sealed class MultiPartitionResults<T>

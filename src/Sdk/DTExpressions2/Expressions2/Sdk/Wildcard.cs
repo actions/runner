@@ -7,7 +7,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
     public sealed class Wildcard : ExpressionNode
     {
         // Prevent the value from being stored on the evaluation context.
-        // This avoids unneccessarily duplicating the value in memory.
+        // This avoids unnecessarily duplicating the value in memory.
         protected sealed override Boolean TraceFullyRealized => false;
 
         internal sealed override String ConvertToExpression()

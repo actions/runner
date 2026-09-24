@@ -103,7 +103,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// The date/time this request was receieved by an agent.
+        /// The date/time this request was received by an agent.
         /// </summary>
         /// <value></value>
         [DataMember(Order = 5, EmitDefaultValue = false)]

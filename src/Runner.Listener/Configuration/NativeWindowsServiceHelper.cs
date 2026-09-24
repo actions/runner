@@ -192,7 +192,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 case ReturnCode.NERR_GroupNotFound:
                 case ReturnCode.ERROR_NO_SUCH_ALIAS:
-                    Trace.Info(StringUtil.Format("Group {0} not exists.", groupName));
+                    Trace.Info(StringUtil.Format("Group {0} does not exist.", groupName));
                     break;
 
                 case ReturnCode.ERROR_ACCESS_DENIED:
@@ -278,11 +278,11 @@ namespace GitHub.Runner.Listener.Configuration
             DirectoryInfo dInfo = new DirectoryInfo(path);
             DirectorySecurity dSecurity = dInfo.GetAccessControl();
 
-            var allAccessRuls = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
+            var allAccessRules = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
 
             SecurityIdentifier sid = (SecurityIdentifier)new NTAccount(groupName).Translate(typeof(SecurityIdentifier));
 
-            if (allAccessRuls.Any(x => x.IdentityReference.Value == sid.ToString() &&
+            if (allAccessRules.Any(x => x.IdentityReference.Value == sid.ToString() &&
                                        x.AccessControlType == AccessControlType.Allow &&
                                        x.FileSystemRights.HasFlag(FileSystemRights.FullControl) &&
                                        x.InheritanceFlags == (InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit) &&
@@ -422,11 +422,11 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 DirectorySecurity dSecurity = dInfo.GetAccessControl();
 
-                var allAccessRuls = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
+                var allAccessRules = dSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>();
 
                 SecurityIdentifier sid = (SecurityIdentifier)new NTAccount(groupName).Translate(typeof(SecurityIdentifier));
 
-                foreach (FileSystemAccessRule ace in allAccessRuls)
+                foreach (FileSystemAccessRule ace in allAccessRules)
                 {
                     if (String.Equals(sid.ToString(), ace.IdentityReference.Value, StringComparison.OrdinalIgnoreCase))
                     {
@@ -560,9 +560,9 @@ namespace GitHub.Runner.Listener.Configuration
                 sfa.lpsaActions = tmpBuf.ToInt64();
 
                 // Call the ChangeServiceFailureActions() abstraction of ChangeServiceConfig2()
-                bool falureActionsResult = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
+                bool failureActionsResult = ChangeServiceFailureActions(svcHndl, SERVICE_CONFIG_FAILURE_ACTIONS, ref sfa);
                 //Check the return
-                if (!falureActionsResult)
+                if (!failureActionsResult)
                 {
                     int lastErrorCode = (int)GetLastError();
                     Exception win32exception = new Win32Exception(lastErrorCode);
@@ -846,7 +846,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(StringUtil.Format("Trying to add userName {0} to the group {1}", accountName, groupName));
             AddMemberToLocalGroup(accountName, groupName);
 
-            // grant permssion for folders
+            // grant permission for folders
             foreach(var folder in folders)
             {
                 if (Directory.Exists(folder))
@@ -1178,7 +1178,7 @@ namespace GitHub.Runner.Listener.Configuration
             QueryConfig = 0x1,
             ChangeConfig = 0x2,
             QueryStatus = 0x4,
-            EnumerateDependants = 0x8,
+            EnumerateDependents = 0x8,
             Start = 0x10,
             Stop = 0x20,
             PauseContinue = 0x40,
@@ -1187,7 +1187,7 @@ namespace GitHub.Runner.Listener.Configuration
             Delete = 0x00010000,
             StandardRightsRequired = 0xF0000,
             AllAccess =
-                (StandardRightsRequired | QueryConfig | ChangeConfig | QueryStatus | EnumerateDependants | Start | Stop
+                (StandardRightsRequired | QueryConfig | ChangeConfig | QueryStatus | EnumerateDependents | Start | Stop
                  | PauseContinue | Interrogate | UserDefinedControl)
         }
 

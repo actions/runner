@@ -138,7 +138,7 @@ namespace GitHub.Services.Common.ClientStorage
             }
 
 #if DEBUG
-            Debug.Assert(fullPath.Equals(storage.m_filePath), string.Format("The same storage file is being referenced with different casing.  This will cause issues when running in cross patform environments where the file system may be case sensitive.  {0} != {1}", storage.m_filePath, normalizedFullPath));
+            Debug.Assert(fullPath.Equals(storage.m_filePath), string.Format("The same storage file is being referenced with different casing.  This will cause issues when running in cross platform environments where the file system may be case-sensitive.  {0} != {1}", storage.m_filePath, normalizedFullPath));
 #endif
             return storage;
         }
@@ -220,7 +220,7 @@ namespace GitHub.Services.Common.ClientStorage
         /// GetFolderPath throw)
         /// </summary>
         /// <param name="specialFolder">Folder to retrieve</param>
-        /// <returns>Path if available, null othewise</returns>
+        /// <returns>Path if available, null otherwise</returns>
         private static string SafeGetFolderPath(Environment.SpecialFolder specialFolder)
         {
             try
@@ -542,7 +542,7 @@ namespace GitHub.Services.Common.ClientStorage
                 {
                     // during testing, creating this backup provided reliability in the event of aborted threads, and
                     // crashed processes.  With this, I was not able to simulate a case where corruption happens, but there is no
-                    // 100% gaurantee against corruption.
+                    // 100% guarantee against corruption.
                     string originalContent = JValue.Parse(JsonConvert.SerializeObject(originalSettings)).ToString(Formatting.Indented);
                     SaveFile(m_bckUpFilePath, originalContent);
                 }

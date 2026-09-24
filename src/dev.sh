@@ -243,7 +243,7 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
         msbuild_location="$vs_location""\MSBuild\Current\Bin\msbuild.exe"
 
         if [[ ! -e "${msbuild_location}" ]]; then
-            failed "Can not find msbuild location, failing build"
+            failed "Cannot find msbuild location, failing build"
         fi
     fi
 

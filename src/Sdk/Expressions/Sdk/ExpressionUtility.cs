@@ -217,8 +217,8 @@ namespace GitHub.Actions.Expressions.Sdk
         }
 
         /// <summary>
-        /// The rules here attempt to follow Javascript rules for coercing a string into a number
-        /// for comparison. That is, the Number() function in Javascript.
+        /// The rules here attempt to follow JavaScript rules for coercing a string into a number
+        /// for comparison. That is, the Number() function in JavaScript.
         /// </summary>
         internal static Double ParseNumber(String str)
         {

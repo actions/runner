@@ -97,7 +97,7 @@ namespace GitHub.Services.OAuth
         }
 
         /// <summary>
-        /// Determines whether or not the response reperesents an authentication challenge for the current credential.
+        /// Determines whether or not the response represents an authentication challenge for the current credential.
         /// </summary>
         /// <param name="webResponse">The response to analyze</param>
         /// <returns>True if the web response indicates an authorization challenge; otherwise, false</returns>
