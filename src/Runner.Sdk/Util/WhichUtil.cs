@@ -95,13 +95,11 @@ namespace GitHub.Runner.Sdk
 #else
                     try
                     {
-                        foreach (var file in Directory.EnumerateFiles(pathSegment, command))
+                        string file = Path.Join(pathSegment, command);
+                        if (File.Exists(file) && IsPathValid(file, trace))
                         {
-                            if (IsPathValid(file, trace))
-                            {
-                                trace?.Info($"Location: '{file}'");
-                                return file;
-                            }
+                            trace?.Info($"Location: '{file}'");
+                            return file;
                         }
                     }
                     catch (UnauthorizedAccessException ex)
