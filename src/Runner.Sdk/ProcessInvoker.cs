@@ -16,8 +16,8 @@ namespace GitHub.Runner.Sdk
 {
 
     // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,
-    // instead, we read both STDOUT and STDERR stream manually on separate thread. 
-    // The reason is we find a huge perf issue about process STDOUT/STDERR with those events. 
+    // instead, we read both STDOUT and STDERR stream manually on separate thread.
+    // The reason is we find a huge perf issue about process STDOUT/STDERR with those events.
     public sealed class ProcessInvoker : IDisposable
     {
         private Process _proc;
@@ -233,7 +233,7 @@ namespace GitHub.Runner.Sdk
             _proc.StartInfo.RedirectStandardError = true;
             _proc.StartInfo.RedirectStandardOutput = true;
 
-            // Ensure we process STDERR even the process exit event happen before we start read STDERR stream. 
+            // Ensure we process STDERR even the process exit event happen before we start read STDERR stream.
             if (_proc.StartInfo.RedirectStandardError)
             {
                 Interlocked.Increment(ref _asyncStreamReaderCount);
@@ -568,7 +568,31 @@ namespace GitHub.Runner.Sdk
 
         private void DecreaseProcessPriority(Process process)
         {
-#if OS_LINUX
+#if OS_WINDOWS
+            var enableWindowsPriority = Environment.GetEnvironmentVariable("PIPELINE_JOB_DECREASE_PROCESS_PRIORITY") ?? "";
+            if (string.Equals(enableWindowsPriority, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var currentPriority = Process.GetCurrentProcess().PriorityClass;
+                    var newPriority = currentPriority switch
+                    {
+                        ProcessPriorityClass.RealTime => ProcessPriorityClass.High,
+                        ProcessPriorityClass.High => ProcessPriorityClass.AboveNormal,
+                        ProcessPriorityClass.AboveNormal => ProcessPriorityClass.Normal,
+                        ProcessPriorityClass.Normal => ProcessPriorityClass.BelowNormal,
+                        _ => ProcessPriorityClass.Idle,
+                    };
+                    process.PriorityClass = newPriority;
+                    Trace.Info($"Set process priority to {newPriority} (current process: {currentPriority}) for PID: {process.Id}.");
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info($"Failed to set process priority for PID: {process.Id}.");
+                    Trace.Info(ex.ToString());
+                }
+            }
+#elif OS_LINUX
             int oomScoreAdj = 500;
             string userOomScoreAdj;
             if (process.StartInfo.Environment.TryGetValue("PIPELINE_JOB_OOMSCOREADJ", out userOomScoreAdj))
@@ -659,7 +683,7 @@ namespace GitHub.Runner.Sdk
                     return true;
             }
 
-            // If the function handles the control signal, it should return TRUE. 
+            // If the function handles the control signal, it should return TRUE.
             // If it returns FALSE, the next handler function in the list of handlers for this process is used.
             return false;
         }
