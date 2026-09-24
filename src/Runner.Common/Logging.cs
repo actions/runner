@@ -4,7 +4,7 @@ using System.IO;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(PagingLogger))]
-    public interface IPagingLogger : IRunnerService
+    public interface IPagingLogger : IRunnerService, IDisposable
     {
         long TotalLines { get; }
         void Setup(Guid timelineId, Guid timelineRecordId);
@@ -44,6 +44,8 @@ namespace GitHub.Runner.Common
         private string _resultsBlockFolder;
         private int _blockByteCount;
         private int _blockCount;
+
+        private bool _disposed;
 
         public long TotalLines => _totalLines;
 
@@ -163,6 +165,56 @@ namespace GitHub.Runner.Common
                 _resultsBlockData = null;
                 _jobServerQueue.QueueResultsUpload(_timelineRecordId, "ResultsLog", _resultsDataFileName, "Results.Core.Log", deleteSource: true, finalize, firstBlock: _resultsDataFileName.EndsWith(".1"), totalLines: _totalLines);
             }
+        }
+
+        // Best-effort cleanup for fault paths where End() was not reached.
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                // Try normal flush+queue paths first.
+                try { EndPage(); } catch { }
+
+                // Safety net for partially initialized page writer/stream.
+                if (_pageWriter != null)
+                {
+                    try { _pageWriter.Dispose(); } catch { }
+                    _pageWriter = null;
+                    _pageData = null;
+                }
+                else if (_pageData != null)
+                {
+                    try { _pageData.Dispose(); } catch { }
+                    _pageData = null;
+                }
+
+                try { EndBlock(finalize: true); } catch { }
+
+                if (_resultsBlockWriter != null)
+                {
+                    try { _resultsBlockWriter.Dispose(); } catch { }
+                    _resultsBlockWriter = null;
+                    _resultsBlockData = null;
+                }
+                else if (_resultsBlockData != null)
+                {
+                    try { _resultsBlockData.Dispose(); } catch { }
+                    _resultsBlockData = null;
+                }
+            }
+
+            _disposed = true;
         }
     }
 }
