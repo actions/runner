@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Actions.RunService.WebApi;
@@ -131,10 +132,12 @@ namespace GitHub.Runner.Common
                             {
                                 result.LastCloseReason = $"server_closed:{receiveResult.CloseStatus}:{receiveResult.CloseStatusDescription}";
                                 Trace.Info($"Runner long-poll websocket closed by server. CloseStatus: {receiveResult.CloseStatus}, Description: {receiveResult.CloseStatusDescription}");
+                                await socket.CloseOutputAsync(receiveResult.CloseStatus.Value, "Closing websocket", cancellationToken);
                                 break;
                             }
 
                             result.PingsReceived++;
+                            Trace.Info($"Runner long-poll websocket received a ping: " + $"{Encoding.UTF8.GetString(buffer, 0, receiveResult.Count)}");
                         }
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -148,9 +151,10 @@ namespace GitHub.Runner.Common
                         result.Errors.Add(ex.Message);
                         result.LastCloseReason = "error";
                     }
-                    finally
+
+                    if (socket.State == WebSocketState.Open)
                     {
-                        CloseWebSocket(socket, WebSocketCloseStatus.NormalClosure, CancellationToken.None);
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing websocket", CancellationToken.None);
                     }
                 }
             }

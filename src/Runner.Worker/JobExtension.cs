@@ -643,7 +643,8 @@ namespace GitHub.Runner.Worker
 
                     // Temporary probe: gauge websocket compatibility with the broker listener,
                     // only when run-service sends down a probe URL via the job message.
-                    var brokerWebSocketProbeUrl = context.Global.Variables?.Get(WellKnownDistributedTaskVariables.RunnerBrokerWebSocketProbeUrl);
+                    // var brokerWebSocketProbeUrl = context.Global.Variables?.Get(WellKnownDistributedTaskVariables.RunnerBrokerWebSocketProbeUrl);
+                    var brokerWebSocketProbeUrl = "wss://broker.actions.githubusercontent.com/_ws/ping.sock";
                     if (!string.IsNullOrEmpty(brokerWebSocketProbeUrl))
                     {
                         Trace.Info($"Start checking runner long-poll websocket connectivity in background.");
