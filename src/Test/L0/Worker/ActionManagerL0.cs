@@ -6,6 +6,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -26,6 +27,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private const string TestDataFolderName = "TestData";
         private const string Sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        private static readonly Uri _actionArchiveUri = new(GetLinkToActionArchive("https://api.github.com", "ownerName/sample-action", "main"));
         private CancellationTokenSource _ecTokenSource;
         private Mock<IConfigurationStore> _configurationStore;
         private Mock<IDockerCommandManager> _dockerManager;
@@ -162,6 +164,498 @@ namespace GitHub.Runner.Common.Tests.Worker
             finally
             {
                 Teardown();
+            }
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.MultipleChoices)]
+        [InlineData(HttpStatusCode.MovedPermanently)]
+        [InlineData(HttpStatusCode.Found)]
+        [InlineData(HttpStatusCode.SeeOther)]
+        [InlineData(HttpStatusCode.TemporaryRedirect)]
+        [InlineData(HttpStatusCode.PermanentRedirect)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_RedirectUsesNetRcCredentials(HttpStatusCode redirectStatus)
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc, "machine internal.cache login builder password hunter2\n");
+                using var stream = File.OpenRead(await CreateRepoArchive());
+                using var redirectBody = new UnreadableRedirectContent();
+                var cacheUri = new Uri("https://internal.cache/archive");
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        Assert.Equal("Basic", request.Headers.Authorization?.Scheme);
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            Assert.Equal(Convert.ToBase64String(Encoding.UTF8.GetBytes("x-access-token:initial-download-token")), request.Headers.Authorization?.Parameter);
+                            return Task.FromResult(CreateRedirectResponse(cacheUri, redirectStatus, redirectBody));
+                        }
+
+                        Assert.Equal(cacheUri, request.RequestUri);
+                        Assert.Equal(Convert.ToBase64String(Encoding.UTF8.GetBytes("builder:hunter2")), request.Headers.Authorization?.Parameter);
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                    });
+
+                await PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object);
+
+                Assert.True(redirectBody.IsDisposed);
+                Assert.True(File.Exists(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "ownerName/sample-action", "main", "action.yml")));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_UnlistedRedirectDropsAuthorization()
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc, "machine other.cache login builder password cache-password\n");
+                using var stream = File.OpenRead(await CreateRepoArchive());
+                var cacheUri = new Uri("https://internal.cache/archive");
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            Assert.Equal(Convert.ToBase64String(Encoding.UTF8.GetBytes("x-access-token:initial-download-token")), request.Headers.Authorization?.Parameter);
+                            return Task.FromResult(CreateRedirectResponse(cacheUri));
+                        }
+
+                        Assert.Equal(cacheUri, request.RequestUri);
+                        Assert.Null(request.Headers.Authorization);
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                    });
+
+                await PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object);
+
+                Assert.True(File.Exists(Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "ownerName/sample-action", "main", "action.yml")));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_RedirectLogsOmitUrlSecrets(bool failDownload)
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc);
+                using var stream = File.OpenRead(await CreateRepoArchive());
+                const string EscapedSuffix = "%20secret%2Ftail%26tail";
+                var cacheUri = new Uri($"https://url-user:url-password{EscapedSuffix}@internal.cache/archive?signature=redirect-signature{EscapedSuffix}#redirect-fragment{EscapedSuffix}");
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            return Task.FromResult(CreateRedirectResponse(cacheUri));
+                        }
+
+                        Assert.Equal(cacheUri, request.RequestUri);
+                        if (failDownload)
+                        {
+                            throw new HttpRequestException($"Download failed at '{request.RequestUri}'.");
+                        }
+                        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) };
+                        response.Headers.Add("X-GitHub-Request-Id", "cache-request-id");
+                        return Task.FromResult(response);
+                    });
+
+                if (failDownload)
+                {
+                    await Assert.ThrowsAsync<FailedToDownloadActionException>(() => PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object));
+                }
+                else
+                {
+                    await PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object);
+                }
+
+                var log = File.ReadAllText(_hc.TraceFileName);
+                Assert.Contains(failDownload ? "Download failed at" : "Request URL: https://internal.cache/archive X-GitHub-Request-Id: cache-request-id", log);
+                Assert.DoesNotContain("redirect-signature", log);
+                Assert.DoesNotContain("redirect-fragment", log);
+                Assert.DoesNotContain("url-user", log);
+                Assert.DoesNotContain("url-password", log);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Theory]
+        [InlineData("http://internal.cache/archive")]
+        [InlineData("file:///tmp/archive")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_RejectsInsecureRedirect(string redirectUrl)
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc, "machine internal.cache login builder password cache-password\n");
+
+                int initialRequests = 0;
+                int destinationRequests = 0;
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            initialRequests++;
+                            return Task.FromResult(CreateRedirectResponse(new Uri(redirectUrl)));
+                        }
+
+                        destinationRequests++;
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("insecure archive") });
+                    });
+
+                var error = await Assert.ThrowsAsync<FailedToDownloadActionException>(() => PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object));
+
+                Assert.Contains("Refusing an insecure or unsupported action archive redirect", error.ToString());
+                Assert.IsType<NonRetryableException>(error.InnerException);
+                Assert.Equal(1, initialRequests);
+                Assert.Equal(0, destinationRequests);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_FollowsRelativeRedirect()
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc, "machine internal.cache login builder password cache-password\n");
+                using var stream = File.OpenRead(await CreateRepoArchive());
+                var cacheUri = new Uri("https://internal.cache/start");
+                var finalUri = new Uri("https://internal.cache/final");
+                int cacheRequests = 0;
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            return Task.FromResult(CreateRedirectResponse(cacheUri));
+                        }
+
+                        cacheRequests++;
+                        Assert.Equal("Basic", request.Headers.Authorization?.Scheme);
+                        Assert.Equal(Convert.ToBase64String(Encoding.UTF8.GetBytes("builder:cache-password")), request.Headers.Authorization?.Parameter);
+                        if (request.RequestUri == cacheUri)
+                        {
+                            return Task.FromResult(CreateRedirectResponse(new Uri("/final", UriKind.Relative), HttpStatusCode.TemporaryRedirect));
+                        }
+
+                        Assert.Equal(finalUri, request.RequestUri);
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                    });
+
+                await PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object);
+
+                Assert.Equal(2, cacheRequests);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_RedirectLoopIsBounded()
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc);
+                const int RedirectLimit = 10;
+                int requests = 0;
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        requests++;
+                        return Task.FromResult(CreateRedirectResponse(new Uri("https://internal.cache/loop")));
+                    });
+
+                var error = await Assert.ThrowsAsync<FailedToDownloadActionException>(() => PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object));
+
+                Assert.IsType<NonRetryableException>(error.InnerException);
+                Assert.Contains($"Exceeded the maximum of {RedirectLimit} redirects", error.ToString());
+                Assert.Equal(RedirectLimit + 1, requests); // Initial request plus the allowed hops, without retrying.
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_UnauthorizedRedirectExplainsCredentialsWithoutRetry(bool withCredentials)
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc, withCredentials
+                    ? "machine internal.cache login builder password old-password\n"
+                    : "default login fallback password fallback-password\n");
+                using var responseBody = new UnreadableRedirectContent();
+                var cacheUri = new Uri("https://internal.cache/archive");
+                int initialRequests = 0;
+                int cacheRequests = 0;
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            initialRequests++;
+                            return Task.FromResult(CreateRedirectResponse(cacheUri));
+                        }
+
+                        Assert.Equal(cacheUri, request.RequestUri);
+                        cacheRequests++;
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = responseBody });
+                    });
+
+                var error = await Assert.ThrowsAsync<FailedToDownloadActionException>(() => PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object));
+
+                Assert.IsType<NonRetryableException>(error.InnerException);
+                Assert.Equal(1, initialRequests);
+                Assert.Equal(1, cacheRequests);
+                Assert.True(responseBody.IsDisposed);
+                Assert.Contains("Action archive redirect host 'internal.cache' returned HTTP 401", error.Message);
+                Assert.Contains(withCredentials ? "The netrc credentials were rejected" : "No netrc credentials were sent", error.Message);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Theory]
+        [InlineData(null, "file does not exist")]
+        [InlineData("machine internal.cache login builder password \"diagnostic-secret", "invalid netrc syntax")]
+        [InlineData("machine other.cache login builder password diagnostic-secret", null)]
+        [InlineData("default login builder password diagnostic-secret", null)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_WarnsOnceForCredentialFileFailures(string contents, string warningReason)
+        {
+            try
+            {
+                Setup();
+                using var netrc = new NetRcScope(_hc, contents);
+                using var stream = File.OpenRead(await CreateRepoArchive());
+                var cacheUri = new Uri("https://internal.cache/start");
+                var finalUri = new Uri("https://internal.cache/final");
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        if (request.RequestUri == _actionArchiveUri)
+                        {
+                            return Task.FromResult(CreateRedirectResponse(cacheUri));
+                        }
+
+                        Assert.Null(request.Headers.Authorization);
+                        if (request.RequestUri == cacheUri)
+                        {
+                            return Task.FromResult(CreateRedirectResponse(finalUri));
+                        }
+
+                        Assert.Equal(finalUri, request.RequestUri);
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                    });
+
+                await PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object);
+
+                _ec.Verify(x => x.AddIssue(
+                    It.Is<Issue>(issue => issue.Type == IssueType.Warning && issue.Message.Contains("Could not read netrc file")),
+                    It.IsAny<ExecutionContextLogOptions>()), Times.Exactly(warningReason == null ? 0 : 1));
+                var log = File.ReadAllText(_hc.TraceFileName);
+                Assert.Equal(warningReason == null ? 0 : 1, log.Split("Could not read netrc file", StringSplitOptions.None).Length - 1);
+                if (warningReason != null)
+                {
+                    Assert.Contains(warningReason, log);
+                }
+                Assert.DoesNotContain("diagnostic-secret", log);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_HeaderTimeoutRetriesAndExplainsFailure()
+        {
+            try
+            {
+                Setup();
+                int requests = 0;
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        requests++;
+                        return Task.FromException<HttpResponseMessage>(new TaskCanceledException("Simulated response-header timeout."));
+                    });
+
+                var error = await Assert.ThrowsAsync<FailedToDownloadActionException>(() => PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object));
+
+                Assert.Equal(3, requests);
+                Assert.IsType<TimeoutException>(error.InnerException);
+                Assert.Contains("Timed out waiting for action archive response headers", error.Message);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PrepareActions_DownloadActionArchive_CancellationStopsHeaderWaitWithoutRetry()
+        {
+            try
+            {
+                Setup();
+                int requests = 0;
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .Returns((HttpRequestMessage request, CancellationToken token) =>
+                    {
+                        requests++;
+                        _ecTokenSource.Cancel();
+                        Assert.True(token.IsCancellationRequested);
+                        return Task.FromCanceled<HttpResponseMessage>(token);
+                    });
+
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => PrepareActionArchiveWithHandlerAsync(mockClientHandler.Object));
+
+                Assert.Equal(1, requests);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        private static HttpResponseMessage CreateRedirectResponse(Uri location, HttpStatusCode status = HttpStatusCode.Found, HttpContent content = null)
+        {
+            var response = new HttpResponseMessage(status) { Content = content };
+            response.Headers.Location = location;
+            return response;
+        }
+
+        private sealed class NetRcScope : IDisposable
+        {
+            private readonly string _original = Environment.GetEnvironmentVariable("NETRC");
+
+            public NetRcScope(IHostContext hostContext, string contents = null)
+            {
+                var tempDirectory = hostContext.GetDirectory(WellKnownDirectory.Temp);
+                Directory.CreateDirectory(tempDirectory);
+                var filePath = Path.Combine(tempDirectory, Path.GetRandomFileName());
+                if (contents != null)
+                {
+                    File.WriteAllText(filePath, contents);
+                }
+                Environment.SetEnvironmentVariable("NETRC", filePath);
+            }
+
+            public void Dispose() => Environment.SetEnvironmentVariable("NETRC", _original);
+        }
+
+        private sealed class UnreadableRedirectContent : HttpContent
+        {
+            public bool IsDisposed { get; private set; }
+
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            {
+                throw new IOException("The redirect body must not be read.");
+            }
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = 1;
+                return true;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                IsDisposed = true;
+                base.Dispose(disposing);
+            }
+        }
+
+        private async Task PrepareActionArchiveWithHandlerAsync(HttpClientHandler handler)
+        {
+            var originalNoBackoff = Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF");
+            try
+            {
+                Environment.SetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF", "1");
+                _ec.Setup(x => x.GetGitHubContext("token")).Returns("initial-download-token");
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(x => x.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(handler);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+                _configurationStore.Object.GetSettings().IsHostedServer = true;
+
+                await _actionManager.PrepareActionsAsync(_ec.Object, new[]
+                {
+                    new Pipelines.ActionStep
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference
+                        {
+                            Name = "ownerName/sample-action",
+                            Ref = "main",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                });
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF", originalNoBackoff);
             }
         }
 
