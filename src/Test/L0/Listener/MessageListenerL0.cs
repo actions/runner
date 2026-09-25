@@ -338,6 +338,92 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async Task OnJobStatus_OnlineKeepsInFlightPollOpen_BusyCancelsIt()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                var expectedSession = new TaskAgentSession();
+                PropertyInfo sessionIdProperty = expectedSession.GetType().GetProperty("SessionId", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(sessionIdProperty);
+                sessionIdProperty.SetValue(expectedSession, Guid.NewGuid());
+
+                _runnerServer
+                    .Setup(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedSession));
+
+                _credMgr.Setup(x => x.LoadCredentials(It.IsAny<bool>())).Returns(new VssCredentials());
+                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
+
+                // Every poll stays open until the test answers it or its token is cancelled.
+                var polls = new List<(TaskAgentStatus Status, CancellationToken Token, TaskCompletionSource<TaskAgentMessage> Response)>();
+                using var pollStarted = new SemaphoreSlim(0);
+                _runnerServer
+                    .Setup(x => x.GetAgentMessageAsync(
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), It.IsAny<TaskAgentStatus>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+                    .Returns((Int32 poolId, Guid sessionId, Int64? lastMessageId, TaskAgentStatus status, string runnerVersion, string os, string architecture, bool disableUpdate, CancellationToken cancellationToken) =>
+                    {
+                        var response = new TaskCompletionSource<TaskAgentMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+                        cancellationToken.Register(() => response.TrySetCanceled(cancellationToken));
+                        lock (polls)
+                        {
+                            polls.Add((status, cancellationToken, response));
+                        }
+                        pollStarted.Release();
+                        return response.Task;
+                    });
+
+                MessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.Equal(CreateSessionResult.Success, result);
+
+                // Act: a job is running, so the runner long-polls as Busy.
+                listener.OnJobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Busy));
+                Task<TaskAgentMessage> nextMessage = listener.GetNextMessageAsync(tokenSource.Token);
+                Assert.True(await pollStarted.WaitAsync(TimeSpan.FromSeconds(30)));
+                var busyPoll = polls[0];
+                Assert.Equal(TaskAgentStatus.Busy, busyPoll.Status);
+
+                // The job completes. The Busy poll must stay open so a job assigned now is not dropped.
+                listener.OnJobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));
+                Assert.False(busyPoll.Token.IsCancellationRequested);
+
+                // The Busy poll returns empty; the next poll reports the new Online status.
+                busyPoll.Response.SetResult(null);
+                Assert.True(await pollStarted.WaitAsync(TimeSpan.FromSeconds(30)));
+                var onlinePoll = polls[1];
+                Assert.Equal(TaskAgentStatus.Online, onlinePoll.Status);
+
+                // A transition to Busy still aborts the open poll so the service learns the runner is busy.
+                listener.OnJobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Busy));
+                Assert.True(onlinePoll.Token.IsCancellationRequested);
+                Assert.True(await pollStarted.WaitAsync(TimeSpan.FromSeconds(30)));
+                var nextBusyPoll = polls[2];
+                Assert.Equal(TaskAgentStatus.Busy, nextBusyPoll.Status);
+
+                var expectedMessage = new TaskAgentMessage { MessageId = 42 };
+                nextBusyPoll.Response.SetResult(expectedMessage);
+                TaskAgentMessage message = await nextMessage;
+                trace.Info("message: {0}", message);
+
+                // Assert.
+                Assert.Equal(expectedMessage, message);
+                Assert.Equal(3, polls.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async Task CreateSessionWithOriginalCredential()
         {
             using (TestHostContext tc = CreateTestContext())

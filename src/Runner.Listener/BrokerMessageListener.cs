@@ -262,6 +262,14 @@ namespace GitHub.Runner.Listener
         {
             Trace.Info("Received job status event. JobState: {0}", e.Status);
             _runnerStatus = e.Status;
+            if (e.Status == TaskAgentStatus.Online)
+            {
+                // The service assigns the next job when the previous one completes and
+                // delivers it on the poll that is open now. Aborting that poll drops the
+                // message; the new status goes out on the next poll instead.
+                return;
+            }
+
             try
             {
                 _getMessagesTokenSource?.Cancel();
