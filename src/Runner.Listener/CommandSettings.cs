@@ -65,6 +65,8 @@ namespace GitHub.Runner.Listener
                 new string[]
                 {
                     Constants.Runner.CommandLine.Flags.Once,
+                    Constants.Runner.CommandLine.Flags.DrainOnSigusr1,
+                    Constants.Runner.CommandLine.Args.DrainFile,
                     Constants.Runner.CommandLine.Args.JitConfig,
                     Constants.Runner.CommandLine.Args.StartupType
                 },
@@ -93,6 +95,17 @@ namespace GitHub.Runner.Listener
 
         // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
+        public bool DrainOnSigusr1 => TestFlag(Constants.Runner.CommandLine.Flags.DrainOnSigusr1);
+        public string GetDrainFile()
+        {
+            string name = Constants.Runner.CommandLine.Args.DrainFile;
+            string path = GetArg(name);
+            if (string.IsNullOrEmpty(path) && (_parser.Args.ContainsKey(name) || _parser.Flags.Contains(name, StringComparer.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException("--drain-file requires a nonempty path.");
+            }
+            return path;
+        }
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)
