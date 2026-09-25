@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
@@ -1011,6 +1014,86 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Assert.
                 Assert.Equal(0, ec.Global.StepsResult.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WriteWebhookPayload_ConcurrentReaderNeverObservesTruncatedFile()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message with a github.event payload large enough
+                // that a non-atomic rewrite is observable while the stream flushes.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                string gitHubEvent = $"{{\"filler\":\"{new string('a', 512 * 1024)}\"}}";
+                var githubData = new Pipelines.ContextData.DictionaryContextData();
+                githubData["event"] = new StringContextData(gitHubEvent);
+                jobRequest.ContextData["github"] = githubData;
+
+                var pagingLogger = new Mock<IPagingLogger>();
+                hc.EnqueueInstance(pagingLogger.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                ec.WriteWebhookPayload();
+                string eventPath = ec.GetGitHubContext("event_path");
+                Assert.Equal(gitHubEvent, File.ReadAllText(eventPath));
+
+                // Act: Rewrite the payload the way each starting action step does
+                // (ActionRunner.RunAsync), while a concurrent reader mimics a sibling parallel
+                // step's Node action parsing GITHUB_EVENT_PATH at module load.
+                using var writerDone = new CancellationTokenSource();
+                var writer = Task.Run(() =>
+                {
+                    try
+                    {
+                        for (int i = 0; i < 100; i++)
+                        {
+                            ec.WriteWebhookPayload();
+                        }
+                    }
+                    finally
+                    {
+                        writerDone.Cancel();
+                    }
+                });
+
+                var truncatedReadLengths = new List<int>();
+                var reader = Task.Run(() =>
+                {
+                    while (!writerDone.IsCancellationRequested)
+                    {
+                        using var stream = new FileStream(eventPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                        using var textReader = new StreamReader(stream, new UTF8Encoding(false));
+                        string observed = textReader.ReadToEnd();
+                        if (observed.Length != gitHubEvent.Length)
+                        {
+                            truncatedReadLengths.Add(observed.Length);
+                        }
+                    }
+                });
+
+                await writer;
+                await reader;
+
+                // Assert
+                Assert.True(truncatedReadLengths.Count == 0, $"{truncatedReadLengths.Count} concurrent read(s) observed a truncated event.json (expected {gitHubEvent.Length} chars, observed lengths: {string.Join(", ", truncatedReadLengths.Take(5))}). The event.json write must be atomic.");
+                Assert.Equal(gitHubEvent, File.ReadAllText(eventPath));
+                Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(eventPath), "*.tmp"));
             }
         }
 
