@@ -117,16 +117,16 @@ then
             print_errormessage
             exit 1
         fi
-    elif [ -e /etc/redhat-release ]
+    elif [ -e /etc/redhat-release ] || grep -q '^ID="amzn"' /etc/os-release
     then
         echo "The current OS is Fedora based"
-        echo "--Fedora/RHEL/CentOS Version--"
-        cat /etc/redhat-release
+        echo "--Fedora/RHEL/CentOS/Amazon Linux Version--"
+        cat /etc/redhat-release 2>/dev/null || cat /etc/system-release 2>/dev/null
         echo "------------------------------"
 
-        # use dnf on fedora
-        # use yum on centos and rhel
-        if [ -e /etc/fedora-release ]
+        # use dnf on fedora and amazon linux 2023
+        # use yum on centos, rhel, and amazon linux 2
+        if [ -e /etc/fedora-release ] || (grep -q '^ID="amzn"' /etc/os-release && grep -q '^VERSION_ID="2023"' /etc/os-release)
         then
             command -v dnf
             if [ $? -eq 0 ]
