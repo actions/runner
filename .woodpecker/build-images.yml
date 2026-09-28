@@ -13,19 +13,18 @@ matrix:
     - ubuntu-rootless
 
 steps:
-  "Build and publish image":
-    image: woodpeckerci/plugin-docker-buildx:2.2.1
-    secrets: [dockerhub_token_cynkragmbh]
+  - name: build-and-publish-image
+    image: woodpeckerci/plugin-docker-buildx:6.1.2
     # environment:
-    #   - RUNNER_VERSION=2.311.0
+    #   RUNNER_VERSION: 2.311.0
     settings:
       dockerfile: images/Dockerfile-${NAME}
       repo: cynkra/actions-runner
       username: cynkragmbh
-      tags: ${RUNNER_VERSION}-${NAME},${RUNNER_VERSION:0:1}-${NAME}
-      platforms: linux/amd64,linux/arm64
       password:
         from_secret: dockerhub_token_cynkragmbh
+      tags: ${RUNNER_VERSION}-${NAME},${RUNNER_VERSION:0:1}-${NAME}
+      platforms: linux/amd64,linux/arm64
     backend_options:
       kubernetes:
         resources:
