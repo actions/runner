@@ -138,6 +138,16 @@ namespace GitHub.Runner.Common
 
                             result.PingsReceived++;
                             Trace.Info($"Runner long-poll websocket received a ping: " + $"{Encoding.UTF8.GetString(buffer, 0, receiveResult.Count)}");
+
+                            if (receiveResult.MessageType == WebSocketMessageType.Text)
+                            {
+                                await socket.SendAsync(
+                                    new ArraySegment<byte>(buffer, 0, receiveResult.Count),
+                                    receiveResult.MessageType,
+                                    receiveResult.EndOfMessage,
+                                    cancellationToken);
+                                Trace.Info($"Runner replied via websocket with: " + $"{Encoding.UTF8.GetString(buffer, 0, receiveResult.Count)}");
+                            }
                         }
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
