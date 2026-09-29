@@ -71,6 +71,8 @@ namespace GitHub.Runner.Common.Util
                     return ActionResult.Cancelled;
                 case TaskResult.Skipped:
                     return ActionResult.Skipped;
+                case TaskResult.Neutral:
+                    return ActionResult.Neutral;
                 default:
                     throw new NotSupportedException(result.ToString());
             }
