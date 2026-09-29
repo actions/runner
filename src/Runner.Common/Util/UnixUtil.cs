@@ -42,21 +42,24 @@ namespace GitHub.Runner.Common.Util
             string toolPath = WhichUtil.Which(toolName, trace: Trace);
             Trace.Info($"Running {toolPath} {argLine}");
 
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += OnOutputDataReceived;
-            processInvoker.ErrorDataReceived += OnErrorDataReceived;
+            // Dispose invoker per call to release process/CTS resources promptly.
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += OnOutputDataReceived;
+                processInvoker.ErrorDataReceived += OnErrorDataReceived;
 
-            try
-            {
-                using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
+                try
                 {
-                    await processInvoker.ExecuteAsync(workingDirectory, toolPath, argLine, null, true, cs.Token);
+                    using (var cs = new CancellationTokenSource(TimeSpan.FromSeconds(45)))
+                    {
+                        await processInvoker.ExecuteAsync(workingDirectory, toolPath, argLine, null, true, cs.Token);
+                    }
                 }
-            }
-            finally
-            {
-                processInvoker.OutputDataReceived -= OnOutputDataReceived;
-                processInvoker.ErrorDataReceived -= OnErrorDataReceived;
+                finally
+                {
+                    processInvoker.OutputDataReceived -= OnOutputDataReceived;
+                    processInvoker.ErrorDataReceived -= OnErrorDataReceived;
+                }
             }
         }
 
