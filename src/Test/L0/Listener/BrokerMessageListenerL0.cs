@@ -7,6 +7,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using Moq;
 using Xunit;
 
@@ -435,6 +436,22 @@ namespace GitHub.Runner.Common.Tests.Listener
                        It.Is<TaskAgentSession>(y => y != null),
                        tokenSource.Token), Times.Exactly(2));
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public void BrokerServer_ShouldNotRetryNonRetriableExceptions()
+        {
+            var brokerServer = new BrokerServer();
+
+            Assert.False(brokerServer.ShouldRetryException(new TaskAgentNotFoundException("runner not found")));
+            Assert.False(brokerServer.ShouldRetryException(new TaskAgentPoolNotFoundException("pool not found")));
+            Assert.False(brokerServer.ShouldRetryException(new RunnerNotFoundException("runner missing")));
+            Assert.False(brokerServer.ShouldRetryException(new HostedRunnerDeprovisionedException("hosted runner removed")));
+            Assert.False(brokerServer.ShouldRetryException(new TaskAgentSessionExpiredException("session expired")));
+            Assert.False(brokerServer.ShouldRetryException(new AccessDeniedException("access denied")));
+            Assert.True(brokerServer.ShouldRetryException(new Exception("transient")));
         }
 
         [Fact]

@@ -108,7 +108,13 @@ namespace GitHub.Runner.Common
 
         public bool ShouldRetryException(Exception ex)
         {
-            if (ex is AccessDeniedException || ex is VssUnauthorizedException || ex is RunnerNotFoundException || ex is HostedRunnerDeprovisionedException || ex is TaskAgentSessionExpiredException)
+            if (ex is AccessDeniedException ||
+                ex is VssUnauthorizedException ||
+                ex is TaskAgentNotFoundException ||
+                ex is TaskAgentPoolNotFoundException ||
+                ex is RunnerNotFoundException ||
+                ex is HostedRunnerDeprovisionedException ||
+                ex is TaskAgentSessionExpiredException)
             {
                 return false;
             }
