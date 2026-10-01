@@ -167,13 +167,19 @@ namespace GitHub.Actions.RunService.WebApi
         }
 
         public async Task DeleteSessionAsync(
+            Guid sessionId,
             CancellationToken cancellationToken = default)
         {
             var requestUri = new Uri(Client.BaseAddress, $"session");
+            var queryParams = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("sessionId", sessionId.ToString()),
+            };
 
             var result = await SendAsync<object>(
                 new HttpMethod("DELETE"),
                 requestUri: requestUri,
+                queryParameters: queryParams,
                 cancellationToken: cancellationToken);
 
             if (result.IsSuccess)
