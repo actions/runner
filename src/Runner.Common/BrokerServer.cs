@@ -19,7 +19,7 @@ namespace GitHub.Runner.Common
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
         Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken);
-        Task DeleteSessionAsync(CancellationToken cancellationToken);
+        Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken);
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
 
@@ -80,10 +80,10 @@ namespace GitHub.Runner.Common
             await _brokerHttpClient.AcknowledgeRunnerRequestAsync(runnerRequestId, sessionId, version, status, os, architecture, cancellationToken);
         }
 
-        public async Task DeleteSessionAsync(CancellationToken cancellationToken)
+        public async Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken)
         {
             CheckConnection();
-            await _brokerHttpClient.DeleteSessionAsync(cancellationToken);
+            await _brokerHttpClient.DeleteSessionAsync(sessionId, cancellationToken);
         }
 
         public Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials)
