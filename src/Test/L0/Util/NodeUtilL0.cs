@@ -8,6 +8,27 @@ namespace GitHub.Runner.Common.Tests.Util
 {
     public class NodeUtilL0
     {
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        [InlineData(null, "node24")]
+        [InlineData("node24", "node24")]
+        [InlineData("node20", "node20")]
+        [InlineData("node16", "node24")] // Unsupported versions are ignored
+        public void TestInternalNodeVersion(string forcedVersion, string expectedVersion)
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, forcedVersion);
+
+                Assert.Equal(expectedVersion, NodeUtil.GetInternalNodeVersion());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, null);
+            }
+        }
+
         // We're testing the logic with feature flags
         [Theory]
         [InlineData(false, false, false, false, "node20", false)] // Phase 1: No env vars
