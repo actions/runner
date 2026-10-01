@@ -1,0 +1,51 @@
+name: TICS
+
+on:
+  schedule:
+    - cron: "0 3 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tics:
+    name: TICS
+    if: github.ref == 'refs/heads/main'
+    runs-on: self-hosted-linux-amd64-noble-large-tiobe
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Build & layout
+        working-directory: src
+        run: ./dev.sh layout Release linux-x64
+
+      - name: Run L0 tests with coverage
+        working-directory: src
+        run: |
+          # dev.sh installs its own SDK under _dotnetsdk/<version>
+          DOTNET_DIR="$(dirname "$(ls "${GITHUB_WORKSPACE}"/_dotnetsdk/*/dotnet | head -n1)")"
+          export PATH="${DOTNET_DIR}:${HOME}/.dotnet/tools:${PATH}"
+          dotnet tool update --global dotnet-coverage
+          dotnet-coverage collect --output-format cobertura \
+            --output "${GITHUB_WORKSPACE}/.coverage/cobertura.xml" "./dev.sh test"
+
+      - name: Locate .NET SDK
+        run: echo "DOTNET_ROOT=$(dirname "$(ls "${GITHUB_WORKSPACE}"/_dotnetsdk/*/dotnet | head -n1)")" >> "$GITHUB_ENV"
+
+      - name: TICS GitHub Action
+        uses: tiobe/tics-github-action@v3
+        with:
+          mode: qserver
+          project: github-actions-runner
+          branchdir: ${{ github.workspace }}
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=default
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
+
+concurrency:
+  group: tics
+  cancel-in-progress: false
