@@ -23,18 +23,21 @@ jobs:
         working-directory: src
         run: ./dev.sh layout Release linux-x64
 
+      # dev.sh installs its own SDK under _dotnetsdk/<version>; dotnet-coverage and TICS
+      # need DOTNET_ROOT to find it.
+      - name: Locate .NET SDK
+        run: |
+          DOTNET_DIR="$(dirname "$(ls "${GITHUB_WORKSPACE}"/_dotnetsdk/*/dotnet | head -n1)")"
+          echo "DOTNET_ROOT=${DOTNET_DIR}" >> "$GITHUB_ENV"
+          echo "${DOTNET_DIR}" >> "$GITHUB_PATH"
+          echo "${HOME}/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: Run L0 tests with coverage
         working-directory: src
         run: |
-          # dev.sh installs its own SDK under _dotnetsdk/<version>
-          DOTNET_DIR="$(dirname "$(ls "${GITHUB_WORKSPACE}"/_dotnetsdk/*/dotnet | head -n1)")"
-          export PATH="${DOTNET_DIR}:${HOME}/.dotnet/tools:${PATH}"
           dotnet tool update --global dotnet-coverage
           dotnet-coverage collect --output-format cobertura \
             --output "${GITHUB_WORKSPACE}/.coverage/cobertura.xml" "./dev.sh test"
-
-      - name: Locate .NET SDK
-        run: echo "DOTNET_ROOT=$(dirname "$(ls "${GITHUB_WORKSPACE}"/_dotnetsdk/*/dotnet | head -n1)")" >> "$GITHUB_ENV"
 
       - name: TICS GitHub Action
         uses: tiobe/tics-github-action@v3
