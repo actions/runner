@@ -10,7 +10,7 @@ if [ -f ".path" ]; then
     echo ".path=${PATH}"
 fi
 
-nodever="node20"
+nodever="node24"
 
 # insert anything to setup env when running as a service
 # run the host process which keep the listener alive
