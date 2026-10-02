@@ -47,6 +47,38 @@ namespace GitHub.Runner.Common.Tests.Listener
             return result;
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public void GetGitHubContextValue_ReturnsValue_WhenPresent()
+        {
+            var message = CreateJobRequestMessage();
+            ((DictionaryContextData)message.ContextData["github"])["run_id"] = new StringContextData("123456");
+
+            Assert.Equal("123456", JobDispatcher.GetGitHubContextValue(message, "run_id"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public void GetGitHubContextValue_ReturnsUnknown_WhenKeyMissing()
+        {
+            var message = CreateJobRequestMessage();
+
+            Assert.Equal("unknown", JobDispatcher.GetGitHubContextValue(message, "run_id"));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public void GetGitHubContextValue_ReturnsUnknown_WhenGitHubContextMissing()
+        {
+            var message = CreateJobRequestMessage();
+            message.ContextData.Remove("github");
+
+            Assert.Equal("unknown", JobDispatcher.GetGitHubContextValue(message, "run_id"));
+        }
+
         [Theory]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
