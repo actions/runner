@@ -35,9 +35,16 @@ jobs:
       - name: Run L0 tests with coverage
         working-directory: src
         run: |
+          # The self-hosted runner's job hooks leak into JobExtension L0 tests and add a step
+          unset ACTIONS_RUNNER_HOOK_JOB_STARTED ACTIONS_RUNNER_HOOK_JOB_COMPLETED
           dotnet tool update --global dotnet-coverage
           dotnet-coverage collect --output-format cobertura \
             --output "${GITHUB_WORKSPACE}/.coverage/cobertura.xml" "./dev.sh test"
+
+      # Test runs write hundreds of gitignored logs that TICS would otherwise pick up as
+      # source files, tripping its sanity check on the number of new files.
+      - name: Remove test artifacts
+        run: rm -rf src/Test/TestLogs _downloads
 
       - name: TICS GitHub Action
         uses: tiobe/tics-github-action@v3
