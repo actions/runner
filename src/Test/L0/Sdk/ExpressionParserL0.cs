@@ -3,6 +3,7 @@ using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Sdk
@@ -81,6 +82,28 @@ namespace GitHub.Runner.Common.Tests.Sdk
                 parser.CreateTree("github.ref", null, namedValues, null));
 
             Assert.Contains("Unrecognized named-value", ex.Message);
+        }
+
+        [Theory]
+        [InlineData("'0x1F' == 31", true)]
+        [InlineData("'0X1F' == 31", true)]
+        [InlineData("'0o17' == 15", true)]
+        [InlineData("'0O17' == 15", true)]
+        [InlineData("'0b101' == 5", true)]
+        [InlineData("'0B101' == 5", true)]
+        [InlineData("'0b102' == 0", false)]
+        [InlineData("'0b' == 0", false)]
+        [InlineData("'0X1G' == 0", false)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Sdk")]
+        public void Evaluate_StringToNumberCoercionMatchesJavascriptNumber(string expression, bool expected)
+        {
+            var parser = new ExpressionParser();
+            var node = parser.CreateTree(expression, null, new List<INamedValueInfo>(), null);
+
+            var result = node.Evaluate(null, null, null, null);
+
+            Assert.Equal(expected, result.IsTruthy);
         }
     }
 }
