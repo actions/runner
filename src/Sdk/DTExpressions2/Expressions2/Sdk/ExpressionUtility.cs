@@ -205,10 +205,10 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             {
                 return value;
             }
-            // Check for 0x[0-9a-fA-F]+
+            // Check for 0[xX][0-9a-fA-F]+
             else if (str[0] == '0' &&
                 str.Length > 2 &&
-                str[1] == 'x' &&
+                (str[1] == 'x' || str[1] == 'X') &&
                 str.Skip(2).All(x => (x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') || (x >= 'A' && x <= 'F')))
             {
                 // Try parse
@@ -219,10 +219,10 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
 
                 // Otherwise exceeds range
             }
-            // Check for 0o[0-9]+
+            // Check for 0[oO][0-7]+
             else if (str[0] == '0' &&
                 str.Length > 2 &&
-                str[1] == 'o' &&
+                (str[1] == 'o' || str[1] == 'O') &&
                 str.Skip(2).All(x => x >= '0' && x <= '7'))
             {
                 // Try parse
@@ -230,6 +230,29 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
                 try
                 {
                     integer = Convert.ToInt32(str.Substring(2), 8);
+                }
+                // Otherwise exceeds range
+                catch (Exception)
+                {
+                }
+
+                // Success
+                if (integer != null)
+                {
+                    return (Double)integer.Value;
+                }
+            }
+            // Check for 0[bB][01]+
+            else if (str[0] == '0' &&
+                str.Length > 2 &&
+                (str[1] == 'b' || str[1] == 'B') &&
+                str.Skip(2).All(x => x == '0' || x == '1'))
+            {
+                // Try parse
+                var integer = default(Int32?);
+                try
+                {
+                    integer = Convert.ToInt32(str.Substring(2), 2);
                 }
                 // Otherwise exceeds range
                 catch (Exception)
