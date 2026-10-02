@@ -1,0 +1,3 @@
+# CVEs excluded from the secscan gate for this artifact, one per line.
+# Every entry needs a justification comment and a link to its draft GHSA.
+# High/critical exclusions need GRC/SecOps approval recorded in the GHSA (SEC0025).

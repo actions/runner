@@ -162,8 +162,16 @@ jobs:
         path: |
           _package
 
-  release:
+  secscan:
     needs: build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/secscan.yaml
+    with:
+      source: artifacts
+
+  release:
+    needs: [build, secscan]
     runs-on: ubuntu-latest
     steps:
 

@@ -1,0 +1,125 @@
+# Scans the Linux runner release tarballs with Canonical secscan to meet SEC0025.
+# Called by release.yml on the freshly built packages (blocking the release), and run
+# weekly against the latest published release.
+name: Secscan
+
+on:
+  schedule:
+    - cron: "29 4 * * 1"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source:
+        description: "'artifacts' scans this run's runner-packages-* artifacts; otherwise the latest release."
+        type: string
+        default: release
+  pull_request:
+    paths:
+      - .github/workflows/secscan.yaml
+      - .github/secscan-exclusions/**
+
+permissions: {}
+
+env:
+  SSDLC_CYCLE: "26.10"
+
+jobs:
+  secscan:
+    name: Secscan ${{ matrix.runtime }}
+    # Fork PRs must never reach private-endpoint runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted-linux-amd64-noble-private-endpoint-medium]
+    permissions:
+      contents: read
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [linux-x64, linux-arm64, linux-ppc64le, linux-s390x, linux-arm]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install secscan client
+        run: |
+          sudo snap install canonical-secscan-client
+          sudo snap connect canonical-secscan-client:home system:home
+          mkdir -p "$HOME/snap/canonical-secscan-client/common"
+          echo "SECSCAN_DIR=$HOME/snap/canonical-secscan-client/common" >> "$GITHUB_ENV"
+          echo "NO_PROXY=${NO_PROXY:+$NO_PROXY,}.internal" >> "$GITHUB_ENV"
+          echo "no_proxy=${no_proxy:+$no_proxy,}.internal" >> "$GITHUB_ENV"
+      - name: Download built package
+        if: inputs.source == 'artifacts'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: runner-packages-${{ matrix.runtime }}
+          path: packages
+      - name: Download latest release package
+        if: inputs.source != 'artifacts'
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+        run: |
+          mkdir -p packages
+          url="$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/latest" \
+            | python3 -c 'import json,sys,os; r=os.environ["RUNTIME"]; print(next(a["browser_download_url"] for a in json.load(sys.stdin)["assets"] if a["name"].startswith(f"actions-runner-{r}-") and a["name"].endswith(".tar.gz")))')"
+          curl -fsSL -o "packages/${url##*/}" "$url"
+      - name: Stage package
+        id: stage
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+        run: |
+          shopt -s nullglob
+          files=(packages/actions-runner-"$RUNTIME"-*.tar.gz)
+          [[ ${#files[@]} -eq 1 ]] || { echo "::error::expected one $RUNTIME tarball, found ${#files[@]}"; exit 1; }
+          name="${files[0]##*/}"
+          version="${name#actions-runner-"$RUNTIME"-}"; version="${version%.tar.gz}"
+          cp "${files[0]}" "$SECSCAN_DIR/$name"
+          echo "target=$SECSCAN_DIR/$name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Scan
+        env:
+          ARTIFACT: ${{ matrix.runtime }}
+          TARGET: ${{ steps.stage.outputs.target }}
+          SSDLC_VERSION: ${{ steps.stage.outputs.version }}
+          SSDLC_CHANNEL: stable
+        run: |
+          select_exclusions() {  # $1 artifact name, $2 staging dir; prints staged path or nothing
+            local src=".github/secscan-exclusions/$1.txt"
+            if [[ -f "$src" ]] && grep -qvE '^[[:space:]]*(#|$)' "$src"; then
+              cp "$src" "$2/exclusions-$1.txt"; echo "$2/exclusions-$1.txt"
+            fi
+          }
+          classify() {  # $1 secscan-client --batch exit code; echoes annotation, returns it
+            case "$1" in
+              0) echo "No CVEs found." ;;
+              101) echo "::error::Excluded CVEs are no longer reported; remove them from .github/secscan-exclusions/." ;;
+              1[0-9][0-9]) echo "::error::CVEs found; download the secscan report artifact and triage per SECURITY.md." ;;
+              *) echo "::error::secscan-client failed (exit $1); re-run the job." ;;
+            esac
+            return "$1"
+          }
+          mkdir -p reports
+          exclusions=()
+          excl_file="$(select_exclusions "$ARTIFACT" "$SECSCAN_DIR")"
+          [[ -n "$excl_file" ]] && exclusions=(--exclusions-filename "$excl_file")
+          set +e
+          secscan-client --batch submit \
+            --scanner trivy --type package --format archive \
+            --ssdlc-product-name github-runner \
+            --ssdlc-product-version "$SSDLC_VERSION" \
+            --ssdlc-product-channel "$SSDLC_CHANNEL" \
+            --ssdlc-cycle "$SSDLC_CYCLE" \
+            --token "$SECSCAN_DIR/$ARTIFACT.token" \
+            "${exclusions[@]}" \
+            --wait-and-print "$TARGET" | tee "reports/$ARTIFACT.txt"
+          rc=${PIPESTATUS[0]}
+          secscan-client --batch report --token "$SECSCAN_DIR/$ARTIFACT.token" > "reports/$ARTIFACT.native.txt" 2>&1
+          set -e
+          classify "$rc"
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: secscan-report-${{ matrix.runtime }}
+          path: reports/
+          if-no-files-found: warn
