@@ -198,10 +198,10 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext Setup(
             [CallerMemberName] string name = "")
         {
-            // Setup the host context.
+            // Set up the host context.
             TestHostContext hc = new(this, name);
 
-            // Setup the execution context.
+            // Set up the execution context.
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
 
@@ -217,11 +217,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _workspaceOptions = new Pipelines.WorkspaceOptions();
 
-            // Setup the tracking manager.
+            // Set up the tracking manager.
             _trackingManager = new Mock<ITrackingManager>();
             hc.SetSingleton<ITrackingManager>(_trackingManager.Object);
 
-            // Setup the build directory manager.
+            // Set up the build directory manager.
             _pipelineDirectoryManager = new PipelineDirectoryManager();
             _pipelineDirectoryManager.Initialize(hc);
             return hc;

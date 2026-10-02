@@ -139,7 +139,7 @@ then
                     exit 1
                 fi         
             else
-                echo "Can not find 'dnf'"
+                echo "Cannot find 'dnf'"
                 print_errormessage
                 exit 1
             fi
@@ -155,7 +155,7 @@ then
                     exit 1
                 fi
             else
-                echo "Can not find 'yum'"
+                echo "Cannot find 'yum'"
                 print_errormessage
                 exit 1
             fi
@@ -179,7 +179,7 @@ then
                     exit 1
                 fi
             else
-                echo "Can not find 'zypper'"
+                echo "Cannot find 'zypper'"
                 print_errormessage
                 exit 1
             fi
@@ -210,7 +210,7 @@ then
                 exit 1
             fi
         else
-            echo "Can not find 'yum'"
+            echo "Cannot find 'yum'"
             print_rhel6errormessage
             exit 1
         fi

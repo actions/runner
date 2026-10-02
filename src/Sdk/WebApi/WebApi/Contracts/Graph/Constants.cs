@@ -66,12 +66,12 @@ namespace GitHub.Services.Graph
             public const string AadUser = "aad";
             [GenerateConstant]
             public const string MsaUser = "msa";
-            public const string UnknownUser = "unusr"; // user with unknown type (not add nor msa)
+            public const string UnknownUser = "unusr"; // user with unknown type (neither add nor msa)
             [GenerateConstant]
             public const string AadGroup = "aadgp";
             [GenerateConstant]
             public const string VstsGroup = "vssgp";
-            public const string UnknownGroup = "ungrp"; // group with unknown type (not add nor vsts)
+            public const string UnknownGroup = "ungrp"; // group with unknown type (neither add nor vsts)
             [GenerateConstant]
             public const string BindPendingUser = "bnd";
             public const string WindowsIdentity = "win";

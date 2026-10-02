@@ -50,7 +50,7 @@ namespace GitHub.Runner.Common.Util
                 return currentResult.Value;
             }
 
-            // comming result is bad than current result
+            // incoming result is worse or equal, so use it
             if (comingResult >= currentResult)
             {
                 return comingResult;

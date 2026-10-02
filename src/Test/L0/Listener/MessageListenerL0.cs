@@ -254,13 +254,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.Equal(CreateSessionResult.Success, result);
 
-                var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
+                var brokerMigrationMessage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
 
                 var arMessages = new TaskAgentMessage[]
                 {
                         new TaskAgentMessage
                         {
-                            Body = JsonUtility.ToString(brokerMigrationMesage),
+                            Body = JsonUtility.ToString(brokerMigrationMessage),
                             MessageType = BrokerMigrationMessage.MessageType
                         },
                 };
@@ -328,7 +328,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Verify(x => x.LoadCredentials(true), Times.Exactly(brokerMessages.Length));
 
                 _brokerServer
-                    .Verify(x => x.UpdateConnectionIfNeeded(brokerMigrationMesage.BrokerBaseUrl, It.IsAny<VssCredentials>()), Times.Exactly(brokerMessages.Length));
+                    .Verify(x => x.UpdateConnectionIfNeeded(brokerMigrationMessage.BrokerBaseUrl, It.IsAny<VssCredentials>()), Times.Exactly(brokerMessages.Length));
 
                 _brokerServer
                     .Verify(x => x.ForceRefreshConnection(It.IsAny<VssCredentials>()), Times.Never);
@@ -526,13 +526,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.Equal(CreateSessionResult.Success, result);
 
-                var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
+                var brokerMigrationMessage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
 
                 var arMessages = new TaskAgentMessage[]
                 {
                         new TaskAgentMessage
                         {
-                            Body = JsonUtility.ToString(brokerMigrationMesage),
+                            Body = JsonUtility.ToString(brokerMigrationMessage),
                             MessageType = BrokerMigrationMessage.MessageType
                         },
                 };
@@ -607,7 +607,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Verify(x => x.LoadCredentials(true), Times.Exactly(brokerMessages.Length + 1));
 
                 _brokerServer
-                    .Verify(x => x.UpdateConnectionIfNeeded(brokerMigrationMesage.BrokerBaseUrl, It.IsAny<VssCredentials>()), Times.Exactly(brokerMessages.Length + 1));
+                    .Verify(x => x.UpdateConnectionIfNeeded(brokerMigrationMessage.BrokerBaseUrl, It.IsAny<VssCredentials>()), Times.Exactly(brokerMessages.Length + 1));
 
                 _brokerServer
                     .Verify(x => x.ForceRefreshConnection(It.IsAny<VssCredentials>()), Times.Once());
@@ -650,13 +650,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.Equal(CreateSessionResult.Success, result);
 
-                var brokerMigrationMesage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
+                var brokerMigrationMessage = new BrokerMigrationMessage(new Uri("https://actions.broker.com"));
 
                 var arMessages = new TaskAgentMessage[]
                 {
                         new TaskAgentMessage
                         {
-                            Body = JsonUtility.ToString(brokerMigrationMesage),
+                            Body = JsonUtility.ToString(brokerMigrationMessage),
                             MessageType = BrokerMigrationMessage.MessageType
                         },
                 };
@@ -729,7 +729,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Verify(x => x.LoadCredentials(true), Times.Exactly(brokerMessages.Length));
 
                 _brokerServer
-                    .Verify(x => x.UpdateConnectionIfNeeded(brokerMigrationMesage.BrokerBaseUrl, It.IsAny<VssCredentials>()), Times.Exactly(brokerMessages.Length));
+                    .Verify(x => x.UpdateConnectionIfNeeded(brokerMigrationMessage.BrokerBaseUrl, It.IsAny<VssCredentials>()), Times.Exactly(brokerMessages.Length));
 
                 _brokerServer
                     .Verify(x => x.ForceRefreshConnection(It.IsAny<VssCredentials>()), Times.Once());

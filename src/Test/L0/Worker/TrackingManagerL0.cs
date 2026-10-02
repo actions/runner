@@ -15,18 +15,18 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         public TestHostContext Setup([CallerMemberName] string name = "")
         {
-            // Setup the host context.
+            // Set up the host context.
             TestHostContext hc = new(this, name);
 
             // Create a random work path.
             _workFolder = hc.GetDirectory(WellKnownDirectory.Work);
 
-            // Setup the execution context.
+            // Set up the execution context.
             _ec = new Mock<IExecutionContext>();
             GitHubContext githubContext = new();
             _ec.Setup(x => x.GetGitHubContext("repository")).Returns("actions/runner");
 
-            // Setup the tracking manager.
+            // Se up the tracking manager.
             _trackingManager = new TrackingManager();
             _trackingManager.Initialize(hc);
 

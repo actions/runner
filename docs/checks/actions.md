@@ -80,4 +80,4 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
   
 ## Still not working?
 
-Contact [GitHub Support](https://support.github.com) if you have further questuons, or log an issue at https://github.com/actions/runner if you think it's a runner issue.
+Contact [GitHub Support](https://support.github.com) if you have further questions, or log an issue at https://github.com/actions/runner if you think it's a runner issue.

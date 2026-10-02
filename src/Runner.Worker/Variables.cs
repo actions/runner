@@ -61,7 +61,7 @@ namespace GitHub.Runner.Worker
         }
 
         // DO NOT add file path variable to here.
-        // All file path variables needs to be retrive and set through ExecutionContext, so it can handle container file path translation.
+        // All file path variables needs to be retrieve and set through ExecutionContext, so it can handle container file path translation.
         public string Build_Number => Get(SdkConstants.Variables.Build.BuildNumber);
 
 #if OS_WINDOWS

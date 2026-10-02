@@ -14,7 +14,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
 
         /// <summary>
         /// The name is used for tracing. Normally the parser will set the name. However if a node
-        /// is added manually, then the name may not be set and will fallback to the type name.
+        /// is added manually, then the name may not be set and will fall back to the type name.
         /// </summary>
         protected internal String Name
         {
@@ -30,7 +30,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
         }
 
         /// <summary>
-        /// Indicates whether the evalation result should be stored on the context and used
+        /// Indicates whether the evaluation result should be stored on the context and used
         /// when the realized result is traced.
         /// </summary>
         protected abstract Boolean TraceFullyRealized { get; }
@@ -159,7 +159,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
                     String.Equals(realizedExpression, $"'{traceValue}'", StringComparison.Ordinal))
                 {
                     // Don't bother tracing the realized expression when the result is a number and the
-                    // realized expresion is a precisely matching string.
+                    // realized expression is a precisely matching string.
                 }
                 else
                 {

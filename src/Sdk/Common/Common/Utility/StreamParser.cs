@@ -60,7 +60,7 @@ namespace GitHub.Services.Common
         {
             get
             {
-                return m_stream.CanRead && m_stream.Position <= this.EndingPostionOnOuterStream;
+                return m_stream.CanRead && m_stream.Position <= this.EndingPositionOnOuterStream;
             }
         }
 
@@ -105,9 +105,9 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Postion in larger stream where this substream starts
+        /// Position in larger stream where this substream starts
         /// </summary>
-        public long StartingPostionOnOuterStream
+        public long StartingPositionOnOuterStream
         {
             get
             {
@@ -116,9 +116,9 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Postion in larger stream where this substream ends
+        /// Position in larger stream where this substream ends
         /// </summary>
-        public long EndingPostionOnOuterStream
+        public long EndingPositionOnOuterStream
         {
             get
             {
@@ -150,9 +150,9 @@ namespace GitHub.Services.Common
             }
             else if (origin == SeekOrigin.End && 0 >= offset && offset > -m_length)
             {
-                return m_stream.Seek(offset - ((m_stream.Length - 1) - this.EndingPostionOnOuterStream), origin);
+                return m_stream.Seek(offset - ((m_stream.Length - 1) - this.EndingPositionOnOuterStream), origin);
             }
-            else if (origin == SeekOrigin.Current && (offset + m_stream.Position) >= this.StartingPostionOnOuterStream && (offset + m_stream.Position) < this.EndingPostionOnOuterStream)
+            else if (origin == SeekOrigin.Current && (offset + m_stream.Position) >= this.StartingPositionOnOuterStream && (offset + m_stream.Position) < this.EndingPositionOnOuterStream)
             {
                 return m_stream.Seek(offset, origin);
             }

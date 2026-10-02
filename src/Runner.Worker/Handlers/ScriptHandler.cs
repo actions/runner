@@ -247,7 +247,7 @@ namespace GitHub.Runner.Worker.Handlers
             string scriptFilePath, resolvedScriptPath;
             if (IsActionStep)
             {
-                // We do not not the full path until we know what shell is being used, so that we can determine the file extension
+                // We do not know the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
                 resolvedScriptPath = StepHost.ResolvePathForStepHost(ExecutionContext, scriptFilePath).Replace("\"", "\\\"");
             }

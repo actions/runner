@@ -51,7 +51,7 @@ runner_plat=linux
 echo
 echo "Generating a removal token..."
 
-# if the scope has a slash, it's an repo runner
+# if the scope has a slash, it's a repo runner
 base_api_url="https://api.github.com/orgs"
 if [[ "$runner_scope" == *\/* ]]; then
     base_api_url="https://api.github.com/repos"

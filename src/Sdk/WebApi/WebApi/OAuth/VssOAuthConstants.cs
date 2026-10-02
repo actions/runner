@@ -3,7 +3,7 @@
 namespace GitHub.Services.OAuth
 {
     /// <summary>
-    /// Provides constants used in token exhanges for OAuth 2.0
+    /// Provides constants used in token exchanges for OAuth 2.0
     /// </summary>
     public static class VssOAuthConstants
     {

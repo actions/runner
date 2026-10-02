@@ -300,7 +300,7 @@ namespace GitHub.Runner.Common
                 string envContent = File.ReadAllText(envFile);
                 if (!string.IsNullOrEmpty(envContent))
                 {
-                    // on linux, environment variables are seprated by '\0'
+                    // on linux, environment variables are separated by '\0'
                     var envList = envContent.Split('\0', StringSplitOptions.RemoveEmptyEntries);
                     foreach (var envStr in envList)
                     {

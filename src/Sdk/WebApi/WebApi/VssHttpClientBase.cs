@@ -488,7 +488,7 @@ namespace GitHub.Services.WebApi
         /// <param name="locationId">Id of the location to use</param>
         /// <param name="routeValues">Values to use to replace parameters in the location's route template</param>
         /// <param name="version">Version to send in the request or null to use the VSS latest API version</param>
-        /// <param name="mediaType">The mediatype to set in request header.</param>
+        /// <param name="mediaType">The media type to set in request header.</param>
         /// <returns>HttpRequestMessage</returns>
         protected Task<HttpRequestMessage> CreateRequestMessageAsync(
             HttpMethod method,
@@ -512,7 +512,7 @@ namespace GitHub.Services.WebApi
         /// <param name="locationId">Id of the location to use</param>
         /// <param name="routeValues">Values to use to replace parameters in the location's route template</param>
         /// <param name="version">Version to send in the request or null to use the VSS latest API version</param>
-        /// <param name="mediaType">The mediatype to set in request header.</param>
+        /// <param name="mediaType">The media type to set in request header.</param>
         /// <returns>HttpRequestMessage</returns>
         protected virtual async Task<HttpRequestMessage> CreateRequestMessageAsync(
             HttpMethod method,
@@ -544,7 +544,7 @@ namespace GitHub.Services.WebApi
         /// <param name="location">API resource location</param>
         /// <param name="routeValues">Values to use to replace parameters in the location's route template</param>
         /// <param name="version">Version to send in the request or null to use the VSS latest API version</param>
-        /// <param name="mediaType">The mediatype to set in request header.</param>
+        /// <param name="mediaType">The media type to set in request header.</param>
         /// <returns>HttpRequestMessage</returns>
         protected HttpRequestMessage CreateRequestMessage(
             HttpMethod method,
@@ -566,7 +566,7 @@ namespace GitHub.Services.WebApi
         /// <param name="location">API resource location</param>
         /// <param name="routeValues">Values to use to replace parameters in the location's route template</param>
         /// <param name="version">Version to send in the request or null to use the VSS latest API version</param>
-        /// <param name="mediaType">The mediatype to set in request header.</param>
+        /// <param name="mediaType">The media type to set in request header.</param>
         /// <returns>HttpRequestMessage</returns>
         protected HttpRequestMessage CreateRequestMessage(
             HttpMethod method,
@@ -745,7 +745,7 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken = default(CancellationToken))
         {
             //ConfigureAwait(false) enables the continuation to be run outside
-            //any captured SyncronizationContext (such as ASP.NET's) which keeps things
+            //any captured SynchronizationContext (such as ASP.NET's) which keeps things
             //from deadlocking...
             using (HttpResponseMessage response = await this.SendAsync(message, userState, cancellationToken).ConfigureAwait(false))
             {
@@ -849,7 +849,7 @@ namespace GitHub.Services.WebApi
                 message.Options.Set(new HttpRequestOptionsKey<HttpCompletionOption>(VssHttpRequestSettings.HttpCompletionOptionPropertyName), completionOption);
 
                 //ConfigureAwait(false) enables the continuation to be run outside
-                //any captured SyncronizationContext (such as ASP.NET's) which keeps things
+                //any captured SynchronizationContext (such as ASP.NET's) which keeps things
                 //from deadlocking...
                 HttpResponseMessage response = await Client.SendAsync(message, completionOption, cancellationToken).ConfigureAwait(false);
 

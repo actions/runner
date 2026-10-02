@@ -50,9 +50,9 @@ rem ./bin.2.100.0
 rem ./externals.2.100.0
 rem ./bin.2.99.0
 rem ./externals.2.99.0
-rem by using the juction folder we can avoid file in use problem.
+rem by using the junction folder we can avoid file in use problem.
 
-rem if the bin/externals junction point already exist, we just need to delete the juction point then re-create to point to new bin/externals folder.
+rem if the bin/externals junction point already exist, we just need to delete the junction point then re-create to point to new bin/externals folder.
 rem if the bin/externals still are real folders, we need to rename the existing folder to bin.version format then create junction point to new bin/externals folder.
 
 rem check bin folder
@@ -83,7 +83,7 @@ if ERRORLEVEL 1 (
 rem check externals folder
 dir "%rootfolder%" /AL 2>&1 | findstr "externals" >> "%logfile%" 2>&1
 if ERRORLEVEL 1 (
-  rem return code 1 means it can't find a externals folder that is a junction folder
+  rem return code 1 means it can't find an externals folder that is a junction folder
   rem so we need to move the current externals folder to externals.2.99.0 folder.
   echo [%date% %time%] move "%rootfolder%\externals" "%rootfolder%\externals.%existrunnerversion%" >> "%logfile%" 2>&1
   move "%rootfolder%\externals" "%rootfolder%\externals.%existrunnerversion%" >> "%logfile%" 2>&1
@@ -92,7 +92,7 @@ if ERRORLEVEL 1 (
     goto fail
   )  
 ) else (
-  rem otherwise it find a externals folder that is a junction folder
+  rem otherwise it find an externals folder that is a junction folder
   rem we just need to delete the junction point.
   echo [%date% %time%] Delete existing junction externals folder >> "%logfile%" 2>&1
   rmdir "%rootfolder%\externals" >> "%logfile%" 2>&1
@@ -124,7 +124,7 @@ type nul > update.finished
 echo [%date% %time%] update.finished file creation succeed >> "%logfile%" 2>&1
 
 rem rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
-rem runner service host can base on the log file name determin the result of the runner update
+rem runner service host can determine the result of the runner update based on the log file
 echo [%date% %time%] Rename "%logfile%" to be "%logfile%.succeed" >> "%logfile%" 2>&1
 move "%logfile%" "%logfile%.succeed" >nul
 

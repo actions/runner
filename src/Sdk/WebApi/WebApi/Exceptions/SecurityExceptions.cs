@@ -37,7 +37,7 @@ namespace GitHub.Services.Security
         /// <param name="descriptor">The identity descriptor which was checked.</param>
         /// <param name="identityDisplayName">The display name of the identity which was checked.</param>
         /// <param name="token">The token which was checked.</param>
-        /// <param name="requestedPermissions">The requested permissions, which were not satisifed by the check.</param>
+        /// <param name="requestedPermissions">The requested permissions, which were not satisfied by the check.</param>
         /// <param name="namespaceId">The security namespace which was checked.</param>
         /// <param name="message">A descriptive message for the exception.</param>
         public AccessCheckException(
@@ -57,7 +57,7 @@ namespace GitHub.Services.Security
         /// </summary>
         /// <param name="descriptor">The identity descriptor which was checked.</param>
         /// <param name="token">The token which was checked.</param>
-        /// <param name="requestedPermissions">The requested permissions, which were not satisifed by the check.</param>
+        /// <param name="requestedPermissions">The requested permissions, which were not satisfied by the check.</param>
         /// <param name="namespaceId">The security namespace which was checked.</param>
         /// <param name="message">A descriptive message for the exception.</param>
         public AccessCheckException(
