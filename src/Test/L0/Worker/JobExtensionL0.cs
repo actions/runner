@@ -1090,6 +1090,26 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task GITHUB_TOKEN_PERMISSIONS_IsSetInEnvContext()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>(), It.IsAny<Guid>()))
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>(), new Dictionary<Guid, IActionRunner>())));
+
+                _jobEc.Global.Variables.Set("system.github.token.permissions", "{\"Actions\": \"write\", \"Contents\": \"write\", \"PullRequests\": \"read\"}");
+                await jobExtension.InitializeJob(_jobEc, _message);
+
+                Assert.Equal("{\"actions\":\"write\",\"contents\":\"write\",\"pull_requests\":\"read\"}", _jobEc.Global.EnvironmentVariables["GITHUB_TOKEN_PERMISSIONS"]);
+            }
+        }
+
         private void EnableDebuggerOnMessage(TestHostContext hc)
         {
             _message.EnableDebugger = true;
