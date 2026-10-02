@@ -62,6 +62,11 @@ RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers \
     && chmod 777 /home/runner
 
+ENV RUNNER_TOOL_CACHE=/opt/hostedtoolcache
+RUN mkdir ${RUNNER_TOOL_CACHE} \
+    && chgrp docker ${RUNNER_TOOL_CACHE} \
+    && chmod g+rwx ${RUNNER_TOOL_CACHE}
+
 WORKDIR /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
