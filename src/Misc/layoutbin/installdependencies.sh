@@ -19,7 +19,16 @@ function print_errormessage()
     echo "https://docs.microsoft.com/en-us/dotnet/core/linux-prerequisites?tabs=netcore2x"
 }
 
-function print_rhel6message() 
+function print_libatomic_warningmessage()
+{
+    echo "Warning: couldn't install '$1'."
+    echo "The runner will still work, but Node.js 25 and newer won't start without libatomic.so.1,"
+    echo "so actions that provision Node (for example actions/setup-node) may fail with"
+    echo "'error while loading shared libraries: libatomic.so.1'."
+    echo "Please install '$1' manually using your distribution's package manager."
+}
+
+function print_rhel6message()
 {
     echo "We did our best effort to install dotnet core dependencies"
     echo "However, there are some dependencies which require manual installation" 
@@ -117,6 +126,13 @@ then
             print_errormessage
             exit 1
         fi
+
+        # libatomic.so.1 is a runtime dependency of the official Node.js binaries starting with Node.js 25.
+        # The Node.js versions bundled with the runner (externals/node20, externals/node24) do not need it,
+        # but toolchain actions such as actions/setup-node install Node into the tool cache, where it fails
+        # to start without this library. See https://github.com/actions/runner/issues/4591.
+        # Installed best-effort: a distribution without the package must not block runner configuration.
+        $apt_get install -y libatomic1 || print_libatomic_warningmessage libatomic1
     elif [ -e /etc/redhat-release ]
     then
         echo "The current OS is Fedora based"
@@ -137,7 +153,10 @@ then
                     echo "'dnf' failed with exit code '$?'"
                     print_errormessage
                     exit 1
-                fi         
+                fi
+
+                # See the libatomic comment in the Debian branch above.
+                dnf install -y libatomic || print_libatomic_warningmessage libatomic
             else
                 echo "Can not find 'dnf'"
                 print_errormessage
@@ -149,11 +168,14 @@ then
             then
                 yum install -y lttng-ust openssl-libs krb5-libs zlib libicu
                 if [ $? -ne 0 ]
-                then                    
+                then
                     echo "'yum' failed with exit code '$?'"
                     print_errormessage
                     exit 1
                 fi
+
+                # See the libatomic comment in the Debian branch above.
+                yum install -y libatomic || print_libatomic_warningmessage libatomic
             else
                 echo "Can not find 'yum'"
                 print_errormessage
@@ -178,6 +200,9 @@ then
                     print_errormessage
                     exit 1
                 fi
+
+                # See the libatomic comment in the Debian branch above.
+                zypper -n install libatomic1 || print_libatomic_warningmessage libatomic1
             else
                 echo "Can not find 'zypper'"
                 print_errormessage
