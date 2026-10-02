@@ -299,6 +299,52 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetDirectoryRootReturnsCachedValue()
+        {
+            try
+            {
+                Setup();
+
+                // Call GetDirectory(Root) twice — should return the same reference
+                var root1 = _hc.GetDirectory(WellKnownDirectory.Root);
+                var root2 = _hc.GetDirectory(WellKnownDirectory.Root);
+
+                Assert.NotNull(root1);
+                Assert.Equal(root1, root2);
+                Assert.True(Directory.Exists(root1));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void GetDirectoryDerivedPathsUseRootCasing()
+        {
+            try
+            {
+                Setup();
+
+                var root = _hc.GetDirectory(WellKnownDirectory.Root);
+                var diag = _hc.GetDirectory(WellKnownDirectory.Diag);
+                var externals = _hc.GetDirectory(WellKnownDirectory.Externals);
+
+                // Diag and Externals should start with the same Root prefix
+                Assert.StartsWith(root, diag);
+                Assert.StartsWith(root, externals);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private void Setup([CallerMemberName] string testName = "")
         {
             _tokenSource = new CancellationTokenSource();
