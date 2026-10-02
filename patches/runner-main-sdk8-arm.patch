@@ -44,7 +44,7 @@ index 4ed18b2b..e0c88fbc 100644
      <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
      <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
 diff --git a/src/Runner.Common/Util/NodeUtil.cs b/src/Runner.Common/Util/NodeUtil.cs
-index d87224f9..07d822fb 100644
+index 7b8055b9..b4683559 100644
 --- a/src/Runner.Common/Util/NodeUtil.cs
 +++ b/src/Runner.Common/Util/NodeUtil.cs
 @@ -144,7 +144,7 @@ namespace GitHub.Runner.Common.Util
@@ -157,7 +157,7 @@ index 03290778..efd2b8cd 100644
      <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
      <SelfContained>true</SelfContained>
 diff --git a/src/Sdk/Sdk.csproj b/src/Sdk/Sdk.csproj
-index 5db8c10e..49bc0143 100644
+index e6ba57af..0b5b1d62 100644
 --- a/src/Sdk/Sdk.csproj
 +++ b/src/Sdk/Sdk.csproj
 @@ -1,7 +1,7 @@
@@ -279,4 +279,4 @@ index 5821cb36..70cfe5c2 100644
 +    "version": "9.0.318"
    }
  }
-# From upstream commit: a634d7339463392169ca6eea270e36b66c68e9a3
+# From upstream commit: 539695a10a5b0fe3af98990525044236bfa67a75
