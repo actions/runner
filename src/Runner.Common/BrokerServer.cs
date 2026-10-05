@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Actions.RunService.WebApi;
@@ -19,7 +22,7 @@ namespace GitHub.Runner.Common
         Task ConnectAsync(Uri serverUrl, VssCredentials credentials);
 
         Task<TaskAgentSession> CreateSessionAsync(TaskAgentSession session, CancellationToken cancellationToken);
-        Task DeleteSessionAsync(CancellationToken cancellationToken);
+        Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken);
 
         Task<TaskAgentMessage> GetRunnerMessageAsync(Guid? sessionId, TaskAgentStatus status, string version, string os, string architecture, bool disableUpdate, CancellationToken token);
 
@@ -28,6 +31,9 @@ namespace GitHub.Runner.Common
         Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials);
 
         Task ForceRefreshConnection(VssCredentials credentials);
+
+        // Temporary probe: holds/reconnects a websocket to the broker listener until cancelled.
+        Task<BrokerWebSocketProbeResult> RunLongPollWebSocketProbeAsync(CancellationToken cancellationToken);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -36,6 +42,9 @@ namespace GitHub.Runner.Common
         private Uri _brokerUri;
         private RawConnection _connection;
         private BrokerHttpClient _brokerHttpClient;
+
+        private static readonly TimeSpan MinDelayForWebSocketReconnect = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan MaxDelayForWebSocketReconnect = TimeSpan.FromSeconds(300);
 
         public async Task ConnectAsync(Uri serverUri, VssCredentials credentials)
         {
@@ -80,10 +89,115 @@ namespace GitHub.Runner.Common
             await _brokerHttpClient.AcknowledgeRunnerRequestAsync(runnerRequestId, sessionId, version, status, os, architecture, cancellationToken);
         }
 
-        public async Task DeleteSessionAsync(CancellationToken cancellationToken)
+        public async Task<BrokerWebSocketProbeResult> RunLongPollWebSocketProbeAsync(CancellationToken cancellationToken)
         {
             CheckConnection();
-            await _brokerHttpClient.DeleteSessionAsync(cancellationToken);
+
+            var result = new BrokerWebSocketProbeResult();
+            var stopwatch = Stopwatch.StartNew();
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var socket = await ConnectWebSocketAsync(cancellationToken);
+                if (socket == null)
+                {
+                    result.ConnectFailures++;
+                    result.LastCloseReason = "connect_failed";
+
+                    var delay = BackoffTimerHelper.GetRandomBackoff(MinDelayForWebSocketReconnect, MaxDelayForWebSocketReconnect);
+                    try
+                    {
+                        await Task.Delay(delay, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                result.Connected = true;
+                result.ConnectCount++;
+
+                using (socket)
+                {
+                    var buffer = new byte[4096];
+                    try
+                    {
+                        while (socket.State == WebSocketState.Open)
+                        {
+                            var receiveResult = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                            if (receiveResult.MessageType == WebSocketMessageType.Close)
+                            {
+                                result.LastCloseReason = $"server_closed:{receiveResult.CloseStatus}:{receiveResult.CloseStatusDescription}";
+                                Trace.Info($"Runner websocket closed by server. CloseStatus: {receiveResult.CloseStatus}, Description: {receiveResult.CloseStatusDescription}");
+                                await socket.CloseOutputAsync(receiveResult.CloseStatus.Value, "Closing websocket", cancellationToken);
+                                break;
+                            }
+
+                            result.PingsReceived++;
+                            Trace.Info($"Runner websocket received a ping: " + $"{Encoding.UTF8.GetString(buffer, 0, receiveResult.Count)}");
+
+                            if (receiveResult.MessageType == WebSocketMessageType.Text)
+                            {
+                                await socket.SendAsync(
+                                    new ArraySegment<byte>(buffer, 0, receiveResult.Count),
+                                    receiveResult.MessageType,
+                                    receiveResult.EndOfMessage,
+                                    cancellationToken);
+                                Trace.Info($"Runner replied via websocket with: " + $"{Encoding.UTF8.GetString(buffer, 0, receiveResult.Count)}");
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        result.LastCloseReason = "job_completed";
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info("Exception caught while holding runner websocket, will reconnect.");
+                        Trace.Error(ex);
+                        if (!result.Errors.Contains(ex.Message))
+                        {
+                            result.Errors.Add(ex.Message);
+                        }
+                        result.LastCloseReason = "error";
+                    }
+
+                    if (socket.State == WebSocketState.Open)
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing websocket", CancellationToken.None);
+                    }
+                }
+            }
+
+            stopwatch.Stop();
+            result.TotalDurationMs = stopwatch.ElapsedMilliseconds;
+            return result;
+        }
+
+        private async Task<ClientWebSocket> ConnectWebSocketAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                Trace.Info("Attempting to start runner websocket client.");
+                var socket = await _brokerHttpClient.ConnectRunnerLongPollWebSocketAsync(cancellationToken);
+                Trace.Info("Successfully started runner websocket client.");
+                return socket;
+            }
+            catch (Exception ex)
+            {
+                Trace.Info("Exception caught during runner websocket connect, will retry.");
+                Trace.Error(ex);
+                return null;
+            }
+        }
+
+        public async Task DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+            await _brokerHttpClient.DeleteSessionAsync(sessionId, cancellationToken);
         }
 
         public Task UpdateConnectionIfNeeded(Uri serverUri, VssCredentials credentials)
