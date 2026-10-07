@@ -64,6 +64,7 @@ namespace GitHub.Runner.Common
         private readonly List<ProductInfoHeaderValue> _userAgents = new() { new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version) };
         private CancellationTokenSource _runnerShutdownTokenSource = new();
         private object _perfLock = new();
+        private string _canonicalRootDirectory;
         private Tracing _trace;
         private Tracing _actionsHttpTrace;
         private Tracing _netcoreHttpTrace;
@@ -391,7 +392,12 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.Root:
-                    path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    if (_canonicalRootDirectory == null)
+                    {
+                        _canonicalRootDirectory = PathUtil.GetCanonicalPath(
+                            new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName);
+                    }
+                    path = _canonicalRootDirectory;
                     break;
 
                 case WellKnownDirectory.Temp:
