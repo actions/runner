@@ -172,6 +172,7 @@ function package ()
     # TODO: We are cross-compiling arm on x64 so we cant exec Runner.Listener. Remove after building on native arm host
     runner_ver=$("${LAYOUT_DIR}/bin/Runner.Listener" --version) || runner_ver=$(cat runnerversion) || failed "version"
     runner_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}"
+    runner_slim_pkg_name="actions-runner-slim-${RUNTIME_ID}-${runner_ver}"
 
     heading "Packaging ${runner_pkg_name}"
 
@@ -183,10 +184,20 @@ function package ()
 
     pushd "$PACKAGE_DIR" > /dev/null
 
-    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+    if [[ ("$CURRENT_PLATFORM" == "linux") ]]; then
         tar_name="${runner_pkg_name}.tar.gz"
         echo "Creating $tar_name in ${LAYOUT_DIR}"
         tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
+        slim_tar_name="${runner_slim_pkg_name}.tar.zst"
+        echo "Creating $slim_tar_name in ${LAYOUT_DIR}"
+        tar -cf "${slim_tar_name}" -C "${LAYOUT_DIR}" --use-compress-program="zstd -19" --exclude="externals" .
+    elif [[ ("$CURRENT_PLATFORM" == "darwin") ]]; then
+        tar_name="${runner_pkg_name}.tar.gz"
+        echo "Creating $tar_name in ${LAYOUT_DIR}"
+        tar -czf "${tar_name}" -C "${LAYOUT_DIR}" .
+        slim_tar_name="${runner_slim_pkg_name}.tar.zst"
+        echo "Creating $slim_tar_name in ${LAYOUT_DIR}"
+        tar -cf "${slim_tar_name}" -C "${LAYOUT_DIR}" --zstd --options zstd:compression-level=19 --exclude="externals" .
     elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
         zip_name="${runner_pkg_name}.zip"
         echo "Convert ${LAYOUT_DIR} to Windows style path"
@@ -194,6 +205,9 @@ function package ()
         window_path=${window_path:0:1}:${window_path:1}
         echo "Creating $zip_name in ${window_path}"
         $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
+        slim_tar_name="${runner_slim_pkg_name}.tar.zst"
+        echo "Creating $slim_tar_name in ${window_path}"
+        $POWERSHELL -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "\$env:ZSTD_CLEVEL=\"19\"; tar -cf \"${slim_tar_name}\" -C \"${window_path}\" --zstd --exclude=\"externals\" ."
     fi
 
     popd > /dev/null
