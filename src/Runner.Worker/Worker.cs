@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -96,6 +97,14 @@ namespace GitHub.Runner.Worker
                     }
                     InitializeSecretMasker(jobMessage);
                     SetCulture(jobMessage);
+#if !OS_WINDOWS
+                    // Steps have not started yet, so every process they launch inherits the new process group.
+                    if (jobMessage.Variables.TryGetValue(Constants.Runner.Features.WorkerOwnProcessGroup, out VariableValue ownProcessGroup) &&
+                        StringUtil.ConvertToBoolean(ownProcessGroup?.Value))
+                    {
+                        MoveToOwnProcessGroup();
+                    }
+#endif
 
                     // Start the job.
                     Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(jobMessage)}");
@@ -217,6 +226,80 @@ namespace GitHub.Runner.Worker
                 HostContext.SetDefaultCulture(culture.Value);
             }
         }
+
+#if !OS_WINDOWS
+        /// <summary>
+        /// Without a controlling terminal, Runner.Worker inherits the process group of whatever launched the runner,
+        /// so job steps share a process group with Runner.Listener and its supervisor. That group is orphaned, which means
+        /// a step that leaves a stopped process behind when another process in the group exits (for example .NET's
+        /// Process.Kill(entireProcessTree: true), which SIGSTOPs before it kills) makes the kernel send SIGHUP and SIGCONT
+        /// to the whole group, killing the runner. Moving the worker into its own group keeps those signals away from
+        /// Runner.Listener, and the new group is not orphaned while the listener (same session, other group) is its parent.
+        /// With a controlling terminal, Ctrl+C and job control already behave, so the process group is left as it is.
+        /// With RUNNER_MANUALLY_TRAP_SIG, run.sh starts the runner in a job-control group that is not orphaned and
+        /// forwards SIGINT to that whole group, so the process group is left as it is there too.
+        /// https://github.com/actions/runner-images/issues/14833
+        /// </summary>
+        private void MoveToOwnProcessGroup()
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RUNNER_MANUALLY_TRAP_SIG")))
+            {
+                Trace.Info("RUNNER_MANUALLY_TRAP_SIG is set, keep the current process group.");
+                return;
+            }
+
+            try
+            {
+                // O_RDONLY. Opening /dev/tty succeeds only when the process has a controlling terminal.
+                int fd = open("/dev/tty", 0);
+                if (fd >= 0)
+                {
+                    close(fd);
+                    Trace.Info("Controlling terminal found, keep the current process group.");
+                    return;
+                }
+
+                // Only ENXIO (no controlling terminal) and ENOENT (no /dev/tty at all) mean there is no terminal.
+                // Any other failure leaves the answer unknown, so keep the current process group.
+                int errno = Marshal.GetLastPInvokeError();
+                if (errno != ENXIO && errno != ENOENT)
+                {
+                    Trace.Info($"Unable to check for a controlling terminal, errno {errno}, keep the current process group.");
+                    return;
+                }
+
+                if (setpgid(0, 0) == 0)
+                {
+                    Trace.Info($"Moved into own process group {getpgrp()}.");
+                }
+                else
+                {
+                    Trace.Warning($"Failed to move into own process group, errno {Marshal.GetLastPInvokeError()}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best effort, the job can still run in the inherited process group.
+                Trace.Warning($"Failed to move into own process group: {ex.Message}");
+            }
+        }
+
+        // Same values on Linux and macOS.
+        private const int ENOENT = 2;
+        private const int ENXIO = 6;
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int open(string path, int flags);
+
+        [DllImport("libc")]
+        private static extern int close(int fd);
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int setpgid(int pid, int pgid);
+
+        [DllImport("libc")]
+        private static extern int getpgrp();
+#endif
 
         private void Worker_Unloading(object sender, EventArgs e)
         {
