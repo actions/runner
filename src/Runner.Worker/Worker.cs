@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -227,7 +226,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-#if !OS_WINDOWS
         /// <summary>
         /// Without a controlling terminal, Runner.Worker inherits the process group of whatever launched the runner,
         /// so job steps share a process group with Runner.Listener and its supervisor. That group is orphaned, which means
@@ -240,7 +238,7 @@ namespace GitHub.Runner.Worker
         /// forwards SIGINT to that whole group, so the process group is left as it is there too.
         /// https://github.com/actions/runner-images/issues/14833
         /// </summary>
-        private void MoveToOwnProcessGroup()
+        internal void MoveToOwnProcessGroup()
         {
             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RUNNER_MANUALLY_TRAP_SIG")))
             {
@@ -250,31 +248,30 @@ namespace GitHub.Runner.Worker
 
             try
             {
-                // O_RDONLY. Opening /dev/tty succeeds only when the process has a controlling terminal.
-                int fd = open("/dev/tty", 0);
-                if (fd >= 0)
+                var native = HostContext.GetService<IProcessGroupNative>();
+                int terminalErrno = native.ProbeControllingTerminal();
+                if (terminalErrno == 0)
                 {
-                    close(fd);
                     Trace.Info("Controlling terminal found, keep the current process group.");
                     return;
                 }
 
                 // Only ENXIO (no controlling terminal) and ENOENT (no /dev/tty at all) mean there is no terminal.
                 // Any other failure leaves the answer unknown, so keep the current process group.
-                int errno = Marshal.GetLastPInvokeError();
-                if (errno != ENXIO && errno != ENOENT)
+                if (terminalErrno != ProcessGroupNative.ENXIO && terminalErrno != ProcessGroupNative.ENOENT)
                 {
-                    Trace.Info($"Unable to check for a controlling terminal, errno {errno}, keep the current process group.");
+                    Trace.Info($"Unable to check for a controlling terminal, errno {terminalErrno}, keep the current process group.");
                     return;
                 }
 
-                if (setpgid(0, 0) == 0)
+                int setpgidErrno = native.MoveToNewProcessGroup();
+                if (setpgidErrno == 0)
                 {
-                    Trace.Info($"Moved into own process group {getpgrp()}.");
+                    Trace.Info($"Moved into own process group {native.GetProcessGroup()}.");
                 }
                 else
                 {
-                    Trace.Warning($"Failed to move into own process group, errno {Marshal.GetLastPInvokeError()}.");
+                    Trace.Warning($"Failed to move into own process group, errno {setpgidErrno}.");
                 }
             }
             catch (Exception ex)
@@ -283,23 +280,6 @@ namespace GitHub.Runner.Worker
                 Trace.Warning($"Failed to move into own process group: {ex.Message}");
             }
         }
-
-        // Same values on Linux and macOS.
-        private const int ENOENT = 2;
-        private const int ENXIO = 6;
-
-        [DllImport("libc", SetLastError = true)]
-        private static extern int open(string path, int flags);
-
-        [DllImport("libc")]
-        private static extern int close(int fd);
-
-        [DllImport("libc", SetLastError = true)]
-        private static extern int setpgid(int pid, int pgid);
-
-        [DllImport("libc")]
-        private static extern int getpgrp();
-#endif
 
         private void Worker_Unloading(object sender, EventArgs e)
         {
