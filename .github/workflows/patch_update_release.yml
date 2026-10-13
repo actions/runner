@@ -77,7 +77,23 @@ jobs:
             # Reset to clean state
             git reset --hard
             git clean -fd
-            
+
+            # A patch that conflicted on a previous run may have been regenerated
+            # manually for the latest release; use it as-is instead of rebasing it.
+            if [ -f "../patches/runner-sdk8-$arch.patch" ] && \
+               [ "$(tail -n 1 "../patches/runner-sdk8-$arch.patch")" = "# From upstream release: ${{ steps.get-tags.outputs.LATEST_TAG }}" ]; then
+              git checkout ${{ steps.get-tags.outputs.LATEST_TAG }}
+              if ! git apply --check --whitespace=nowarn "../patches/runner-sdk8-$arch.patch"; then
+                echo "::error::Patch for $arch is marked as regenerated for ${{ steps.get-tags.outputs.LATEST_TAG }} but does not apply cleanly to it"
+                cd ..
+                exit 1
+              fi
+              echo "Patch for $arch already regenerated for ${{ steps.get-tags.outputs.LATEST_TAG }} - skipping rebase"
+              cd ..
+              echo "$arch" >> successful_arches.txt
+              continue
+            fi
+
             # Check if previous patch exists
             if [ ! -f "../patches/runner-sdk8-$arch.patch" ] || \
                ! grep -q "${{ steps.get-tags.outputs.PREVIOUS_TAG }}" "../patches/runner-sdk8-$arch.patch"; then
