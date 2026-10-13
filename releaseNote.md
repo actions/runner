@@ -1,40 +1,44 @@
 ## What's Changed
-* Bump System.ServiceProcess.ServiceController from 10.0.6 to 10.0.7 by @dependabot[bot] in https://github.com/actions/runner/pull/4370
-* Bump @actions/glob from 0.6.1 to 0.7.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4367
-* feat: propagate actions dependencies by @nodeselector in https://github.com/actions/runner/pull/4372
-* Not retry and report action download 403. by @TingluoHuang in https://github.com/actions/runner/pull/4391
-* Update setup job starting logs by @GitPaulo in https://github.com/actions/runner/pull/4383
-* fix: expand commit hash regex to support SHA-256 (64-char) hashes by @yaananth in https://github.com/actions/runner/pull/4347
-* Move dap setup to setup job step by @rentziass in https://github.com/actions/runner/pull/4403
-* Add support for Ubuntu 26.04 (liblttng-ust1t64, libicu77-80) by @dvaldivia in https://github.com/actions/runner/pull/4394
-* Update dotnet sdk to latest version @8.0.421 by @github-actions[bot] in https://github.com/actions/runner/pull/4428
-* Update Docker to v29.5.0 and Buildx to v0.34.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4425
-* Execute debugger REPL commands inside job container by @rentziass in https://github.com/actions/runner/pull/4420
-* Send welcome message in debugger console on connect by @rentziass in https://github.com/actions/runner/pull/4419
-* Update snapshot-if context and functions by @drielenr in https://github.com/actions/runner/pull/4443
-* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4452
-* Allow disable node v8 maglev jit compiler on node24. by @TingluoHuang in https://github.com/actions/runner/pull/4447
-* Update Node 24 default date to June 16th, 2026 by @salmanmkc in https://github.com/actions/runner/pull/4462
-* Populate telemetry for non-action post-job steps by @drielenr in https://github.com/actions/runner/pull/4463
-* Add SDK types and results plumbing for background step control by @lokesh755 in https://github.com/actions/runner/pull/4472
-* Add job execution view model by @rentziass in https://github.com/actions/runner/pull/4470
-* Add thread-safety locks to StepsContext by @lokesh755 in https://github.com/actions/runner/pull/4475
-* Add background step deferral infrastructure and metadata plumbing by @lokesh755 in https://github.com/actions/runner/pull/4479
-* Wire job execution view into DAP by @rentziass in https://github.com/actions/runner/pull/4471
-* Background steps execution engine by @lokesh755 in https://github.com/actions/runner/pull/4476
-* Update Docker to v29.5.2 and Buildx to v0.34.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4451
-* BrokerServer should not retry on 401. by @TingluoHuang in https://github.com/actions/runner/pull/4445
-* Add new env var to allow single-prefix multiline logs on stdout by @nuclearpidgeon in https://github.com/actions/runner/pull/4424
-* Bump Microsoft.DevTunnels.Connections from 1.3.39 to 1.3.48 by @dependabot[bot] in https://github.com/actions/runner/pull/4441
-* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4369
+* Bump @typescript-eslint/eslint-plugin from 8.67.0 to 8.68.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4661
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4665
+* Bump browserslist from 4.28.5 to 4.28.9 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4677
+* Update Docker to v29.8.0 and Buildx to v0.37.0 by @github-actions[bot] in https://github.com/actions/runner/pull/4676
+* Update Node.js 20 removal date to September 23rd, 2026 by @salmanmkc in https://github.com/actions/runner/pull/4685
+* Bump @typescript-eslint/parser from 8.68.0 to 8.69.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4673
+* Bump Microsoft.DevTunnels.Connections from 1.3.51 to 1.3.56 by @dependabot[bot] in https://github.com/actions/runner/pull/4667
+* Bump github/codeql-action from 4.37.8 to 4.37.9 by @dependabot[bot] in https://github.com/actions/runner/pull/4664
+* Bump lint-staged from 17.3.0 to 17.5.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4663
+* Bump System.Formats.Asn1 and System.Security.Cryptography.Pkcs by @dependabot[bot] in https://github.com/actions/runner/pull/4688
+* Bump @typescript-eslint/parser from 8.69.0 to 8.70.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4705
+* Bump js-yaml from 4.3.1 to 4.3.2 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4696
+* Bump lint-staged from 17.5.0 to 17.5.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4715
+* chore: update Node versions by @github-actions[bot] in https://github.com/actions/runner/pull/4716
+* Bump github/codeql-action from 4.37.9 to 4.38.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4713
+* Bump @typescript-eslint/eslint-plugin from 8.68.0 to 8.70.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4714
+* Update Buildx to v0.37.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4712
+* Bump System.Text.Encoding.CodePages from 10.0.11 to 10.0.12 by @dependabot[bot] in https://github.com/actions/runner/pull/4701
+* Update dotnet sdk to latest version @8.0.425 by @github-actions[bot] in https://github.com/actions/runner/pull/4717
+* Bump github/codeql-action from 4.38.0 to 4.38.1 by @dependabot[bot] in https://github.com/actions/runner/pull/4731
+* Update Docker to v29.8.1 by @github-actions[bot] in https://github.com/actions/runner/pull/4730
+* Accept $/ self-repository references in action manifests by @nodeselector in https://github.com/actions/runner/pull/4669
+* Bump Microsoft.DevTunnels.Connections from 1.3.56 to 1.3.60 by @dependabot[bot] in https://github.com/actions/runner/pull/4733
+* Bump Moq from 4.20.72 to 4.21.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4738
+* Bump @typescript-eslint/eslint-plugin from 8.70.0 to 8.70.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4740
+* Bump @typescript-eslint/parser from 8.70.0 to 8.70.1 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4739
+* Bump github/codeql-action from 4.38.1 to 4.38.2 by @dependabot[bot] in https://github.com/actions/runner/pull/4741
+* Bump undici from 6.28.0 to 6.29.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4744
+* Bump lint-staged from 17.5.1 to 17.6.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4746
+* Include owned session ID when deleting broker sessions by @TingluoHuang in https://github.com/actions/runner/pull/4743
+* Bump brace-expansion in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4747
+* Bump Azure.Storage.Blobs from 12.29.2 to 12.30.0 by @dependabot[bot] in https://github.com/actions/runner/pull/4749
+* Update Docker to v29.8.2 and Buildx to v0.37.2 by @github-actions[bot] in https://github.com/actions/runner/pull/4751
+* Implement broker-listener WebSocket connectivity probes. by @TingluoHuang in https://github.com/actions/runner/pull/4753
+* feat(runner): use node24 for internal operations by @salmanmkc in https://github.com/actions/runner/pull/4752
+* Bump @typescript-eslint/parser from 8.70.1 to 8.71.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4754
+* Bump @typescript-eslint/eslint-plugin from 8.70.1 to 8.71.0 in /src/Misc/expressionFunc/hashFiles by @dependabot[bot] in https://github.com/actions/runner/pull/4755
 
-## New Contributors
-* @GitPaulo made their first contribution in https://github.com/actions/runner/pull/4383
-* @dvaldivia made their first contribution in https://github.com/actions/runner/pull/4394
-* @drielenr made their first contribution in https://github.com/actions/runner/pull/4443
-* @nuclearpidgeon made their first contribution in https://github.com/actions/runner/pull/4424
 
-**Full Changelog**: https://github.com/actions/runner/compare/v2.334.0...v2.335.0
+**Full Changelog**: https://github.com/actions/runner/compare/v2.337.0...v2.338.0
 
 _Note: Actions Runner follows a progressive release policy, so the latest release might not be available to your enterprise, organization, or repository yet.
 To confirm which version of the Actions Runner you should expect, please view the download instructions for your enterprise, organization, or repository.

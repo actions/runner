@@ -10,6 +10,8 @@ namespace GitHub.DistributedTask.Logging
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class SecretMasker : ISecretMasker, IDisposable
     {
+        public event EventHandler<NewSecretEventArgs> NewSecretAdded;
+
         public SecretMasker()
         {
             m_originalValueSecrets = new HashSet<ValueSecret>();
@@ -66,6 +68,8 @@ namespace GitHub.DistributedTask.Logging
                     m_lock.ExitWriteLock();
                 }
             }
+
+            NewSecretAdded?.Invoke(this, new NewRegexSecretEventArgs(pattern));
         }
 
         /// <summary>
@@ -133,6 +137,9 @@ namespace GitHub.DistributedTask.Logging
                     m_lock.ExitWriteLock();
                 }
             }
+
+            // valueSecrets contains all the values run through the encoders.
+            NewSecretAdded?.Invoke(this, new NewVariableSecretEventArgs(valueSecrets.Select(x => x.m_value).ToList()));
         }
 
         /// <summary>

@@ -1,15 +1,14 @@
-﻿using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.WebApi;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using System.Text;
+using Newtonsoft.Json;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -46,6 +45,7 @@ namespace GitHub.Runner.Worker
                 var jobRunner = HostContext.CreateService<IJobRunner>();
                 var terminal = HostContext.GetService<ITerminal>();
 
+                await using (var secretNotifier = HostContext.GetService<IVSockSecretNotifier>())
                 using (var channel = HostContext.CreateService<IProcessChannel>())
                 using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
                 using (var channelTokenSource = new CancellationTokenSource())
@@ -86,6 +86,14 @@ namespace GitHub.Runner.Worker
                     HostContext.WritePerfCounter($"WorkerJobMessageReceived_{jobMessage.RequestId.ToString()}");
 
                     // Initialize the secret masker and set the thread culture.
+                    if (Constants.Runner.Platform == Constants.OSPlatform.Linux &&
+                        secretNotifier.TryStartNotifier())
+                    {
+                        HostContext.SecretMasker.NewSecretAdded += (sender, e) =>
+                        {
+                            secretNotifier.NotifyNewSecret(e);
+                        };
+                    }
                     InitializeSecretMasker(jobMessage);
                     SetCulture(jobMessage);
 

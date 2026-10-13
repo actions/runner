@@ -92,6 +92,7 @@ namespace GitHub.Services.Common
                 WinHttpErrorCode? winHttpErrorCode = null;
                 CurlErrorCode? curlErrorCode = null;
                 string afdRefInfo = null;
+                string retryAfterHeader = null;
                 try
                 {
                     if (attempt == 1)
@@ -114,7 +115,8 @@ namespace GitHub.Services.Common
                     else
                     {
                         statusCode = response.StatusCode;
-                        afdRefInfo = response.Headers.TryGetValues(HttpHeaders.AfdResponseRef, out var headers) ? headers.First() : null;
+                        afdRefInfo = response.Headers.TryGetValues(Internal.HttpHeaders.AfdResponseRef, out var headers) ? headers.First() : null;
+                        retryAfterHeader = response.Headers.TryGetValues(Internal.HttpHeaders.RetryAfter, out var retryAfterValues) ? retryAfterValues.First() : null;
                         canRetry = m_retryOptions.IsRetryableResponse(response);
                     }
                 }
@@ -130,7 +132,17 @@ namespace GitHub.Services.Common
 
                 if (attempt < maxAttempts && canRetry)
                 {
-                    backoff = BackoffTimerHelper.GetExponentialBackoff(attempt, minBackoff, m_retryOptions.MaxBackoff, m_retryOptions.BackoffCoefficient);
+                    // Honor the Retry-After header (delay in seconds or an absolute date/time) when present,
+                    // otherwise fall back to the standard exponential backoff.
+                    var retryAfterDelay = VssNetworkHelper.ConvertRetryAfterToTimeSpan(retryAfterHeader, minBackoff, m_retryOptions.MaxBackoff);
+                    if (retryAfterDelay.HasValue)
+                    {
+                        backoff = retryAfterDelay.Value;
+                    }
+                    else
+                    {
+                        backoff = BackoffTimerHelper.GetExponentialBackoff(attempt, minBackoff, m_retryOptions.MaxBackoff, m_retryOptions.BackoffCoefficient);
+                    }
                     retryInfo?.Retry(backoff);
                     TraceHttpRequestRetrying(traceActivity, request, attempt, backoff, statusCode, webExceptionStatus, socketError, winHttpErrorCode, curlErrorCode, afdRefInfo);
                 }
@@ -215,7 +227,7 @@ namespace GitHub.Services.Common
 
             IEnumerable<string> headers;
 
-            if (request.Headers.TryGetValues(HttpHeaders.VssRequestPriority, out headers) && headers != null)
+            if (request.Headers.TryGetValues(Internal.HttpHeaders.VssRequestPriority, out headers) && headers != null)
             {
                 string header = headers.FirstOrDefault();
                 isLowPriority = string.Equals(header, "Low", StringComparison.OrdinalIgnoreCase);

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -45,12 +46,15 @@ namespace GitHub.Runner.Worker
     {
         private readonly HashSet<string> _existingProcesses = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<Task<CheckResult>> _connectivityCheckTasks = new();
+        private readonly List<Task<CheckResult>> _connectivityAndDNSCheckTasks = new();
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
         private CancellationTokenSource _diskSpaceCheckToken = new();
         private Task _diskSpaceCheckTask = null;
         private CancellationTokenSource _serviceConnectivityCheckToken = new();
         private Task _serviceConnectivityCheckTask = null;
+        private CancellationTokenSource _brokerWebSocketProbeToken = new();
+        private Task<BrokerWebSocketProbeResult> _brokerWebSocketProbeTask = null;
         private IDapDebugger _dapDebugger;
 
         // Download all required actions.
@@ -171,6 +175,12 @@ namespace GitHub.Runner.Worker
                         context.Output($"Secret source: {secretSource}");
                     }
 
+                    var cacheMode = jobContext.Global.Variables.Get("actions_cache_mode");
+                    if (!string.IsNullOrEmpty(cacheMode))
+                    {
+                        context.Output($"Cache mode: {cacheMode}");
+                    }
+
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
                     context.Debug($"Primary repository: {repoFullName}");
@@ -183,6 +193,13 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(HostContext.WebProxy.HttpsProxyAddress))
                     {
                         context.Output($"Runner is running behind proxy server '{HostContext.WebProxy.HttpsProxyAddress}' for all HTTPS requests.");
+                    }
+
+                    // Signal to the user that the job is using locked action
+                    // versions from the workflow's lockfile.
+                    if (message.ActionsDependencies != null && message.ActionsDependencies.Count > 0)
+                    {
+                        context.Output("Using locked action versions from the workflow's lockfile");
                     }
 
                     // Prepare the workflow directory
@@ -602,13 +619,36 @@ namespace GitHub.Runner.Worker
                         {
                             foreach (var checkUrl in checkUrls)
                             {
-                                _connectivityCheckTasks.Add(CheckConnectivity(checkUrl, accessToken: string.Empty, timeoutInSeconds: 5, token: CancellationToken.None));
+                                _connectivityCheckTasks.Add(CheckConnectivity(checkUrl, accessToken: string.Empty, timeoutInSeconds: 5));
+                            }
+                        }
+                    }
+
+                    if (systemConnection.Data.TryGetValue("ConnectivityAndDNSChecks", out var connectivityAndDNSChecksPayload) &&
+                        !string.IsNullOrEmpty(connectivityAndDNSChecksPayload))
+                    {
+                        Trace.Info($"Start checking server connectivity and DNS.");
+                        var checkUrls = StringUtil.ConvertFromJson<List<string>>(connectivityAndDNSChecksPayload);
+                        if (checkUrls?.Count > 0)
+                        {
+                            foreach (var checkUrl in checkUrls)
+                            {
+                                _connectivityAndDNSCheckTasks.Add(CheckConnectivity(checkUrl, accessToken: string.Empty, timeoutInSeconds: 5, checkDNS: true));
                             }
                         }
                     }
 
                     Trace.Info($"Start checking service connectivity in background.");
                     _serviceConnectivityCheckTask = CheckServiceConnectivityAsync(context, _serviceConnectivityCheckToken.Token);
+
+                    // Temporary probe: gauge websocket compatibility with the broker listener,
+                    // only when run-service sends down a probe URL via the job message.
+                    var brokerWebSocketProbeUrl = context.Global.Variables?.Get(WellKnownDistributedTaskVariables.RunnerBrokerWebSocketProbeUrl);
+                    if (!string.IsNullOrEmpty(brokerWebSocketProbeUrl))
+                    {
+                        Trace.Info($"Start checking runner websocket connectivity in background.");
+                        _brokerWebSocketProbeTask = CheckBrokerLongPollWebSocketAsync(brokerWebSocketProbeUrl, message, _brokerWebSocketProbeToken.Token);
+                    }
 
                     // Start the DAP debugger and wait for a client connection inside
                     // "Set up job" so the step stays in-progress while we wait.
@@ -633,6 +673,18 @@ namespace GitHub.Runner.Worker
                             Trace.Info("Job was cancelled before debugger client connected.");
                             AddDebuggerConnectionTelemetry(jobContext, "Canceled");
                             context.Error("Job was cancelled before debugger client connected.");
+                            throw;
+                        }
+                        catch (DebuggerTunnelException ex)
+                        {
+                            // The Dev Tunnel relay could not be established, or dropped while we
+                            // were waiting. The user can't do anything about that, so report it
+                            // as an infrastructure failure rather than a job error.
+                            Trace.Error($"DAP debugger tunnel failed: {ex.Message}");
+                            AddDebuggerConnectionTelemetry(jobContext, "TunnelFailed");
+                            context.InfrastructureError(
+                                ex.Message,
+                                category: Constants.Runner.InfrastructureFailureCategories.DebuggerTunnelFailure);
                             throw;
                         }
                         catch (Exception ex)
@@ -901,7 +953,7 @@ namespace GitHub.Runner.Worker
                             foreach (var check in _connectivityCheckTasks)
                             {
                                 var result = await check;
-                                Trace.Info($"Connectivity check result: {result}");
+                                Trace.Info($"Connectivity check result: {StringUtil.ConvertToJson(result)}");
                                 context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"{result.EndpointUrl}: {result.StatusCode}" });
                             }
                         }
@@ -910,6 +962,27 @@ namespace GitHub.Runner.Worker
                             Trace.Error($"Fail to check server connectivity.");
                             Trace.Error(ex);
                             context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check server connectivity. {ex.Message}" });
+                        }
+                    }
+
+                    if (_connectivityAndDNSCheckTasks.Count > 0)
+                    {
+                        try
+                        {
+                            Trace.Info($"Wait for all connectivity and DNS checks to finish.");
+                            await Task.WhenAll(_connectivityAndDNSCheckTasks);
+                            foreach (var check in _connectivityAndDNSCheckTasks)
+                            {
+                                var result = await check;
+                                Trace.Info($"Connectivity and DNS check result: {StringUtil.ConvertToJson(result)}");
+                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"connectivity_dns_telemetry:{StringUtil.ConvertToJson(result, Formatting.None)}" });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to check server connectivity and DNS.");
+                            Trace.Error(ex);
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check server connectivity and DNS. {ex.Message}" });
                         }
                     }
 
@@ -926,6 +999,28 @@ namespace GitHub.Runner.Worker
                             Trace.Error($"Fail to check service connectivity.");
                             Trace.Error(ex);
                             context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check service connectivity. {ex.Message}" });
+                        }
+                    }
+
+                    // Collect runner websocket probe result
+                    if (_brokerWebSocketProbeTask != null)
+                    {
+                        _brokerWebSocketProbeToken.Cancel();
+                        try
+                        {
+                            var probeResult = await _brokerWebSocketProbeTask;
+                            if (probeResult != null)
+                            {
+                                var telemetryData = StringUtil.ConvertToJson(probeResult, Formatting.None);
+                                Trace.Info($"Runner websocket probe result: {telemetryData}");
+                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"broker_websocket_telemetry:{telemetryData}" });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to check runner websocket connectivity.");
+                            Trace.Error(ex);
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check runner websocket connectivity. {ex.Message}" });
                         }
                     }
 
@@ -1004,16 +1099,43 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task<CheckResult> CheckConnectivity(string endpointUrl, string accessToken, int timeoutInSeconds, CancellationToken token)
+        private async Task<CheckResult> CheckConnectivity(string endpointUrl, string accessToken, int timeoutInSeconds, bool checkDNS = false, CancellationToken token = default)
         {
             Trace.Info($"Check server connectivity for {endpointUrl}.");
             CheckResult result = new CheckResult() { EndpointUrl = endpointUrl };
-            var stopwatch = Stopwatch.StartNew();
             using (var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutInSeconds)))
             using (var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token, timeoutTokenSource.Token))
             {
+                if (checkDNS)
+                {
+                    try
+                    {
+                        var dnsStopwatch = Stopwatch.StartNew();
+                        var addresses = await Dns.GetHostAddressesAsync(new Uri(endpointUrl).Host, linkedTokenSource.Token);
+                        dnsStopwatch.Stop();
+                        result.DNSResolutionDurationInMs = (int)dnsStopwatch.ElapsedMilliseconds;
+                        result.EndpointIPs = addresses.Select(a => a.ToString()).ToArray();
+                    }
+                    catch (Exception ex) when (ex is OperationCanceledException && token.IsCancellationRequested)
+                    {
+                        Trace.Error($"DNS resolution canceled: {ex}");
+                        result.DNSError = "dns_canceled";
+                    }
+                    catch (Exception ex) when (ex is OperationCanceledException && timeoutTokenSource.IsCancellationRequested)
+                    {
+                        Trace.Error($"DNS resolution timeout: {ex}");
+                        result.DNSError = "dns_timeout";
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Catch exception during DNS resolution: {ex}");
+                        result.DNSError = $"dns_{ex.Message}";
+                    }
+                }
+
                 try
                 {
+                    var httpStopwatch = Stopwatch.StartNew();
                     using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                     using (var httpClient = new HttpClient(httpClientHandler))
                     {
@@ -1024,7 +1146,7 @@ namespace GitHub.Runner.Worker
                         }
 
                         var response = await httpClient.GetAsync(endpointUrl, linkedTokenSource.Token);
-                        result.StatusCode = $"{response.StatusCode}";
+                        result.StatusCode = $"http_{response.StatusCode}";
 
                         var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
                         var vssRequestId = UrlUtil.GetVssRequestId(response.Headers);
@@ -1036,26 +1158,26 @@ namespace GitHub.Runner.Worker
                         {
                             result.RequestId = vssRequestId;
                         }
+                        httpStopwatch.Stop();
+                        result.HttpRequestDurationInMs = (int)httpStopwatch.ElapsedMilliseconds;
                     }
                 }
                 catch (Exception ex) when (ex is OperationCanceledException && token.IsCancellationRequested)
                 {
                     Trace.Error($"Request canceled during connectivity check: {ex}");
-                    result.StatusCode = "canceled";
+                    result.StatusCode = "http_canceled";
                 }
                 catch (Exception ex) when (ex is OperationCanceledException && timeoutTokenSource.IsCancellationRequested)
                 {
                     Trace.Error($"Request timeout during connectivity check: {ex}");
-                    result.StatusCode = "timeout";
+                    result.StatusCode = "http_timeout";
                 }
                 catch (Exception ex)
                 {
                     Trace.Error($"Catch exception during connectivity check: {ex}");
-                    result.StatusCode = $"{ex.Message}";
+                    result.StatusCode = $"http_{ex.Message}";
                 }
             }
-            stopwatch.Stop();
-            result.DurationInMs = (int)stopwatch.ElapsedMilliseconds;
 
             return result;
         }
@@ -1140,8 +1262,8 @@ namespace GitHub.Runner.Worker
 
                     try
                     {
-                        var result = await CheckConnectivity(endpoint.Value, accessToken: accessToken, timeoutInSeconds: checkConnectivityInfo.RequestTimeoutInSecond, token);
-                        testResult.EndpointsResult[endpoint.Key].Add($"{result.StartTime:s}: {result.StatusCode} - {result.RequestId} - {result.DurationInMs}ms");
+                        var result = await CheckConnectivity(endpoint.Value, accessToken: accessToken, timeoutInSeconds: checkConnectivityInfo.RequestTimeoutInSecond, token: token);
+                        testResult.EndpointsResult[endpoint.Key].Add($"{result.StartTime:s}: {result.StatusCode} - {result.RequestId} - {result.HttpRequestDurationInMs}ms");
                         if (!testResult.HasFailure &&
                             result.StatusCode != "OK" &&
                             result.StatusCode != "canceled")
@@ -1169,6 +1291,35 @@ namespace GitHub.Runner.Worker
             var telemetryData = StringUtil.ConvertToJson(testResult, Formatting.None);
             Trace.Verbose($"Connectivity check result: {telemetryData}");
             context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = telemetryData });
+        }
+
+        // Temporary probe: connects to the broker listener websocket using the job's
+        // SystemVssConnection credential and holds/reconnects until cancelled. Never throws.
+        private async Task<BrokerWebSocketProbeResult> CheckBrokerLongPollWebSocketAsync(
+            string probeUrl,
+            Pipelines.AgentJobRequestMessage message,
+            CancellationToken token)
+        {
+            try
+            {
+                ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+
+                var brokerServer = HostContext.CreateService<IBrokerServer>();
+                await brokerServer.ConnectAsync(new Uri(probeUrl), jobServerCredential);
+
+                return await brokerServer.RunLongPollWebSocketProbeAsync(token);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info("Exception caught while setting up runner websocket probe.");
+                Trace.Error(ex);
+                return new BrokerWebSocketProbeResult
+                {
+                    Connected = false,
+                    Errors = new List<string> { ex.Message },
+                };
+            }
         }
 
         private Dictionary<int, Process> SnapshotProcesses()
@@ -1212,13 +1363,19 @@ namespace GitHub.Runner.Worker
 
             public string EndpointUrl { get; set; }
 
+            public string[] EndpointIPs { get; set; }
+
             public DateTime StartTime { get; set; }
 
             public string StatusCode { get; set; }
 
             public string RequestId { get; set; }
 
-            public int DurationInMs { get; set; }
+            public int HttpRequestDurationInMs { get; set; }
+
+            public int DNSResolutionDurationInMs { get; set; }
+
+            public string DNSError { get; set; }
         }
     }
 }

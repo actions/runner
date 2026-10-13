@@ -38,9 +38,46 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly Int32 MaxNodeNameLength = 100;
 
         /// <summary>
-        /// Alias for the self repository.
+        /// Alias for the self local-workspace repository type (./ syntax).
+        /// Resolves to the local checkout on the runner.
         /// </summary>
         public static readonly String SelfAlias = "self";
+
+        /// <summary>
+        /// RepositoryType for self-repository references ($/ syntax).
+        /// Resolves to "this repo, at this SHA" based on the containing YAML file.
+        /// </summary>
+        public static readonly String SelfRepositoryAlias = "selfRepository";
+
+        /// <summary>
+        /// The prefix for self-repository references in uses: values.
+        /// </summary>
+        public const String SelfRepositoryPrefix = "$/";
+
+        /// <summary>
+        /// Returns true if the uses value is a valid self-repository reference (starts with $/),
+        /// and outputs the normalized subpath after the prefix.
+        /// </summary>
+        public static bool TryParseSelfRepository(string usesValue, out string path, out string error)
+        {
+            if (usesValue != null && usesValue.StartsWith(SelfRepositoryPrefix, StringComparison.Ordinal))
+            {
+                path = usesValue.Substring(SelfRepositoryPrefix.Length).TrimStart('/');
+                if (path.Contains('@'))
+                {
+                    path = null;
+                    error = $"Self-repository references do not support an '@ref' suffix. Actual '{usesValue}'";
+                    return false;
+                }
+
+                error = null;
+                return true;
+            }
+
+            path = null;
+            error = null;
+            return false;
+        }
 
         /// <summary>
         /// Error code during graph validation.

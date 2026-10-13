@@ -15,6 +15,8 @@ namespace GitHub.Runner.Worker
             "actor",
             "actor_id",
             "api_url",
+            "artifacts",
+            "artifacts_list",
             "base_ref",
             "env",
             "event_name",

@@ -70,5 +70,15 @@ namespace GitHub.Runner.Sdk
             }
             return string.Empty;
         }
+
+        public static string GetRetryAfter(HttpResponseHeaders headers)
+        {
+            if (headers != null &&
+                headers.TryGetValues("retry-after", out var headerValues))
+            {
+                return headerValues.FirstOrDefault();
+            }
+            return string.Empty;
+        }
     }
 }

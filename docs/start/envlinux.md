@@ -8,7 +8,7 @@ Please see "[Supported architectures and operating systems for self-hosted runne
 
 ## Install .Net Core 3.x Linux Dependencies
 
-The `./config.sh` will check .Net Core 3.x dependencies during runner configuration.  
+The [config.sh](../../src/Misc/layoutroot/config.sh) will check .Net Core 3.x dependencies during runner configuration.  
 You might see something like this which indicate a dependency's missing.
 ```bash
 ./config.sh
@@ -17,7 +17,7 @@ You might see something like this which indicate a dependency's missing.
 Dependencies is missing for Dotnet Core 6.0
 Execute ./bin/installdependencies.sh to install any missing Dotnet Core 6.0 dependencies.
 ```
-You can easily correct the problem by executing `./bin/installdependencies.sh`.  
+You can easily correct the problem by executing [installdependencies.sh](../../src/Misc/layoutbin/installdependencies.sh).  
 The `installdependencies.sh` script should install all required dependencies on all supported Linux versions  
 > Note: The `installdependencies.sh` script will try to use the default package management mechanism on your Linux flavor (ex. `yum`/`apt-get`/`apt`).
 

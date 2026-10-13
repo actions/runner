@@ -973,6 +973,9 @@ namespace GitHub.Runner.Worker
             // Track actions stuck on Node.js 20 due to ARM32 (separate from general deprecation)
             Global.Arm32Node20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // Job-scoped aggregate of artifact subjects declared via $GITHUB_ARTIFACTS.
+            Global.ArtifactSubjects = new Dictionary<string, ArtifactSubject>(StringComparer.Ordinal);
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
@@ -125,18 +126,11 @@ namespace GitHub.Actions.RunService.WebApi
                         };
                     case BrokerErrorKind.HostedRunnerDeprovisioned:
                         throw new HostedRunnerDeprovisionedException(brokerError.Message);
+                    case BrokerErrorKind.RunnerSessionInvalid:
+                        throw new TaskAgentSessionExpiredException(brokerError.Message);
                     default:
                         break;
                 }
-            }
-
-            // temporary back compat
-            if (result.StatusCode == HttpStatusCode.Forbidden)
-            {
-                throw new AccessDeniedException($"{result.Error} Runner version v{runnerVersion} is deprecated and cannot receive messages.")
-                {
-                    ErrorCode = 1
-                };
             }
 
             throw new Exception($"Failed to get job message. Request to {requestUri} failed with status: {result.StatusCode}. Error message {result.Error}");
@@ -173,14 +167,41 @@ namespace GitHub.Actions.RunService.WebApi
             throw new Exception($"Failed to create broker session: {result.Error}");
         }
 
+        // Temporary probe: validates websocket connectivity to the broker listener
+        // using the same authenticated pipeline (Client) as other broker calls.
+        // Client.BaseAddress is the full probe URL (including the .sock path)
+        // sent down by run-service.
+        public async Task<ClientWebSocket> ConnectRunnerLongPollWebSocketAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var socket = new ClientWebSocket();
+            try
+            {
+                await socket.ConnectAsync(Client.BaseAddress, Client, cancellationToken);
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+
+            return socket;
+        }
+
         public async Task DeleteSessionAsync(
+            Guid sessionId,
             CancellationToken cancellationToken = default)
         {
             var requestUri = new Uri(Client.BaseAddress, $"session");
+            var queryParams = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("sessionId", sessionId.ToString()),
+            };
 
             var result = await SendAsync<object>(
                 new HttpMethod("DELETE"),
                 requestUri: requestUri,
+                queryParameters: queryParams,
                 cancellationToken: cancellationToken);
 
             if (result.IsSuccess)
@@ -251,10 +272,10 @@ namespace GitHub.Actions.RunService.WebApi
             {
                 switch (brokerError.ErrorKind)
                 {
+                    case BrokerErrorKind.AcknowledgeJobNotFound:
+                        throw new RunnerRequestJobNotFoundException(brokerError.Message);
                     case BrokerErrorKind.RunnerNotFound:
                         throw new RunnerNotFoundException(brokerError.Message);
-                    default:
-                        break;
                 }
             }
 

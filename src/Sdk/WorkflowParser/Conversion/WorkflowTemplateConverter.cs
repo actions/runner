@@ -1605,6 +1605,11 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         id = WorkflowConstants.SelfAlias;
                     }
+                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(action.Uses!.Value, out _, out var selfError) ||
+                        selfError != null)
+                    {
+                        id = WorkflowConstants.SelfRepositoryAlias;
+                    }
                     else
                     {
                         var usesSegments = action.Uses!.Value.Split('@');
@@ -1753,9 +1758,15 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     With = with,
                 };
 
-                if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
+                var isSelfRepository = GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses.Value, out _, out var selfError);
+                if (selfError != null)
+                {
+                    context.Error(uses, selfError);
+                }
+                else if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
                     !uses.Value.StartsWith("./") &&
-                    !uses.Value.StartsWith(".\\"))
+                    !uses.Value.StartsWith(".\\") &&
+                    !isSelfRepository)
                 {
                     var usesSegments = uses.Value.Split('@');
                     var pathSegments = usesSegments[0].Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);

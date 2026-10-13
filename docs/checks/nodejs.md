@@ -8,6 +8,8 @@ The runner carries its own copies of node.js executables under `<runner_root>/ex
 
 All javascript base Actions will get executed by the built-in `node` at either `<runner_root>/externals/node20/` or `<runner_root>/externals/node24/` depending on the version specified in the action's metadata.
 
+The runner's own internal operations (for example `hashFiles()` and this check) use `<runner_root>/externals/node24/`. Set `ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION=node20` to use `node20` instead.
+
 > Not the `node` from `$PATH`
 
 ## What is checked?

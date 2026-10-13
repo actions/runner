@@ -78,6 +78,11 @@ namespace GitHub.Runner.Worker.Handlers
                 Environment["ACTIONS_CACHE_SERVICE_V2"] = bool.TrueString;
             }
 
+            if (ExecutionContext.Global.Variables.TryGetValue("actions_cache_mode", out var cacheMode) && !string.IsNullOrEmpty(cacheMode))
+            {
+                Environment["ACTIONS_CACHE_MODE"] = cacheMode;
+            }
+
             if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.SetOrchestrationIdEnvForActions) ?? false)
             {
                 if (ExecutionContext.Global.Variables.TryGetValue(Constants.Variables.System.OrchestrationId, out var orchestrationId) && !string.IsNullOrEmpty(orchestrationId))

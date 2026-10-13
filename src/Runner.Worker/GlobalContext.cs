@@ -39,5 +39,9 @@ namespace GitHub.Runner.Worker
         public HashSet<string> UpgradedToNode24Actions { get; set; }
         public HashSet<string> Arm32Node20Actions { get; set; }
         public IList<String> ActionsDependencies { get; set; }
+
+        // Job-scoped aggregate of artifact subjects declared via $GITHUB_ARTIFACTS.
+        // Keyed by canonical subject name (OCI ref without digest, or file basename).
+        public IDictionary<string, ArtifactSubject> ArtifactSubjects { get; set; }
     }
 }

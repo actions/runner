@@ -36,6 +36,11 @@ namespace GitHub.Runner.Worker.Dap
         /// Optional welcome message content for the debugger console. Only used when
         /// <see cref="OverrideWelcomeMessage"/> is true.
         /// </summary>
+        /// <remarks>
+        /// Server-supplied and treated as untrusted: it is masked with the runner's
+        /// secret masker and stripped of control characters before being written to
+        /// the debugger console.
+        /// </remarks>
         public string WelcomeMessage { get; }
 
         /// <summary>Whether the tunnel configuration is complete and valid.</summary>
