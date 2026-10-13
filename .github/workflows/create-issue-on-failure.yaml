@@ -42,6 +42,12 @@ jobs:
                   if [ -n "$EXISTING_ISSUE" ]; then
                     echo "An issue for this workflow run already exists (#${EXISTING_ISSUE}). Skipping creation."
                   else
+                    # gh issue create fails outright if a label is missing, so (re)create it first
+                    gh label create "ci-failure" \
+                      --repo "${REPOSITORY}" \
+                      --description "Automated CI/CD pipeline failure" \
+                      --color "B60205" \
+                      --force
                     gh issue create \
                       --repo "${REPOSITORY}" \
                       --title "${ISSUE_TITLE}" \
