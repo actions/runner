@@ -236,7 +236,7 @@ index 03290778..efd2b8cd 100644
      <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64;osx-arm64;win-arm64</RuntimeIdentifiers>
      <SelfContained>true</SelfContained>
 diff --git a/src/Sdk/Sdk.csproj b/src/Sdk/Sdk.csproj
-index e6ba57af..0b5b1d62 100644
+index 6e77d4bc..d6f1ac63 100644
 --- a/src/Sdk/Sdk.csproj
 +++ b/src/Sdk/Sdk.csproj
 @@ -1,7 +1,7 @@
@@ -576,4 +576,4 @@ index 5821cb36..70cfe5c2 100644
 +    "version": "9.0.318"
    }
  }
-# From upstream commit: 67f01c276e0a91d967ba499ce4cdc9a95efa0262
+# From upstream commit: 5f0b3ddcc6ee9fe9441e00d55e85b94ea4aad798
