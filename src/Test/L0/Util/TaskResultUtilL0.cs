@@ -1,4 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using Xunit;
 
@@ -200,6 +201,50 @@ namespace GitHub.Runner.Common.Tests.Util
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Skipped, TaskResult.Failed);
                 // Actual
                 Assert.Equal(TaskResult.Skipped, merged);
+
+                //
+                // Neutral is terminal (not overwritten by subsequent results)
+                //
+                // Act.
+                merged = TaskResultUtil.MergeTaskResults(TaskResult.Neutral, TaskResult.Succeeded);
+                // Actual
+                Assert.Equal(TaskResult.Neutral, merged);
+                // Act.
+                merged = TaskResultUtil.MergeTaskResults(TaskResult.Neutral, TaskResult.Failed);
+                // Actual
+                Assert.Equal(TaskResult.Neutral, merged);
+                // Act.
+                merged = TaskResultUtil.MergeTaskResults(null, TaskResult.Neutral);
+                // Actual
+                Assert.Equal(TaskResult.Neutral, merged);
+                // Act.
+                merged = TaskResultUtil.MergeTaskResults(TaskResult.Succeeded, TaskResult.Neutral);
+                // Actual
+                Assert.Equal(TaskResult.Neutral, merged);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void TaskResultNeutralReturnCodeTranslate()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                TaskResult neutral = TaskResultUtil.TranslateFromReturnCode(TaskResultUtil.TranslateToReturnCode(TaskResult.Neutral));
+                Assert.Equal(TaskResult.Neutral, neutral);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void TaskResultNeutralToActionResult()
+        {
+            using (TestHostContext hc = new(this))
+            {
+                ActionResult actionResult = TaskResult.Neutral.ToActionResult();
+                Assert.Equal(ActionResult.Neutral, actionResult);
             }
         }
     }
