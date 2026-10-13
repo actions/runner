@@ -108,6 +108,10 @@ jobs:
         ./dev.sh layout Release ${{ matrix.runtime }}
       working-directory: src
 
+    # Fork-only: see .github/scripts/strip-bundled-npm.sh.
+    - name: Strip bundled npm and corepack
+      run: .github/scripts/strip-bundled-npm.sh _layout ${{ matrix.runtime }}
+
     # Create runner package tar.gz/zip
     - name: Package Release
       if: github.event_name != 'pull_request'
