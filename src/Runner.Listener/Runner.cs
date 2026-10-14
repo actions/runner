@@ -512,8 +512,28 @@ namespace GitHub.Runner.Listener
 
                     jobDispatcher.JobStatus += _listener.OnJobStatus;
 
+                    // External drain sentinel: an out-of-process supervisor (e.g. an
+                    // autoscaler preparing to terminate an idle ephemeral runner) creates
+                    // this file to request a graceful drain. The check is intentionally
+                    // NOT linked into RunnerShutdownToken, so a drain signal arriving
+                    // mid-iteration cannot abort an in-flight long-poll, /acknowledge, or
+                    // /acquirejob HTTP call. The current iteration runs to completion;
+                    // only the next iteration is skipped. After the loop exits, the
+                    // existing finally block calls DeleteSessionAsync, telling the broker
+                    // to stop dispatching to this session.
+                    string drainSentinelPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), ".drain");
+                    // Clean up any stale sentinel left by a prior process so we do not
+                    // exit immediately on the first iteration.
+                    File.Delete(drainSentinelPath);
+
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
+                        if (File.Exists(drainSentinelPath))
+                        {
+                            Trace.Info($"Drain sentinel detected at {drainSentinelPath}; exiting message loop after current iteration");
+                            break;
+                        }
+
                         // Check if we need to restart the session and can do so (job dispatcher not busy)
                         if (restartSessionPending && !jobDispatcher.Busy)
                         {
