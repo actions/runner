@@ -104,7 +104,10 @@ namespace GitHub.Runner.Listener
             };
             var currentProcess = Process.GetCurrentProcess();
             string sessionName = $"{Environment.MachineName ?? "RUNNER"} (PID: {currentProcess.Id})";
-            var taskAgentSession = new TaskAgentSession(sessionName, agent);
+            var taskAgentSession = new TaskAgentSession(sessionName, agent)
+            {
+                BrokerSession = true,
+            };
 
             string errorMessage = string.Empty;
             bool encounteringError = false;
@@ -248,7 +251,7 @@ namespace GitHub.Runner.Listener
                 {
                     using (var ts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
-                        await _brokerServer.DeleteSessionAsync(ts.Token);
+                        await _brokerServer.DeleteSessionAsync(_session.SessionId, ts.Token);
                     }
                 }
                 else
