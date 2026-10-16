@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
@@ -1420,6 +1423,178 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Null(ec.JobContext.WorkflowSha);
                 Assert.Null(ec.JobContext.WorkflowRepository);
                 Assert.Null(ec.JobContext.WorkflowFilePath);
+            }
+        }
+
+        private Runner.Worker.ExecutionContext CreateJobContextWithEvent(TestHostContext hc, int childCount, out List<IExecutionContext> children)
+        {
+            TaskOrchestrationPlanReference plan = new();
+            TimelineReference timeline = new();
+            Guid jobId = Guid.NewGuid();
+            string jobName = "some job name";
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+            jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+            {
+                Alias = Pipelines.PipelineConstants.SelfAlias,
+                Id = "github",
+                Version = "sha1"
+            });
+            var githubEvent = new Pipelines.ContextData.DictionaryContextData();
+            githubEvent["ref"] = new Pipelines.ContextData.StringContextData("refs/heads/main");
+            var repository = new Pipelines.ContextData.DictionaryContextData();
+            repository["full_name"] = new Pipelines.ContextData.StringContextData("actions/runner");
+            // Make the payload large enough that a non-atomic rewrite is observable.
+            repository["description"] = new Pipelines.ContextData.StringContextData(new string('x', 256 * 1024));
+            githubEvent["repository"] = repository;
+            var github = new Pipelines.ContextData.DictionaryContextData();
+            github["event"] = githubEvent;
+            jobRequest.ContextData["github"] = github;
+
+            var jobServerQueue = new Mock<IJobServerQueue>();
+            jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+            hc.SetSingleton(jobServerQueue.Object);
+            for (var i = 0; i < childCount + 1; i++)
+            {
+                hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+            }
+
+            var jobContext = new Runner.Worker.ExecutionContext();
+            jobContext.Initialize(hc);
+            jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+            children = new List<IExecutionContext>();
+            for (var i = 0; i < childCount; i++)
+            {
+                var child = jobContext.CreateChild(Guid.NewGuid(), $"step{i}", $"step{i}", null, null, ActionRunStage.Main);
+                // Background and composite steps get their own copy of the github context.
+                child.ExpressionValues["github"] = (child.ExpressionValues["github"] as GitHubContext).ShallowCopy();
+                children.Add(child);
+            }
+
+            return jobContext;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void WriteWebhookPayload_WritesEventFileAndSetsEventPath()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobContext = CreateJobContextWithEvent(hc, 1, out var children);
+                var expectedFile = Path.Combine(hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json");
+
+                children[0].WriteWebhookPayload();
+
+                Assert.True(File.Exists(expectedFile));
+                Assert.Equal(expectedFile, children[0].GetGitHubContext("event_path"));
+                var parsed = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(expectedFile));
+                Assert.Equal("refs/heads/main", (string)parsed["ref"]);
+                Assert.Equal("actions/runner", (string)parsed["repository"]["full_name"]);
+                Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(expectedFile), "*.tmp"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void WriteWebhookPayload_OnlyWritesOncePerJob()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobContext = CreateJobContextWithEvent(hc, 2, out var children);
+                var expectedFile = Path.Combine(hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json");
+
+                children[0].WriteWebhookPayload();
+                Assert.True(File.Exists(expectedFile));
+
+                // A later step must not rewrite a file that is already in place.
+                File.WriteAllText(expectedFile, "sentinel");
+                children[1].WriteWebhookPayload();
+
+                Assert.Equal("sentinel", File.ReadAllText(expectedFile));
+                Assert.Equal(expectedFile, children[1].GetGitHubContext("event_path"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void WriteWebhookPayload_RewritesIfFileWasRemoved()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobContext = CreateJobContextWithEvent(hc, 2, out var children);
+                var expectedFile = Path.Combine(hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json");
+
+                children[0].WriteWebhookPayload();
+                Assert.True(File.Exists(expectedFile));
+
+                File.Delete(expectedFile);
+                children[1].WriteWebhookPayload();
+
+                Assert.True(File.Exists(expectedFile));
+                var parsed = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(expectedFile));
+                Assert.Equal("refs/heads/main", (string)parsed["ref"]);
+                Assert.Equal(expectedFile, children[1].GetGitHubContext("event_path"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task WriteWebhookPayload_ConcurrentStepsNeverExposePartialFile()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                const int stepCount = 8;
+                var jobContext = CreateJobContextWithEvent(hc, stepCount, out var children);
+                var expectedFile = Path.Combine(hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json");
+
+                // First step writes the file.
+                children[0].WriteWebhookPayload();
+                var expectedLength = new FileInfo(expectedFile).Length;
+
+                // Simulate a step's process reading $GITHUB_EVENT_PATH while sibling
+                // background steps (and each step of a composite action) start up.
+                using var stop = new CancellationTokenSource();
+                var badReads = 0;
+                var reader = Task.Run(() =>
+                {
+                    while (!stop.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            var content = File.ReadAllText(expectedFile);
+                            if (content.Length != expectedLength)
+                            {
+                                Interlocked.Increment(ref badReads);
+                            }
+                        }
+                        catch (IOException)
+                        {
+                            Interlocked.Increment(ref badReads);
+                        }
+                    }
+                });
+
+                var writers = children.Select(child => Task.Run(() =>
+                {
+                    for (var i = 0; i < 50; i++)
+                    {
+                        child.WriteWebhookPayload();
+                    }
+                })).ToArray();
+                await Task.WhenAll(writers);
+                stop.Cancel();
+                await reader;
+
+                Assert.Equal(0, badReads);
+                Assert.Equal(expectedLength, new FileInfo(expectedFile).Length);
+                foreach (var child in children)
+                {
+                    Assert.Equal(expectedFile, child.GetGitHubContext("event_path"));
+                }
             }
         }
 
