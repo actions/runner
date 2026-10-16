@@ -489,6 +489,30 @@ namespace GitHub.Runner.Listener
                                     cancellationToken: workerProcessCancelTokenSource.Token);
                             });
 
+                        // The worker process can fail to launch at all, e.g. when blocked by an application control policy
+                        // such as Windows Smart App Control. Fail the job instead of leaving it in progress with no steps.
+                        if (workerProcessTask != null && workerProcessTask.IsFaulted && IsFeatureEnabled(message, Constants.Runner.Features.FailJobOnWorkerLaunchFailure))
+                        {
+                            var launchException = workerProcessTask.Exception.InnerException ?? workerProcessTask.Exception;
+                            Trace.Error($"Failed to start the worker process for job {message.JobId}.");
+                            Trace.Error(launchException);
+
+                            string detailInfo = $"The runner failed to start the worker process '{_workerProcessName}': {launchException.Message}";
+                            term.WriteError($"{DateTime.UtcNow:u}: {detailInfo}");
+
+                            await ReportWorkerLaunchFailureAsync(message, systemConnection, detailInfo);
+
+                            Trace.Info($"Stop renew job request for job {message.JobId}.");
+                            // stop renew lock
+                            lockRenewalTokenSource.Cancel();
+                            // renew job request should never blows up.
+                            await renewJobRequest;
+
+                            await CompleteJobRequestAsync(_poolId, message, systemConnection, lockToken, TaskResult.Failed, detailInfo);
+                            term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {TaskResult.Failed}");
+                            return TaskResult.Failed;
+                        }
+
                         // Send the job request message.
                         // Kill the worker process if sending the job message times out. The worker
                         // process may have successfully received the job message.
@@ -1186,6 +1210,42 @@ namespace GitHub.Runner.Listener
             catch (Exception ex)
             {
                 Trace.Error("Fail to report unhandled exception from Runner.Worker process");
+                Trace.Error(ex);
+            }
+        }
+
+        private static bool IsFeatureEnabled(Pipelines.AgentJobRequestMessage message, string featureFlag)
+        {
+            return message.Variables != null &&
+                message.Variables.TryGetValue(featureFlag, out var value) &&
+                StringUtil.ConvertToBoolean(value?.Value);
+        }
+
+        // The worker never started, so nothing else will report a result for the job.
+        private async Task ReportWorkerLaunchFailureAsync(Pipelines.AgentJobRequestMessage message, ServiceEndpoint systemConnection, string detailInfo)
+        {
+            try
+            {
+                var launchFailureIssue = new Issue() { Type = IssueType.Error, Message = detailInfo };
+                launchFailureIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerLaunchFailure;
+
+                var jobServer = await InitializeJobServerAsync(systemConnection);
+                switch (jobServer)
+                {
+                    case IJobServer js:
+                        await LogWorkerProcessUnhandledException(js, message, launchFailureIssue);
+                        await ForceFailJob(js, message);
+                        break;
+                    case IRunServer rs:
+                        await ForceFailJob(rs, message, launchFailureIssue);
+                        break;
+                    default:
+                        throw new NotSupportedException($"JobServer type '{jobServer.GetType().Name}' is not supported.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Fail to report worker process launch failure.");
                 Trace.Error(ex);
             }
         }

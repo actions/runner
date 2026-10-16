@@ -182,6 +182,7 @@ namespace GitHub.Runner.Common
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
                 public static readonly string AllowArtifactsFile = "actions_runner_allow_artifacts_file";
                 public static readonly string SelfRepository = "actions_self_repository";
+                public static readonly string FailJobOnWorkerLaunchFailure = "actions_runner_fail_job_on_worker_launch_failure";
             }
 
             // Categories reported to the service alongside an infrastructure failure so
@@ -228,6 +229,7 @@ namespace GitHub.Runner.Common
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly Guid TelemetryRecordId = new Guid("11111111-1111-1111-1111-111111111111");
             public static readonly string WorkerCrash = "WORKER_CRASH";
+            public static readonly string WorkerLaunchFailure = "WORKER_LAUNCH_FAILURE";
             public static readonly string LowDiskSpace = "LOW_DISK_SPACE";
             public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
             public static readonly string ResultsUploadFailure = "RESULTS_UPLOAD_FAILURE";
