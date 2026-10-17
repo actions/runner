@@ -89,7 +89,7 @@ namespace GitHub.Runner.Worker
                 string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 var actionManager = HostContext.GetService<IActionManager>();
-                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, Action.Id);
 
                 // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
                 definition = taskManager.LoadAction(ExecutionContext, Action);
