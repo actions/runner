@@ -182,6 +182,7 @@ namespace GitHub.Runner.Common
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
                 public static readonly string AllowArtifactsFile = "actions_runner_allow_artifacts_file";
                 public static readonly string SelfRepository = "actions_self_repository";
+                public static readonly string WorkerOwnProcessGroup = "actions_runner_worker_own_process_group";
             }
 
             // Categories reported to the service alongside an infrastructure failure so
