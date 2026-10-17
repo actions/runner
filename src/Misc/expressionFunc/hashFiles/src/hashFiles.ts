@@ -38,9 +38,7 @@ async function run(): Promise<void> {
     await pipeline(fs.createReadStream(file), hash)
     result.write(hash.digest())
     count++
-    if (!hasMatch) {
-      hasMatch = true
-    }
+    hasMatch = true
   }
   result.end()
 
