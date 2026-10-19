@@ -40,7 +40,7 @@ namespace GitHub.Services.WebApi
     /// <summary>
     /// Marks a class, method or property for internal use only.  This attribute ensures the item
     /// does not show up in public documentation,  adds EditorBrowsableState.Never in C# clients
-    /// to hide the item, and optionaly adds @internal in TypeScript clients which removes the
+    /// to hide the item, and optionally adds @internal in TypeScript clients which removes the
     /// item from the TypeScript declare (d.ts) file.  This does not exempt this API from the
     /// formal REST Api review process.  Our internal APIs must meet the same standards and
     /// guidelines as our public APIs.
@@ -51,7 +51,7 @@ namespace GitHub.Services.WebApi
         /// <summary>
         /// Marks a class, method or property for internal use only.  This attribute ensures the item
         /// does not show up in public documentation,  adds EditorBrowsableState.Never in C# clients
-        /// to hide the item, and optionaly adds @internal in TypeScript clients which removes the
+        /// to hide the item, and optionally adds @internal in TypeScript clients which removes the
         /// item from the TypeScript declare (d.ts) file.  This does not exempt this API from the
         /// formal REST Api review process.  Our internal APIs must meet the same standards and
         /// guidelines as our public APIs.

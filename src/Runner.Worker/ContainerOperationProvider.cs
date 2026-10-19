@@ -538,7 +538,7 @@ namespace GitHub.Runner.Worker
         {
             // Check whether we are inside a container.
             // Our container feature requires to map working directory from host to the container.
-            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
+            // If we are already inside a container, we will not able to find out the real working directory path on the host.
 #if OS_WINDOWS
 #pragma warning disable CA1416
             // service CExecSvc is Container Execution Agent.

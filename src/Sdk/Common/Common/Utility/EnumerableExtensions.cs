@@ -88,7 +88,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Partitions items from a source IEnumerable into N+1 lists, where the first N lists are determened
+        /// Partitions items from a source IEnumerable into N+1 lists, where the first N lists are determined
         /// by the sequential check of the provided predicates, with the N+1 list containing those items
         /// which matched none of the provided predicates.
         /// </summary>

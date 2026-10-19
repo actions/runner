@@ -191,7 +191,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void IgnoreDisplayNameTokenWhenDisplayNameIsExplicitlySet()
         {
-            var explicitDisplayName = "Explcitly Set Name";
+            var explicitDisplayName = "Explicitly Set Name";
 
             // Arrange
             Setup();

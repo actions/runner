@@ -110,7 +110,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                 if (inherited.ReaderContext.Length > 0)
                 {
-                    throw new NotSupportedException($"Property '{TemplateConstants.Context}' is not supported on inhertied definitions");
+                    throw new NotSupportedException($"Property '{TemplateConstants.Context}' is not supported on inherited definitions");
                 }
 
                 if (inherited.DefinitionType != DefinitionType.Mapping)

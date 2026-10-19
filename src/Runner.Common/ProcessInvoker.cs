@@ -101,7 +101,7 @@ namespace GitHub.Runner.Common
     }
 
     // The implementation of the process invoker does not hook up DataReceivedEvent and ErrorReceivedEvent of Process,
-    // instead, we read both STDOUT and STDERR stream manually on seperate thread.
+    // instead, we read both STDOUT and STDERR stream manually on separate thread.
     // The reason is we find a huge perf issue about process STDOUT/STDERR with those events.
     //
     // Missing functionalities:

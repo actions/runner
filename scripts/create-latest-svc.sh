@@ -110,7 +110,7 @@ fi
 sudo -u ${svc_user} mkdir runner
 
 # TODO: validate not in a container
-# TODO: validate systemd or osx svc installer
+# TODO: validate systemd or macOS svc installer
 
 #--------------------------------------
 # Get a config token
@@ -171,7 +171,7 @@ sudo chown -R $svc_user ./runner
 pushd ./runner
 
 #---------------------------------------
-# Unattend config
+# Unattended config
 #---------------------------------------
 runner_url="https://github.com/${runner_scope}"
 if [ -n "${ghe_hostname}" ]; then

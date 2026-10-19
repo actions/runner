@@ -36,20 +36,20 @@ namespace GitHub.Services.OAuth
         /// <param name="serverUrl">The resource server which issued the authentication challenge</param>
         /// <param name="authorizationUrl">The authorization server token endpoint</param>
         /// <param name="grant">The authorization grant to use for token requests</param>
-        /// <param name="clientCrential">The client credentials to use for token requests</param>
+        /// <param name="clientCredential">The client credentials to use for token requests</param>
         /// <param name="tokenParameters">Additional parameters to include with token requests </param>
         protected VssOAuthTokenProvider(
             IssuedTokenCredential credential,
             Uri serverUrl,
             Uri authorizationUrl,
             VssOAuthGrant grant,
-            VssOAuthClientCredential clientCrential,
+            VssOAuthClientCredential clientCredential,
             VssOAuthTokenParameters tokenParameters)
             : base(credential, serverUrl, authorizationUrl)
         {
             m_grant = grant;
             m_tokenParameters = tokenParameters;
-            m_clientCredential = clientCrential;
+            m_clientCredential = clientCredential;
         }
 
         /// <summary>
@@ -134,7 +134,7 @@ namespace GitHub.Services.OAuth
         /// </summary>
         /// <param name="failedToken">If applicable, the previous token which is now considered invalid</param>
         /// <param name="cancellationToken">A token used for signalling cancellation</param>
-        /// <returns>A <c>Task&lgt;IssuedToken&gt;</c> for tracking the progress of the token request</returns>
+        /// <returns>A <c>Task&lt;IssuedToken&gt;</c> for tracking the progress of the token request</returns>
         protected override async Task<IssuedToken> OnGetTokenAsync(
             IssuedToken failedToken,
             CancellationToken cancellationToken)

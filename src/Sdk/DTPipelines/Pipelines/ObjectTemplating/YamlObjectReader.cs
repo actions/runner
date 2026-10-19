@@ -221,7 +221,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     if (m_current is Scalar scalar)
                     {
-                        // Verify not using achors
+                        // Verify not using anchors
                         if (scalar.Anchor != null)
                         {
                             throw new InvalidOperationException($"Anchors are not currently supported. Remove the anchor '{scalar.Anchor}'");
@@ -229,7 +229,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                     else if (m_current is MappingStart mappingStart)
                     {
-                        // Verify not using achors
+                        // Verify not using anchors
                         if (mappingStart.Anchor != null)
                         {
                             throw new InvalidOperationException($"Anchors are not currently supported. Remove the anchor '{mappingStart.Anchor}'");
@@ -237,7 +237,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                     else if (m_current is SequenceStart sequenceStart)
                     {
-                        // Verify not using achors
+                        // Verify not using anchors
                         if (sequenceStart.Anchor != null)
                         {
                             throw new InvalidOperationException($"Anchors are not currently supported. Remove the anchor '{sequenceStart.Anchor}'");

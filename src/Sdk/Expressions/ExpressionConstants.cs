@@ -44,7 +44,7 @@ namespace GitHub.Actions.Expressions
         public static readonly Char StartParameter = '(';   // function call
         internal const Char EndGroup = ')';         // logical grouping
         internal const Char EndIndex = ']';
-        public static readonly Char EndParameter = ')';     // function calll
+        public static readonly Char EndParameter = ')';     // function call
         internal const Char Separator = ',';
         internal const Char Dereference = '.';
         internal const Char Wildcard = '*';

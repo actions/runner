@@ -61,7 +61,7 @@ namespace GitHub.Services.WebApi.Patch
                         }
                         else
                         {
-                            // We can't remove outside the rangeof the list.
+                            // We can't remove outside the range of the list.
                             throw new PatchOperationFailedException(PatchResources.IndexOutOfRange(this.Path));
                         }
                     }

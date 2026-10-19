@@ -95,8 +95,8 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Returns the value in an IReadonlyDictionary with values of type <see cref="object"/>  
-        /// casted as values of requested type, or the defualt if the key is not found or 
-        /// if the value was found but not compatabile with the requested type.
+        /// casted as values of requested type, or the default if the key is not found or 
+        /// if the value was found but not compatible with the requested type.
         /// </summary>
         /// <typeparam name="K">The key type</typeparam>
         /// <typeparam name="V">The requested type of the stored value</typeparam>
@@ -112,8 +112,8 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Returns the value in an IDictionary with values of type <see cref="object"/>  
-        /// casted as values of requested type, or the defualt if the key is not found or 
-        /// if the value was found but not compatabile with the requested type.
+        /// casted as values of requested type, or the default if the key is not found or 
+        /// if the value was found but not compatible with the requested type.
         /// </summary>
         /// <typeparam name="K">The key type</typeparam>
         /// <typeparam name="V">The requested type of the stored value</typeparam>
@@ -129,8 +129,8 @@ namespace GitHub.Services.Common
 
         /// <summary>
         /// Returns the value in a Dictionary with values of type <see cref="object"/>  
-        /// casted as values of requested type, or the defualt if the key is not found or 
-        /// if the value was found but not compatabile with the requested type.
+        /// casted as values of requested type, or the default if the key is not found or 
+        /// if the value was found but not compatible with the requested type.
         /// </summary>
         /// <remarks>
         /// This overload is necessary to prevent Ambiguous Match issues, as Dictionary implements both

@@ -16,4 +16,4 @@ This folder includes ADRs for the actions runner. ADRs are proposed in the form 
 
 ---
 
-- More information about ADRs can be found [here](https://github.com/joelparkerhenderson/architecture_decision_record).
+- More information about ADRs can be found in [joelparkerhenderson/architecture-decision-record](https://github.com/joelparkerhenderson/architecture_decision_record).

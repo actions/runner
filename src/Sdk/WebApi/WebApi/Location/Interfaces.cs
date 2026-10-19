@@ -155,7 +155,7 @@ namespace GitHub.Services.WebApi.Location
 
         // <summary>
         // Removes the ServiceDefinition with the specified service type and
-        // service identifier from the location serivce.
+        // service identifier from the location service.
         // </summary>
         // <param name="serviceType">
         //     The service type of the ServiceDefinition to remove.
@@ -227,7 +227,7 @@ namespace GitHub.Services.WebApi.Location
             String serviceType);
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion associated with the ServiceType
+        /// Returns the location for the ServiceDefinition associated with the ServiceType
         /// and ServiceIdentifier that should be used based on the current connection. 
         /// If a ServiceDefinition with the ServiceType and ServiceIdentifier does not
         /// exist then null will be returned. If a ServiceDefinition with the ServiceType
@@ -256,7 +256,7 @@ namespace GitHub.Services.WebApi.Location
             Guid serviceIdentifier);
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion that should be used based on
+        /// Returns the location for the ServiceDefinition that should be used based on
         /// the current connection. This method will never return null or empty. If it
         /// succeeds it will return a targetable location for the provided 
         /// ServiceDefinition.
@@ -386,7 +386,7 @@ namespace GitHub.Services.WebApi.Location
 
         /// <summary>
         /// Get the API resource locations -- a collection of versioned URL paths that
-        /// are keyed by a location identitifer
+        /// are keyed by a location identifier
         /// </summary>
         /// <returns></returns>
         ApiResourceLocationCollection GetResourceLocations();
@@ -469,7 +469,7 @@ namespace GitHub.Services.WebApi.Location
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion associated with the ServiceType
+        /// Returns the location for the ServiceDefinition associated with the ServiceType
         /// and ServiceIdentifier that should be used based on the current connection. 
         /// If a ServiceDefinition with the ServiceType and ServiceIdentifier does not
         /// exist then null will be returned. If a ServiceDefinition with the ServiceType
@@ -499,7 +499,7 @@ namespace GitHub.Services.WebApi.Location
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Returns the location for the ServiceDefintion that should be used based on
+        /// Returns the location for the ServiceDefinition that should be used based on
         /// the current connection. This method will never return null or empty. If it
         /// succeeds it will return a targetable location for the provided 
         /// ServiceDefinition.
@@ -582,7 +582,7 @@ namespace GitHub.Services.WebApi.Location
 
         /// <summary>
         /// Get the API resource locations -- a collection of versioned URL paths that
-        /// are keyed by a location identitifer
+        /// are keyed by a location identifier
         /// </summary>
         /// <returns></returns>
         Task<ApiResourceLocationCollection> GetResourceLocationsAsync(CancellationToken cancellationToken = default(CancellationToken));
