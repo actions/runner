@@ -9,6 +9,8 @@ WorkingDirectory={{RunnerRoot}}
 KillMode=process
 KillSignal=SIGTERM
 TimeoutStopSec=5min
+Restart=always
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
