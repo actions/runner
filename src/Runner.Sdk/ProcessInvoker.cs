@@ -858,12 +858,21 @@ namespace GitHub.Runner.Sdk
             {
                 if (_proc?.HasExited == false)
                 {
-                    _proc?.Kill();
+                    // Kill(entireProcessTree: true) SIGSTOPs each process before enumerating its children,
+                    // so the tree can't grow while it is being walked, then SIGKILLs it.
+                    _proc?.Kill(entireProcessTree: true);
                 }
             }
             catch (InvalidOperationException ex)
             {
                 Trace.Info("Ignore InvalidOperationException during Process.Kill().");
+                Trace.Info(ex.ToString());
+            }
+            catch (AggregateException ex)
+            {
+                // Thrown when some descendants couldn't be killed, e.g. EPERM for a child started via sudo.
+                // The remaining descendants have still been killed, since KillProcessTree is best effort.
+                Trace.Info("Ignore AggregateException during Process.Kill(entireProcessTree: true).");
                 Trace.Info(ex.ToString());
             }
         }
