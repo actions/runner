@@ -1,5 +1,8 @@
 ﻿using GitHub.Services.Common;
 using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Security;
 using Xunit;
 using GitHub.Runner.Sdk;
 
@@ -7,6 +10,37 @@ namespace GitHub.Runner.Common.Tests.Util
 {
     public sealed class VssUtilL0
     {
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void CertificateValidationCallbackLogsFailuresAndRejectsInvalidCertificates()
+        {
+            string diagnostic = null;
+            var callback = VssUtil.CreateCertificateValidationCallback(message => diagnostic = message);
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.test/resource?token=secret");
+
+            var accepted = callback(request, null, null, SslPolicyErrors.RemoteCertificateNotAvailable);
+
+            Assert.False(accepted);
+            Assert.Contains("Host: 'example.test'", diagnostic);
+            Assert.Contains("Policy errors: 'RemoteCertificateNotAvailable'", diagnostic);
+            Assert.DoesNotContain("token=secret", diagnostic);
+            Assert.Contains("UTC time:", diagnostic);
+            Assert.Contains("Chain status: 'Unavailable'", diagnostic);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void CertificateValidationCallbackAcceptsValidCertificates()
+        {
+            var callback = VssUtil.CreateCertificateValidationCallback(_ => throw new InvalidOperationException("Should not log valid certificates."));
+
+            var accepted = callback(new HttpRequestMessage(HttpMethod.Get, "https://example.test"), null, null, SslPolicyErrors.None);
+
+            Assert.True(accepted);
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]

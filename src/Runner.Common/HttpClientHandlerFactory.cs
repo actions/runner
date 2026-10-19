@@ -20,6 +20,10 @@ namespace GitHub.Runner.Common
             {
                 client.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
             }
+            else
+            {
+                client.ServerCertificateCustomValidationCallback = VssUtil.CreateCertificateValidationCallback(message => Trace.Warning(message));
+            }
 
             return client;
         }

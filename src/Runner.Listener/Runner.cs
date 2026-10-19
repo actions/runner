@@ -70,7 +70,7 @@ namespace GitHub.Runner.Listener
         {
             try
             {
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy, message => Trace.Warning(message));
 
                 _inConfigStage = true;
                 _completedCommand.Reset();
@@ -257,7 +257,7 @@ namespace GitHub.Runner.Listener
 
                         // make sure we have the right user agent data added from the jitconfig
                         HostContext.LoadDefaultUserAgents();
-                        VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
+                        VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy, message => Trace.Warning(message));
                     }
                     catch (Exception ex)
                     {

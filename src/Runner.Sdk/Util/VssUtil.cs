@@ -4,7 +4,10 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
@@ -15,7 +18,7 @@ namespace GitHub.Runner.Sdk
 {
     public static class VssUtil
     {
-        public static void InitializeVssClientSettings(List<ProductInfoHeaderValue> additionalUserAgents, IWebProxy proxy)
+        public static void InitializeVssClientSettings(List<ProductInfoHeaderValue> additionalUserAgents, IWebProxy proxy, Action<string> logCertificateValidationFailure = null)
         {
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.AddRange(additionalUserAgents);
@@ -40,6 +43,11 @@ namespace GitHub.Runner.Sdk
             {
                 VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
                 RawClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            }
+            else if (logCertificateValidationFailure != null)
+            {
+                VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback ??= CreateCertificateValidationCallback(logCertificateValidationFailure);
+                RawClientHttpRequestSettings.Default.ServerCertificateValidationCallback ??= CreateCertificateValidationCallback(logCertificateValidationFailure);
             }
 
             var rawHeaderValues = new List<ProductInfoHeaderValue>();
@@ -166,6 +174,42 @@ namespace GitHub.Runner.Sdk
             settings.AcceptLanguages.Remove(CultureInfo.InvariantCulture);
 
             return settings;
+        }
+
+        public static Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> CreateCertificateValidationCallback(Action<string> logCertificateValidationFailure)
+        {
+            return (request, certificate, chain, sslPolicyErrors) =>
+            {
+                if (sslPolicyErrors != SslPolicyErrors.None && logCertificateValidationFailure != null)
+                {
+                    try
+                    {
+                        var chainStatus = chain == null
+                            ? "Unavailable"
+                            : string.Join("; ", Array.ConvertAll(chain.ChainStatus, status =>
+                                $"{status.Status}: {status.StatusInformation.Trim()}"));
+                        var message = new StringBuilder()
+                            .Append("TLS certificate validation failed. ")
+                            .Append($"Host: '{request?.RequestUri?.Host ?? "unknown"}'; ")
+                            .Append($"UTC time: '{DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)}'; ")
+                            .Append($"Policy errors: '{sslPolicyErrors}'; ")
+                            .Append($"Chain status: '{chainStatus}'; ")
+                            .Append($"Subject: '{certificate?.Subject ?? "unavailable"}'; ")
+                            .Append($"Issuer: '{certificate?.Issuer ?? "unavailable"}'; ")
+                            .Append($"Thumbprint: '{certificate?.Thumbprint ?? "unavailable"}'; ")
+                            .Append($"Valid from UTC: '{certificate?.NotBefore.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture) ?? "unavailable"}'; ")
+                            .Append($"Valid to UTC: '{certificate?.NotAfter.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture) ?? "unavailable"}'.")
+                            .ToString();
+                        logCertificateValidationFailure(message);
+                    }
+                    catch
+                    {
+                        // Certificate diagnostics must not change the validation result.
+                    }
+                }
+
+                return sslPolicyErrors == SslPolicyErrors.None;
+            };
         }
     }
 }

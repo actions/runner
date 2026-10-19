@@ -58,7 +58,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 // make sure orchestration id is in the user-agent header.
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy, message => Trace.Warning(message));
             }
 
             ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
