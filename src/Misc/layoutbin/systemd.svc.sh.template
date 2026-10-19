@@ -76,11 +76,9 @@ function install()
 
     # Recent Fedora based Linux (CentOS/Redhat) has SELinux enabled by default
     # We need to restore security context on the unit file we added otherwise SystemD have no access to it.
-    command -v getenforce > /dev/null
-    if [ $? -eq 0 ]
-    then
+    if command -v getenforce > /dev/null; then
         selinuxEnabled=$(getenforce)
-        if [[ $selinuxEnabled == "Enforcing" ]]
+        if [[ "${selinuxEnabled}" == "Enforcing" ]]
         then
             # SELinux is enabled, we will need to Restore SELinux Context for the service file
             restorecon -r -v "${UNIT_PATH}" || failed "failed to restore SELinux context on ${UNIT_PATH}"
@@ -95,6 +93,15 @@ function install()
     cp ./bin/runsvc.sh ./runsvc.sh || failed "failed to copy runsvc.sh"
     chown ${run_as_uid}:${run_as_gid} ./runsvc.sh || failed "failed to set owner for runsvc.sh"
     chmod 755 ./runsvc.sh || failed "failed to set permission for runsvc.sh"
+
+    if [[ "${selinuxEnabled}" == "Enforcing" ]]; then
+        # We will need to add the initrc_exec_t context for the script
+        # (if we can't add, softfail first and try modify instead)
+        semanage fcontext --add    --type initrc_exec_t "${RUNNER_ROOT}/runsvc.sh" ||\
+        semanage fcontext --modify --type initrc_exec_t "${RUNNER_ROOT}/runsvc.sh" ||\
+        failed "failed to set file context for runsvc.sh"
+        restorecon -v "${RUNNER_ROOT}/runsvc.sh"
+    fi
 
     systemctl enable ${SVC_NAME} || failed "failed to enable ${SVC_NAME}"
 
@@ -126,6 +133,12 @@ function uninstall()
     if [ -f "${CONFIG_PATH}" ]; then
       rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
     fi
+
+    # Delete custom file context for runsvc.sh
+    semanage fcontext --delete --type initrc_exec_t "${RUNNER_ROOT}/runsvc.sh" ||\
+    failed "failed to delete file context for runsvc.sh"
+    restorecon -v "${RUNNER_ROOT}/runsvc.sh"
+
     systemctl daemon-reload || failed "failed to reload daemons"
 }
 
