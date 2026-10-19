@@ -1,6 +1,5 @@
 ﻿using GitHub.Services.Common;
 using System;
-using System.Net;
 using System.Net.Http;
 using System.Net.Security;
 using Xunit;
@@ -35,8 +34,9 @@ namespace GitHub.Runner.Common.Tests.Util
         public void CertificateValidationCallbackAcceptsValidCertificates()
         {
             var callback = VssUtil.CreateCertificateValidationCallback(_ => throw new InvalidOperationException("Should not log valid certificates."));
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://example.test");
 
-            var accepted = callback(new HttpRequestMessage(HttpMethod.Get, "https://example.test"), null, null, SslPolicyErrors.None);
+            var accepted = callback(request, null, null, SslPolicyErrors.None);
 
             Assert.True(accepted);
         }
