@@ -151,11 +151,14 @@ namespace GitHub.Runner.Worker.Handlers
                         step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
                     }
 
-                    // Shallow copy github context
-                    var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
-                    ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
-                    gitHubContext = gitHubContext.ShallowCopy();
-                    step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
+                    if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.FixEmbeddedGitHubContext) != true)
+                    {
+                        // Shallow copy github context
+                        var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
+                        ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
+                        gitHubContext = gitHubContext.ShallowCopy();
+                        step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
+                    }
 
                     // Set GITHUB_ACTION_PATH
                     step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
