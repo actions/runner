@@ -63,6 +63,13 @@ namespace GitHub.Runner.Worker
                 ["shell"] = HostContext.GetDefaultShellForScript(hookData.Path, prependPath)
             };
 
+            // Expose the name of the deployment environment the job targets, so that hooks can enforce policies on it.
+            // Always set (empty when the job has no environment) so a value can't leak in from the runner's own environment.
+            Dictionary<string, string> environment = new(VarUtil.EnvironmentVariableKeyComparer)
+            {
+                [Constants.Hooks.EnvironmentNameVariable] = executionContext.Root.ActionsEnvironment?.Name ?? string.Empty
+            };
+
             // Create the handler
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             var handler = handlerFactory.Create(
@@ -71,7 +78,7 @@ namespace GitHub.Runner.Worker
                             stepHost,
                             new ScriptActionExecutionData(),
                             inputs,
-                            environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
+                            environment,
                             executionContext.Global.Variables,
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null);
