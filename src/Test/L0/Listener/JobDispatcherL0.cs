@@ -288,6 +288,66 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
+        public async void DispatcherRenewJobOnRunServiceRecoverFromExceptions()
+        {
+            //Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
+
+                var trace = hc.GetTrace(nameof(DispatcherRenewJobOnRunServiceRecoverFromExceptions));
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
+
+                var response = new RenewJobResponse();
+                PropertyInfo lockUntilProperty = response.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockUntilProperty);
+                lockUntilProperty.SetValue(response, DateTime.UtcNow.AddMinutes(5));
+
+                hc.SetSingleton<IRunServer>(_runServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings() { PoolId = 1 });
+                _ = _runServer.Setup(x => x.RenewJobAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                            .Returns(() =>
+                            {
+                                count++;
+                                if (count < 5)
+                                {
+                                    return Task.FromResult<RenewJobResponse>(response);
+                                }
+                                else if (count == 5 || count == 6 || count == 7)
+                                {
+                                    // Transient failures after the first renewal must be retried until the lock expires.
+                                    throw new TimeoutException("");
+                                }
+                                else
+                                {
+                                    cancellationTokenSource.Cancel();
+                                    return Task.FromResult<RenewJobResponse>(response);
+                                }
+                            });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+                EnableRunServiceJobForJobDispatcher(jobDispatcher);
+
+                // Set the value of the _isRunServiceJob field to true
+                var isRunServiceJobField = typeof(JobDispatcher).GetField("_isRunServiceJob", BindingFlags.NonPublic | BindingFlags.Instance);
+                isRunServiceJobField.SetValue(jobDispatcher, true);
+
+                await jobDispatcher.RenewJobRequestAsync(GetAgentJobRequestMessage(), GetServiceEndpoint(), poolId, requestId, Guid.Empty, Guid.NewGuid().ToString(), firstJobRequestRenewed, cancellationTokenSource.Token);
+
+                Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should succeed.");
+                Assert.True(cancellationTokenSource.IsCancellationRequested);
+                _runServer.Verify(x => x.RenewJobAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(8));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions()
         {
             //Arrange
