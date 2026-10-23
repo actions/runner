@@ -43,9 +43,21 @@ ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=ubuntu24
 
-# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
+# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows.
+#
+# 'libatomic1' provides libatomic.so.1, which the official Node.js binaries link against starting with
+# Node.js 25 (verified with `readelf -d bin/node`: absent in v24.x, present in v25.x and v26.x on both
+# linux-x64 and linux-arm64). It is not part of the dotnet/runtime-deps base image, so a job that
+# provisions Node with actions/setup-node fails at exec time with
+#   node: error while loading shared libraries: libatomic.so.1: cannot open shared object file
+# See https://github.com/actions/runner/issues/4591.
+#
+# It is installed from Ubuntu 'main' (source package gcc-14) in the same apt transaction as the packages
+# above, so it introduces no new repository or trust anchor, adds no executables to the image, and costs
+# ~50 kB installed. Installing a compiler toolchain (build-essential/gcc) to obtain the same library would
+# be a far larger attack surface and is deliberately avoided.
 RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
+    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
