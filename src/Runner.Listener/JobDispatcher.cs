@@ -747,7 +747,7 @@ namespace GitHub.Runner.Listener
 
         private async Task RenewJobRequestAsync(IRunServer runServer, Guid planId, Guid jobId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
-            TaskAgentJobRequest request = null;
+            RenewJobResponse renewResponse = null;
             int firstRenewRetryLimit = 5;
             int encounteringError = 0;
 
@@ -757,7 +757,7 @@ namespace GitHub.Runner.Listener
             {
                 try
                 {
-                    var renewResponse = await runServer.RenewJobAsync(planId, jobId, token);
+                    renewResponse = await runServer.RenewJobAsync(planId, jobId, token);
                     Trace.Info($"Successfully renew job {jobId}, job is valid till {renewResponse.LockedUntil}");
 
                     if (!firstJobRequestRenewed.Task.IsCompleted)
@@ -807,7 +807,7 @@ namespace GitHub.Runner.Listener
                     else
                     {
                         // retry till reach lockeduntil + 5 mins extra buffer.
-                        remainingTime = request.LockedUntil.Value + TimeSpan.FromMinutes(5) - DateTime.UtcNow;
+                        remainingTime = renewResponse.LockedUntil + TimeSpan.FromMinutes(5) - DateTime.UtcNow;
                     }
 
                     if (remainingTime > TimeSpan.Zero)
@@ -820,7 +820,7 @@ namespace GitHub.Runner.Listener
                         }
                         else
                         {
-                            Trace.Info($"Retrying lock renewal for job {jobId}. Job is valid until {request.LockedUntil.Value}.");
+                            Trace.Info($"Retrying lock renewal for job {jobId}. Job is valid until {renewResponse.LockedUntil}.");
                             if (encounteringError > 5)
                             {
                                 delayTime = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30));
