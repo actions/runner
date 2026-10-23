@@ -1,4 +1,6 @@
-﻿#if !(OS_WINDOWS && ARM64)
+﻿// Skip self-updater tests on Windows ARM64, ppc64le, and s390x
+// These architectures don't have official runner packages available for self-update
+#if !(OS_WINDOWS && ARM64) && !PPC64LE && !S390X
 using System;
 using System.Collections.Generic;
 using System.IO;
