@@ -54,6 +54,8 @@ namespace GitHub.Runner.Worker
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
 
+        private const int _maxDownloadRedirects = 10;
+
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new();
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
 
@@ -1641,12 +1643,120 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        private static string GetDownloadUrlForLogging(Uri uri)
+        {
+            return uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.UriEscaped);
+        }
+
+        private void MaskDownloadUrlSecrets(Uri uri)
+        {
+            // Uri.ToString() uses SafeUnescaped, which can differ from both the wire and decoded forms.
+            foreach (var component in new[] { UriComponents.Query, UriComponents.Fragment, UriComponents.UserInfo })
+            {
+                foreach (var format in new[] { UriFormat.UriEscaped, UriFormat.Unescaped, UriFormat.SafeUnescaped })
+                {
+                    HostContext.SecretMasker.AddValue(uri.GetComponents(component, format));
+                }
+            }
+        }
+
+        private AuthenticationHeaderValue CreateRedirectAuthHeader(Uri redirectUri, IReadOnlyDictionary<string, NetRcCredential> credentials, string netrcFilePath)
+        {
+            // Never send netrc passwords over an unencrypted connection.
+            if (redirectUri.Scheme != Uri.UriSchemeHttps || !credentials.TryGetValue(redirectUri.Host, out var credential))
+            {
+                // The initial Authorization header is never forwarded to a redirect target.
+                return null;
+            }
+
+            Trace.Info($"Using credentials from netrc file '{netrcFilePath}' for redirect target host '{redirectUri.Host}'.");
+            HostContext.SecretMasker.AddValue(credential.Password);
+            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credential.Login}:{credential.Password}"));
+            HostContext.SecretMasker.AddValue(base64EncodingToken);
+            return new AuthenticationHeaderValue("Basic", base64EncodingToken);
+        }
+
+        private async Task<HttpResponseMessage> GetArchiveResponseAsync(IExecutionContext executionContext, HttpClient httpClient, Uri requestUri, AuthenticationHeaderValue authHeader, CancellationToken cancellationToken)
+        {
+            IReadOnlyDictionary<string, NetRcCredential> credentials = null;
+            string netrcFilePath = null;
+            for (int redirectCount = 0; ; redirectCount++)
+            {
+                MaskDownloadUrlSecrets(requestUri);
+                using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+                request.Headers.Authorization = authHeader;
+                // Redirect bodies are irrelevant; stream the final archive instead of buffering it in memory.
+                HttpResponseMessage response;
+                try
+                {
+                    response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                }
+                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new TimeoutException($"Timed out waiting for action archive response headers from '{GetDownloadUrlForLogging(requestUri)}'.", ex);
+                }
+                var requestId = UrlUtil.GetGitHubRequestId(response.Headers);
+                if (!string.IsNullOrEmpty(requestId))
+                {
+                    Trace.Info($"Request URL: {GetDownloadUrlForLogging(requestUri)} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
+                }
+
+                if (redirectCount > 0 && response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    using (response)
+                    {
+                        var hint = authHeader == null
+                            ? "No netrc credentials were sent. Configure an explicit machine entry for this host and use HTTPS."
+                            : "The netrc credentials were rejected. Check this host's login and password.";
+                        throw new NonRetryableException($"Action archive redirect host '{requestUri.Host}' returned HTTP 401. {hint}");
+                    }
+                }
+
+                // Match HttpClientHandler's redirect status codes, including HTTP 300.
+                var location = response.Headers.Location;
+                var isRedirect = location != null && response.StatusCode is
+                    (HttpStatusCode.MultipleChoices or HttpStatusCode.MovedPermanently or HttpStatusCode.Found or
+                     HttpStatusCode.SeeOther or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect);
+                if (!isRedirect)
+                {
+                    return response;
+                }
+
+                using (response)
+                {
+                    if (redirectCount >= _maxDownloadRedirects)
+                    {
+                        throw new NonRetryableException($"Exceeded the maximum of {_maxDownloadRedirects} redirects while downloading '{GetDownloadUrlForLogging(requestUri)}'.");
+                    }
+
+                    var redirectUri = new Uri(requestUri, location);
+                    var isUnsupportedScheme = redirectUri.Scheme != Uri.UriSchemeHttp && redirectUri.Scheme != Uri.UriSchemeHttps;
+                    var isHttpsDowngrade = requestUri.Scheme == Uri.UriSchemeHttps && redirectUri.Scheme != Uri.UriSchemeHttps;
+                    if (isUnsupportedScheme || isHttpsDowngrade)
+                    {
+                        throw new NonRetryableException($"Refusing an insecure or unsupported action archive redirect to '{GetDownloadUrlForLogging(redirectUri)}'.");
+                    }
+
+                    Trace.Info($"Download redirected ({(int)response.StatusCode}) to '{GetDownloadUrlForLogging(redirectUri)}'.");
+                    if (credentials == null)
+                    {
+                        netrcFilePath = NetRcUtil.ResolveFilePath();
+                        credentials = NetRcUtil.ReadCredentials(netrcFilePath, executionContext.Warning);
+                    }
+                    authHeader = CreateRedirectAuthHeader(redirectUri, credentials, netrcFilePath);
+                    requestUri = redirectUri;
+                }
+            }
+        }
+
         private async Task DownloadRepositoryArchive(IExecutionContext executionContext, string downloadUrl, string downloadAuthToken, string archiveFile)
         {
-            Trace.Info($"Save archive '{downloadUrl}' into {archiveFile}.");
+            var downloadUri = new Uri(downloadUrl);
+            var displayDownloadUrl = GetDownloadUrlForLogging(downloadUri);
+            Trace.Info($"Save archive '{displayDownloadUrl}' into {archiveFile}.");
             int retryCount = 0;
 
-            // Allow up to 20 * 60s for any action to be downloaded from github graph.
+            // One timeout covers each attempt, including redirect headers and the streamed archive body.
             int timeoutSeconds = 20 * 60;
             try
             {
@@ -1662,25 +1772,25 @@ namespace GitHub.Runner.Worker
                             //open zip stream in async mode
                             using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: _defaultFileStreamBufferSize, useAsync: true))
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                            // With ResponseHeadersRead, the default 100-second timeout applies to each header wait only.
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(executionContext, downloadUrl, downloadAuthToken);
+                                // Handle redirects explicitly so each host receives only its own credentials.
+                                httpClientHandler.AllowAutoRedirect = false;
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                                using (var response = await httpClient.GetAsync(downloadUrl))
+                                var authHeader = CreateAuthHeader(executionContext, downloadUrl, downloadAuthToken);
+                                var cancellationToken = actionDownloadCancellation.Token;
+                                using (var response = await GetArchiveResponseAsync(executionContext, httpClient, downloadUri, authHeader, cancellationToken))
                                 {
                                     requestId = UrlUtil.GetGitHubRequestId(response.Headers);
-                                    if (!string.IsNullOrEmpty(requestId))
-                                    {
-                                        Trace.Info($"Request URL: {downloadUrl} X-GitHub-Request-Id: {requestId} Http Status: {response.StatusCode}");
-                                    }
 
                                     if (response.IsSuccessStatusCode)
                                     {
-                                        using (var result = await response.Content.ReadAsStreamAsync())
+                                        using (var result = await response.Content.ReadAsStreamAsync(cancellationToken))
                                         {
-                                            await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
-                                            await fs.FlushAsync(actionDownloadCancellation.Token);
+                                            await result.CopyToAsync(fs, _defaultCopyBufferSize, cancellationToken);
+                                            await fs.FlushAsync(cancellationToken);
 
                                             // download succeed, break out the retry loop.
                                             break;
@@ -1689,12 +1799,12 @@ namespace GitHub.Runner.Worker
                                     else if (response.StatusCode == HttpStatusCode.NotFound)
                                     {
                                         // It doesn't make sense to retry in this case, so just stop
-                                        throw new ActionNotFoundException(new Uri(downloadUrl), requestId);
+                                        throw new ActionNotFoundException(new Uri(displayDownloadUrl), requestId);
                                     }
                                     else if (response.StatusCode == HttpStatusCode.Forbidden)
                                     {
                                         // It doesn't make sense to retry in this case, so just stop
-                                        throw new AccessDeniedException($"Access denied to '{downloadUrl}' ({requestId})");
+                                        throw new AccessDeniedException($"Access denied to '{displayDownloadUrl}' ({requestId})");
                                     }
                                     else
                                     {
@@ -1720,31 +1830,31 @@ namespace GitHub.Runner.Worker
                         catch (OperationCanceledException ex) when (!executionContext.CancellationToken.IsCancellationRequested && retryCount >= 2)
                         {
                             Trace.Info($"Action download final retry timeout after {timeoutSeconds} seconds.");
-                            throw new TimeoutException($"Action '{downloadUrl}' download has timed out. Error: {ex.Message} {requestId}");
+                            throw new TimeoutException($"Action '{displayDownloadUrl}' download has timed out. Error: {ex.Message} {requestId}");
                         }
                         catch (ActionNotFoundException)
                         {
-                            Trace.Info($"The action at '{downloadUrl}' does not exist");
+                            Trace.Info($"The action at '{displayDownloadUrl}' does not exist");
                             throw;
                         }
                         catch (AccessDeniedException)
                         {
-                            Trace.Info($"Access denied to '{downloadUrl}'");
+                            Trace.Info($"Access denied to '{displayDownloadUrl}'");
                             throw;
                         }
-                        catch (Exception ex) when (retryCount < 2)
+                        catch (Exception ex) when (retryCount < 2 && ex is not NonRetryableException)
                         {
                             retryCount++;
-                            Trace.Error($"Fail to download archive '{downloadUrl}' -- Attempt: {retryCount}");
+                            Trace.Error($"Fail to download archive '{displayDownloadUrl}' -- Attempt: {retryCount}");
                             Trace.Error(ex);
                             if (actionDownloadTimeout.Token.IsCancellationRequested)
                             {
                                 // action download didn't finish within timeout
-                                executionContext.Warning($"Action '{downloadUrl}' didn't finish download within {timeoutSeconds} seconds. {requestId}");
+                                executionContext.Warning($"Action '{displayDownloadUrl}' didn't finish download within {timeoutSeconds} seconds. {requestId}");
                             }
                             else
                             {
-                                executionContext.Warning($"Failed to download action '{downloadUrl}'. Error: {ex.Message} {requestId}");
+                                executionContext.Warning($"Failed to download action '{displayDownloadUrl}'. Error: {ex.Message} {requestId}");
                             }
                         }
                     }
@@ -1764,13 +1874,13 @@ namespace GitHub.Runner.Worker
             }
             catch (Exception ex) when (!(ex is AccessDeniedException) && !(ex is OperationCanceledException) && !executionContext.CancellationToken.IsCancellationRequested)
             {
-                Trace.Error($"Failed to download archive '{downloadUrl}' after {retryCount + 1} attempts.");
+                Trace.Error($"Failed to download archive '{displayDownloadUrl}' after {retryCount + 1} attempts.");
                 Trace.Error(ex);
-                throw new FailedToDownloadActionException($"Failed to download archive '{downloadUrl}' after {retryCount + 1} attempts.", ex);
+                throw new FailedToDownloadActionException($"Failed to download archive '{displayDownloadUrl}' after {retryCount + 1} attempts. {ex.Message}", ex);
             }
 
             ArgUtil.NotNullOrEmpty(archiveFile, nameof(archiveFile));
-            executionContext.Debug($"Download '{downloadUrl}' to '{archiveFile}'");
+            executionContext.Debug($"Download '{displayDownloadUrl}' to '{archiveFile}'");
         }
     }
 
