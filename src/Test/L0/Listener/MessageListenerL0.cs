@@ -64,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runnerServer
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
+                        It.Is<TaskAgentSession>(y => y != null && !y.BrokerSession),
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
@@ -84,7 +84,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
-                        It.Is<TaskAgentSession>(y => y != null),
+                        It.Is<TaskAgentSession>(y => y != null && !y.BrokerSession),
                         tokenSource.Token), Times.Once());
                 _brokerServer
                    .Verify(x => x.CreateSessionAsync(

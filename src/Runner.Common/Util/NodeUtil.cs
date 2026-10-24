@@ -28,8 +28,8 @@ namespace GitHub.Runner.Common.Util
             public bool FromSystem { get; set; }
         }
 
-        private const string _defaultNodeVersion = "node20";
-        public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(new[] { "node20" });
+        private const string _defaultNodeVersion = "node24";
+        public static readonly ReadOnlyCollection<string> BuiltInNodeVersions = new(new[] { "node20", "node24" });
         public static string GetInternalNodeVersion()
         {
             var forcedInternalNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion);
