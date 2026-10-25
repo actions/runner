@@ -441,7 +441,7 @@ namespace GitHub.Runner.Worker
             while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
             {
                 TimeSpan backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
-                executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
+                executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.TotalSeconds} seconds before checking again.");
                 await Task.Delay(backoff, executionContext.CancellationToken);
                 serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             }
