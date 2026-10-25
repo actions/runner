@@ -438,14 +438,12 @@ namespace GitHub.Runner.Worker
                 // Container has no HEALTHCHECK
                 return true;
             }
-            var retryCount = 0;
             while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
             {
-                TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
+                TimeSpan backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
                 executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
                 await Task.Delay(backoff, executionContext.CancellationToken);
                 serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
-                retryCount++;
             }
             return string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase);
         }
