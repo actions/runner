@@ -171,7 +171,7 @@ namespace GitHub.Runner.Common
                     }
                 }
                 var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
+                Trace.Info($"Retrying in {backOff.TotalSeconds} seconds");
                 await Task.Delay(backOff);
             }
         }
