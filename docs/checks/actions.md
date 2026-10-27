@@ -78,6 +78,10 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
   If you are seeing `System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.` in the log, it means the runner can't connect to Actions service due to SSL handshake failure.
   > Please check the [SSL cert doc](./sslcert.md)
   
+### 3. Authenticated action archive caches
+
+For action archive redirects to an HTTPS cache requiring Basic authentication, add `machine cache.example.com login USER password PASSWORD` to the runner service account's `~/.netrc` (falling back to `~/_netrc`), or set `NETRC` in the runner service's environment to the file's path. Use the cache hostname; `default` entries are ignored. For HTTP 401 errors, check the job log and verify the file path and credentials.
+
 ## Still not working?
 
 Contact [GitHub Support](https://support.github.com) if you have further questuons, or log an issue at https://github.com/actions/runner if you think it's a runner issue.
