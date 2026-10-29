@@ -22,5 +22,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [EnumMember]
         Abandoned = 5,
+
+        [EnumMember]
+        Neutral = 6,
     }
 }
