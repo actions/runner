@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -341,6 +342,101 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(firstJobRequestRenewed.Task.IsCompletedSuccessfully, "First renew should succeed.");
                 Assert.False(cancellationTokenSource.IsCancellationRequested);
                 _runnerServer.Verify(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(5));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task DispatcherRenewJobOnRunServiceRetryAfterGenericException()
+        {
+            // Arrange
+            using (var hc = new TestHostContext(this))
+            {
+                int poolId = 1;
+                Int64 requestId = 1000;
+                int count = 0;
+
+                TaskCompletionSource<int> firstJobRequestRenewed = new();
+                CancellationTokenSource cancellationTokenSource = new();
+
+                hc.SetSingleton<IRunServer>(_runServer.Object);
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                _configurationStore.Setup(x => x.GetSettings())
+                    .Returns(new RunnerSettings() { PoolId = 1 });
+
+                _ = _runServer.Setup(x => x.RenewJobAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<Guid>(),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(() =>
+                    {
+                        count++;
+
+                        if (count == 1)
+                        {
+                            // First renewal succeeds.
+                            return Task.FromResult(new RenewJobResponse
+                            {
+                                LockedUntil = DateTime.UtcNow.AddMinutes(5)
+                            });
+                        }
+                        else if (count == 2)
+                        {
+                            // Second renewal fails with a generic exception.
+                            throw new HttpRequestException("Simulated renewal failure.");
+                        }
+                        else if (count == 3)
+                        {
+                            // Retry succeeds.
+                            cancellationTokenSource.Cancel();
+                            return Task.FromResult(new RenewJobResponse
+                            {
+                                LockedUntil = DateTime.UtcNow.AddMinutes(5)
+                            });
+                        }
+
+                        throw new InvalidOperationException("Should not reach here.");
+                    });
+
+                var jobDispatcher = new JobDispatcher();
+                jobDispatcher.Initialize(hc);
+                EnableRunServiceJobForJobDispatcher(jobDispatcher);
+
+                // Set the value of the _isRunServiceJob field to true.
+                var isRunServiceJobField = typeof(JobDispatcher).GetField(
+                    "_isRunServiceJob",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
+                isRunServiceJobField.SetValue(jobDispatcher, true);
+
+                // Act
+                await jobDispatcher.RenewJobRequestAsync(
+                    GetAgentJobRequestMessage(),
+                    GetServiceEndpoint(),
+                    poolId,
+                    requestId,
+                    Guid.Empty,
+                    Guid.NewGuid().ToString(),
+                    firstJobRequestRenewed,
+                    cancellationTokenSource.Token);
+
+                // Assert
+                Assert.True(
+                    firstJobRequestRenewed.Task.IsCompletedSuccessfully,
+                    "First renew should succeed.");
+
+                Assert.Equal(3, count);
+                Assert.True(
+                    cancellationTokenSource.IsCancellationRequested,
+                    "Cancellation should only happen after the retry succeeds.");
+
+                _runServer.Verify(
+                    x => x.RenewJobAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<Guid>(),
+                        It.IsAny<CancellationToken>()),
+                    Times.Exactly(3));
             }
         }
 
