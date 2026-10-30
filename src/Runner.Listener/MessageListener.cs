@@ -31,6 +31,7 @@ namespace GitHub.Runner.Listener
         Task<CreateSessionResult> CreateSessionAsync(CancellationToken token);
         Task DeleteSessionAsync();
         Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token);
+        void SetIdleDrainCheck(Func<bool> drainRequested);
         Task DeleteMessageAsync(TaskAgentMessage message);
         Task AcknowledgeMessageAsync(string runnerRequestId, CancellationToken cancellationToken);
 
@@ -59,6 +60,12 @@ namespace GitHub.Runner.Listener
         private VssCredentials _credsV2;
         private bool _needRefreshCredsV2 = false;
         private bool _handlerInitialized = false;
+        private Func<bool> _idleDrainRequested = () => false;
+
+        public void SetIdleDrainCheck(Func<bool> drainRequested)
+        {
+            _idleDrainRequested = drainRequested;
+        }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -244,6 +251,11 @@ namespace GitHub.Runner.Listener
             while (true)
             {
                 token.ThrowIfCancellationRequested();
+                // Do not cancel a poll that may already carry a job assignment.
+                if (_idleDrainRequested())
+                {
+                    return null;
+                }
                 TaskAgentMessage message = null;
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
