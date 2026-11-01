@@ -32,7 +32,7 @@ if [ ! -z "$RUNNER_WAIT_FOR_DOCKER_IN_SECONDS" ]; then
     fi
 fi
 
-updateFile="update.finished"
+updateFile="$DIR/update.finished"
 "$DIR"/bin/Runner.Listener run $*
 returnCode=$?
 if [[ $returnCode == 0 ]]; then
