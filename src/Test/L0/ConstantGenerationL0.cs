@@ -20,6 +20,8 @@ namespace GitHub.Runner.Common.Tests
                 "linux-x64",
                 "linux-arm",
                 "linux-arm64",
+                "linux-ppc64le",  // PowerPC 64-bit LE (IBM Power Systems)
+                "linux-s390x",    // IBM Z mainframe
                 "osx-x64",
                 "osx-arm64"
             };

@@ -59,7 +59,9 @@ namespace GitHub.Runner.Common
             X86,
             X64,
             Arm,
-            Arm64
+            Arm64,
+            Ppc64le,  // PowerPC 64-bit Little Endian (IBM Power Systems)
+            S390x     // IBM Z mainframe architecture
         }
 
         public static class Runner
@@ -82,6 +84,12 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
 #elif ARM64
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#elif PPC64LE
+            // PowerPC 64-bit LE: Detected when built with PPC64LE symbol (set by Directory.Build.props)
+            public static readonly Architecture PlatformArchitecture = Architecture.Ppc64le;
+#elif S390X
+            // IBM Z mainframe: Detected when built with S390X symbol (set by Directory.Build.props)
+            public static readonly Architecture PlatformArchitecture = Architecture.S390x;
 #else
             public static readonly Architecture PlatformArchitecture = Architecture.X64;
 #endif
