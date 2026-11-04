@@ -1,0 +1,16 @@
+{
+"githubPullRequests.pullRequestDescription": "commit",
+"chat.agent.allowedNetworkDomains": [
+    "https://lingo.dev/en/orgs/org_yDHWjo9PrrDKEz96",
+    "https://dashboard.gitguardian.com/workspace/902113/settings/secrets/filepath-exclusions",
+    "https://dashboard.gitguardian.com/workspace/902113/settings/secrets/filepath-exclusions",
+    "https://dash.cloudflare.com/4b9380fa443355c32c37a00c24af2b0e/home/overview"
+],
+"chat.agent.sandbox.advanced.runtime": {
+    "enableWeakerNestedSandbox": false
+},
+"chat.agent.thinking.phrases": {
+    "mode": "append",
+    "phrases": []
+},
+}
