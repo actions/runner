@@ -16,28 +16,16 @@ jobs:
           # Get latest Node.js releases from official GitHub releases
           echo "Fetching latest Node.js releases..."
 
-          # Get latest v20.x release
-          LATEST_NODE20=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
-            jq -r '.[] | select(.tag_name | startswith("v20.")) | .tag_name' | \
-            head -1 | sed 's/^v//')
-
           # Get latest v24.x release  
           LATEST_NODE24=$(curl -s https://api.github.com/repos/nodejs/node/releases | \
             jq -r '.[] | select(.tag_name | startswith("v24.")) | .tag_name' | \
             head -1 | sed 's/^v//')
 
-          echo "Found Node.js releases: 20=$LATEST_NODE20, 24=$LATEST_NODE24"
+          echo "Found Node.js release: 24=$LATEST_NODE24"
 
           # Verify these versions are available in alpine_nodejs releases
           echo "Verifying availability in alpine_nodejs..."
           ALPINE_RELEASES=$(curl -s https://api.github.com/repos/actions/alpine_nodejs/releases | jq -r '.[].tag_name')
-
-          if ! echo "$ALPINE_RELEASES" | grep -q "^v$LATEST_NODE20$"; then
-            echo "::warning title=Node 20 Fallback::Node 20 version $LATEST_NODE20 not found in alpine_nodejs releases, using fallback"
-            # Fall back to latest available alpine_nodejs v20 release
-            LATEST_NODE20=$(echo "$ALPINE_RELEASES" | grep "^v20\." | head -1 | sed 's/^v//')
-            echo "Using latest available alpine_nodejs Node 20: $LATEST_NODE20"
-          fi
 
           if ! echo "$ALPINE_RELEASES" | grep -q "^v$LATEST_NODE24$"; then
             echo "::warning title=Node 24 Fallback::Node 24 version $LATEST_NODE24 not found in alpine_nodejs releases, using fallback"
@@ -47,13 +35,6 @@ jobs:
           fi
 
           # Validate that we have non-empty version numbers
-          if [ -z "$LATEST_NODE20" ] || [ "$LATEST_NODE20" = "" ]; then
-            echo "::error title=Invalid Node 20 Version::Failed to determine valid Node 20 version. Got: '$LATEST_NODE20'"
-            echo "Available alpine_nodejs releases:"
-            echo "$ALPINE_RELEASES" | head -10
-            exit 1
-          fi
-
           if [ -z "$LATEST_NODE24" ] || [ "$LATEST_NODE24" = "" ]; then
             echo "::error title=Invalid Node 24 Version::Failed to determine valid Node 24 version. Got: '$LATEST_NODE24'"
             echo "Available alpine_nodejs releases:"
@@ -62,67 +43,45 @@ jobs:
           fi
 
           # Additional validation: ensure versions match expected format (x.y.z)
-          if ! echo "$LATEST_NODE20" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error title=Invalid Node 20 Format::Node 20 version '$LATEST_NODE20' does not match expected format (x.y.z)"
-            exit 1
-          fi
-
           if ! echo "$LATEST_NODE24" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error title=Invalid Node 24 Format::Node 24 version '$LATEST_NODE24' does not match expected format (x.y.z)"
             exit 1
           fi
 
-          echo "✅ Validated Node versions: 20=$LATEST_NODE20, 24=$LATEST_NODE24"
-          echo "latest_node20=$LATEST_NODE20" >> $GITHUB_OUTPUT
+          echo "✅ Validated Node version: 24=$LATEST_NODE24"
           echo "latest_node24=$LATEST_NODE24" >> $GITHUB_OUTPUT
 
           # Check current versions in externals.sh
-          CURRENT_NODE20=$(grep "NODE20_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
           CURRENT_NODE24=$(grep "NODE24_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
 
-          echo "current_node20=$CURRENT_NODE20" >> $GITHUB_OUTPUT
           echo "current_node24=$CURRENT_NODE24" >> $GITHUB_OUTPUT
 
           # Determine if updates are needed
-          NEEDS_UPDATE20="false"
           NEEDS_UPDATE24="false"
-
-          if [ "$CURRENT_NODE20" != "$LATEST_NODE20" ]; then
-            NEEDS_UPDATE20="true"
-            echo "::notice title=Node 20 Update Available::Current: $CURRENT_NODE20 → Latest: $LATEST_NODE20"
-          fi
 
           if [ "$CURRENT_NODE24" != "$LATEST_NODE24" ]; then
             NEEDS_UPDATE24="true"
             echo "::notice title=Node 24 Update Available::Current: $CURRENT_NODE24 → Latest: $LATEST_NODE24"
           fi
 
-          if [ "$NEEDS_UPDATE20" == "false" ] && [ "$NEEDS_UPDATE24" == "false" ]; then
+          if [ "$NEEDS_UPDATE24" == "false" ]; then
             echo "::notice title=No Updates Needed::All Node.js versions are up to date"
           fi
 
-          echo "needs_update20=$NEEDS_UPDATE20" >> $GITHUB_OUTPUT
           echo "needs_update24=$NEEDS_UPDATE24" >> $GITHUB_OUTPUT
 
       - name: Update externals.sh and create PR
-        if: steps.node-versions.outputs.needs_update20 == 'true' || steps.node-versions.outputs.needs_update24 == 'true'
+        if: steps.node-versions.outputs.needs_update24 == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Final validation before making changes
-          NODE20_VERSION="${{ steps.node-versions.outputs.latest_node20 }}"
           NODE24_VERSION="${{ steps.node-versions.outputs.latest_node24 }}"
           
           echo "Final validation of versions before PR creation:"
-          echo "Node 20: '$NODE20_VERSION'"
           echo "Node 24: '$NODE24_VERSION'"
           
           # Validate versions are not empty and match expected format
-          if [ -z "$NODE20_VERSION" ] || ! echo "$NODE20_VERSION" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error title=Invalid Node 20 Version::Refusing to create PR with invalid Node 20 version: '$NODE20_VERSION'"
-            exit 1
-          fi
-          
           if [ -z "$NODE24_VERSION" ] || ! echo "$NODE24_VERSION" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error title=Invalid Node 24 Version::Refusing to create PR with invalid Node 24 version: '$NODE24_VERSION'"
             exit 1
@@ -131,26 +90,19 @@ jobs:
           echo "✅ All versions validated successfully"
 
           # Update the files
-          if [ "${{ steps.node-versions.outputs.needs_update20 }}" == "true" ]; then
-            sed -i 's/NODE20_VERSION="[^"]*"/NODE20_VERSION="'"$NODE20_VERSION"'"/' src/Misc/externals.sh
-          fi
-
           if [ "${{ steps.node-versions.outputs.needs_update24 }}" == "true" ]; then
             sed -i 's/NODE24_VERSION="[^"]*"/NODE24_VERSION="'"$NODE24_VERSION"'"/' src/Misc/externals.sh
           fi
 
           # Verify the changes were applied correctly
           echo "Verifying changes in externals.sh:"
-          grep "NODE20_VERSION=" src/Misc/externals.sh
           grep "NODE24_VERSION=" src/Misc/externals.sh
           
           # Ensure we actually have valid versions in the file
-          UPDATED_NODE20=$(grep "NODE20_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
           UPDATED_NODE24=$(grep "NODE24_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
           
-          if [ -z "$UPDATED_NODE20" ] || [ -z "$UPDATED_NODE24" ]; then
+          if [ -z "$UPDATED_NODE24" ]; then
             echo "::error title=Update Failed::Failed to properly update externals.sh"
-            echo "Updated Node 20: '$UPDATED_NODE20'"
             echo "Updated Node 24: '$UPDATED_NODE24'"
             exit 1
           fi
@@ -159,24 +111,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "<41898282+github-actions[bot]@users.noreply.github.com>"
 
-          # Build version summary for commit message and PR body (only include changed versions)
-          COMMIT_VERSIONS=""
-          PR_VERSION_LINES=""
-
-          if [ "${{ steps.node-versions.outputs.needs_update20 }}" == "true" ]; then
-            COMMIT_VERSIONS="20: $NODE20_VERSION"
-            PR_VERSION_LINES="- Node 20: ${{ steps.node-versions.outputs.current_node20 }} → $NODE20_VERSION"
-          fi
-
-          if [ "${{ steps.node-versions.outputs.needs_update24 }}" == "true" ]; then
-            if [ -n "$COMMIT_VERSIONS" ]; then
-              COMMIT_VERSIONS="$COMMIT_VERSIONS, 24: $NODE24_VERSION"
-            else
-              COMMIT_VERSIONS="24: $NODE24_VERSION"
-            fi
-            PR_VERSION_LINES="${PR_VERSION_LINES:+$PR_VERSION_LINES
-          }- Node 24: ${{ steps.node-versions.outputs.current_node24 }} → $NODE24_VERSION"
-          fi
+          # Build version summary for commit message and PR body
+          COMMIT_VERSIONS="24: $NODE24_VERSION"
+          PR_VERSION_LINES="- Node 24: ${{ steps.node-versions.outputs.current_node24 }} → $NODE24_VERSION"
 
           # Create branch and commit changes
           branch_name="chore/update-node"

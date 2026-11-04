@@ -21,7 +21,6 @@ jobs:
   dependency-status:
     runs-on: ubuntu-latest
     outputs:
-      node20-status: ${{ steps.check-versions.outputs.node20-status }}
       node24-status: ${{ steps.check-versions.outputs.node24-status }}
       dotnet-status: ${{ steps.check-versions.outputs.dotnet-status }}
       docker-status: ${{ steps.check-versions.outputs.docker-status }}
@@ -33,7 +32,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Check dependency versions
         id: check-versions
@@ -47,18 +46,11 @@ jobs:
             echo "### Node.js Versions" >> $GITHUB_STEP_SUMMARY
             
             VERSIONS_JSON=$(curl -s https://raw.githubusercontent.com/actions/node-versions/main/versions-manifest.json)
-            LATEST_NODE20=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.version | startswith("20.")) | .version' | head -1)
             LATEST_NODE24=$(echo "$VERSIONS_JSON" | jq -r '.[] | select(.version | startswith("24.")) | .version' | head -1)
             
-            CURRENT_NODE20=$(grep "NODE20_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
             CURRENT_NODE24=$(grep "NODE24_VERSION=" src/Misc/externals.sh | cut -d'"' -f2)
             
-            NODE20_STATUS="✅ up-to-date"
             NODE24_STATUS="✅ up-to-date"
-            
-            if [ "$CURRENT_NODE20" != "$LATEST_NODE20" ]; then
-              NODE20_STATUS="⚠️ outdated"
-            fi
             
             if [ "$CURRENT_NODE24" != "$LATEST_NODE24" ]; then
               NODE24_STATUS="⚠️ outdated"
@@ -66,11 +58,9 @@ jobs:
             
             echo "| Version | Current | Latest | Status |" >> $GITHUB_STEP_SUMMARY
             echo "|---------|---------|--------|--------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Node 20 | $CURRENT_NODE20 | $LATEST_NODE20 | $NODE20_STATUS |" >> $GITHUB_STEP_SUMMARY
             echo "| Node 24 | $CURRENT_NODE24 | $LATEST_NODE24 | $NODE24_STATUS |" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
-            echo "node20-status=$NODE20_STATUS" >> $GITHUB_OUTPUT
             echo "node24-status=$NODE24_STATUS" >> $GITHUB_OUTPUT
           fi
 

@@ -975,15 +975,6 @@ namespace GitHub.Runner.Worker
             // Job level annotations
             Global.JobAnnotations = new List<Annotation>();
 
-            // Track Node.js 20 actions for deprecation warning
-            Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // Track actions upgraded from Node.js 20 to Node.js 24
-            Global.UpgradedToNode24Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // Track actions stuck on Node.js 20 due to ARM32 (separate from general deprecation)
-            Global.Arm32Node20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
             // Job-scoped aggregate of artifact subjects declared via $GITHUB_ARTIFACTS.
             Global.ArtifactSubjects = new Dictionary<string, ArtifactSubject>(StringComparer.Ordinal);
 
