@@ -32,6 +32,7 @@ namespace GitHub.Runner.Listener
     public sealed class Runner : RunnerService, IRunner
     {
         private IMessageListener _listener;
+        private DrainRequest _drainRequest;
         private ITerminal _term;
         private bool _inConfigStage;
         private ManualResetEvent _completedCommand = new(false);
@@ -328,6 +329,14 @@ namespace GitHub.Runner.Listener
                     var returnJobResultForHosted = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED"));
 
                     // Run the runner interactively or as service
+                    string drainFile = command.GetDrainFile();
+                    if (!settings.Ephemeral && (command.DrainOnSigusr1 || !string.IsNullOrEmpty(drainFile)))
+                    {
+                        _term.WriteError("Drain options require a runner configured with --ephemeral.");
+                        return Constants.Runner.ReturnCode.TerminatedError;
+                    }
+                    _drainRequest = new DrainRequest(
+                        string.IsNullOrEmpty(drainFile) ? null : Path.GetFullPath(drainFile), command.DrainOnSigusr1);
                     return await ExecuteRunnerAsync(settings, command.RunOnce || settings.Ephemeral || returnJobResultForHosted, returnJobResultForHosted);
                 }
                 else
@@ -338,6 +347,7 @@ namespace GitHub.Runner.Listener
             }
             finally
             {
+                _drainRequest?.Dispose();
                 _authMigrationClaimsCheckTokenSource?.Cancel();
                 _authMigrationTelemetryTokenSource?.Cancel();
                 HostContext.AuthMigrationChanged -= HandleAuthMigrationChanged;
@@ -530,6 +540,10 @@ namespace GitHub.Runner.Listener
 
                     jobDispatcher.JobStatus += _listener.OnJobStatus;
 
+                    // Drain state survives session restarts. After acquisition, keep job
+                    // cancellation polling alive until RunOnceJobCompleted fires.
+                    _listener.SetIdleDrainCheck(() => settings.Ephemeral && !runOnceJobReceived && _drainRequest.IsRequested);
+
                     while (!HostContext.RunnerShutdownToken.IsCancellationRequested)
                     {
                         // Check if we need to restart the session and can do so (job dispatcher not busy)
@@ -622,6 +636,11 @@ namespace GitHub.Runner.Listener
                             }
 
                             message = await getNextMessage; //get next message
+                            if (message == null && settings.Ephemeral && !runOnceJobReceived && _drainRequest.IsRequested)
+                            {
+                                Trace.Info("Idle drain completed without interrupting a job acquisition.");
+                                return Constants.Runner.ReturnCode.Success;
+                            }
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
@@ -1153,6 +1172,10 @@ Options:
  --version  Prints the runner version
  --commit   Prints the runner commit
  --check    Check the runner's network connectivity with GitHub server
+
+Run Options (ephemeral runners only):
+ --drain-on-sigusr1     Treat SIGUSR1 as a cooperative drain request (Linux/macOS)
+ --drain-file path      Watch an optional supervisor-owned drain file (no default)
 
 Config Options:
  --unattended           Disable interactive prompts for missing arguments. Defaults will be used for missing options
