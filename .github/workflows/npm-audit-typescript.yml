@@ -11,7 +11,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
       - name: NPM install and audit fix with TypeScript auto-repair
         working-directory: src/Misc/expressionFunc/hashFiles
         run: |
@@ -67,8 +67,8 @@ jobs:
             # Common fix 2: If that doesn't work, try installing a specific known-good version
             if ! npm run build 2>/dev/null; then
               echo "Trying specific @types/node version..."
-              # Try Node 20 compatible version
-              npm install --save-dev @types/node@^20.0.0
+              # Try Node 24 compatible version
+              npm install --save-dev @types/node@^24.0.0
             fi
             
             # Common fix 3: Clear node_modules and reinstall if still failing
@@ -180,7 +180,7 @@ jobs:
           **Automated Fix Strategy**:
           1. Run npm audit fix with proper error handling
           2. Update @types/node to latest compatible version
-          3. Try Node 20 specific @types/node version if needed
+          3. Try Node 24 specific @types/node version if needed
           4. Clean reinstall dependencies if conflicts persist
           5. Update TypeScript compiler if necessary
 
@@ -202,7 +202,7 @@ jobs:
           **Automated Fix Strategy**:
           1. Run npm audit fix with proper error handling
           2. Update @types/node to latest compatible version
-          3. Try Node 20 specific @types/node version if needed
+          3. Try Node 24 specific @types/node version if needed
           4. Clean reinstall dependencies if conflicts persist
           5. Update TypeScript compiler if necessary
 
