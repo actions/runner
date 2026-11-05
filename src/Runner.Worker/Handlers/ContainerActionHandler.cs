@@ -266,10 +266,16 @@ namespace GitHub.Runner.Worker.Handlers
                 using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
                 using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
                 {
+                    var errorCountBeforeRun = ExecutionContext.GetErrorCount();
                     var runExitCode = await dockerManager.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
                     ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
                     if (runExitCode != 0)
                     {
+                        if (ExecutionContext.GetErrorCount() == errorCountBeforeRun)
+                        {
+                            ExecutionContext.Error($"Docker Action run completed with exit code {runExitCode}.");
+                        }
+
                         ExecutionContext.Result = TaskResult.Failed;
                     }
                 }
