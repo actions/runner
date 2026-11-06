@@ -20,7 +20,9 @@ namespace GitHub.Actions.WorkflowParser
 			ArtifactMetadata = copy.ArtifactMetadata;
             Attestations = copy.Attestations;
             Checks = copy.Checks;
+            CodeQuality = copy.CodeQuality;
             Contents = copy.Contents;
+            CopilotRequests = copy.CopilotRequests;
             Deployments = copy.Deployments;
             Issues = copy.Issues;
             Discussions = copy.Discussions;
@@ -45,7 +47,10 @@ namespace GitHub.Actions.WorkflowParser
 			ArtifactMetadata = permissionLevel;
             Attestations = includeAttestations ? permissionLevel : PermissionLevel.NoAccess;
             Checks = permissionLevel;
+            CodeQuality = permissionLevel;
             Contents = permissionLevel;
+            // This scope only supports write or none.
+            CopilotRequests = permissionLevel == PermissionLevel.Write ? PermissionLevel.Write : PermissionLevel.NoAccess;
             Deployments = permissionLevel;
             Issues = permissionLevel;
             Discussions = permissionLevel;
@@ -83,7 +88,9 @@ namespace GitHub.Actions.WorkflowParser
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("artifact-metadata", (left.ArtifactMetadata, right.ArtifactMetadata)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("attestations", (left.Attestations, right.Attestations)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("checks", (left.Checks, right.Checks)),
+                new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("code-quality", (left.CodeQuality, right.CodeQuality)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("contents", (left.Contents, right.Contents)),
+                new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("copilot-requests", (left.CopilotRequests, right.CopilotRequests)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("deployments", (left.Deployments, right.Deployments)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("discussions", (left.Discussions, right.Discussions)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("issues", (left.Issues, right.Issues)),
@@ -127,8 +134,22 @@ namespace GitHub.Actions.WorkflowParser
             set;
         }
 
+        [DataMember(Name = "code-quality", EmitDefaultValue = false)]
+        public PermissionLevel CodeQuality
+        {
+            get;
+            set;
+        }
+
         [DataMember(Name = "contents", EmitDefaultValue = false)]
         public PermissionLevel Contents
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Name = "copilot-requests", EmitDefaultValue = false)]
+        public PermissionLevel CopilotRequests
         {
             get;
             set;

@@ -1,4 +1,4 @@
-﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 using System.Collections.Generic;
@@ -1911,8 +1911,14 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     case "checks":
                         permissions.Checks = permissionLevel;
                         break;
+                    case "code-quality":
+                        permissions.CodeQuality = permissionLevel;
+                        break;
                     case "contents":
                         permissions.Contents = permissionLevel;
+                        break;
+                    case "copilot-requests":
+                        permissions.CopilotRequests = permissionLevel;
                         break;
                     case "deployments":
                         permissions.Deployments = permissionLevel;
