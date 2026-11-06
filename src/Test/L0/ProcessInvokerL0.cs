@@ -8,6 +8,7 @@ using Xunit;
 using System.Threading.Channels;
 using GitHub.Runner.Sdk;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -510,6 +511,88 @@ namespace GitHub.Runner.Common.Tests
                 }
             }
         }
+#endif
+
+#if OS_WINDOWS
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task KeepsItsConsoleAfterSignallingACancelledProcess()
+        {
+            // Without a console after the signal, every process started later
+            // gets a new console window of its own (actions/runner#4822).
+            using (TestHostContext hc = new(this))
+            using (var tokenSource = new CancellationTokenSource())
+            using (var holder = HiddenConsoleHolder())
+            {
+                bool borrowed = ConsoleProcessCount() == 0;
+                if (borrowed)
+                {
+                    // The holder's console exists only once cmd.exe has started.
+                    bool attached = false;
+                    for (int tries = 0; tries < 50 && !attached; tries++)
+                    {
+                        attached = AttachConsole(holder.Id);
+                        if (!attached)
+                        {
+                            await Task.Delay(100);
+                        }
+                    }
+
+                    Assert.True(attached, $"could not attach to the hidden console: {Marshal.GetLastWin32Error()}");
+                }
+
+                try
+                {
+                    var processInvoker = new ProcessInvokerWrapper();
+                    processInvoker.Initialize(hc);
+                    Task execTask = processInvoker.ExecuteAsync("", "cmd.exe", "/c \"ping -n 20 127.0.0.1 >nul\"", null, false, null, false, null,
+                                                                inheritConsoleHandler: true,
+                                                                cancellationToken: tokenSource.Token);
+                    await Task.Delay(500);
+                    tokenSource.Cancel();
+                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execTask);
+
+                    Assert.True(ConsoleProcessCount() > 0, "the process lost its console when it signalled the cancelled one");
+                }
+                finally
+                {
+                    if (borrowed)
+                    {
+                        FreeConsole();
+                    }
+
+                    holder.Kill();
+                }
+            }
+        }
+
+        // A process holding a hidden console, for a test host started without one.
+        private static Process HiddenConsoleHolder()
+        {
+            var start = new ProcessStartInfo("cmd.exe", "/c \"ping -n 60 127.0.0.1 >nul\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+            };
+            return Process.Start(start);
+        }
+
+        private static int ConsoleProcessCount()
+        {
+            return (int)GetConsoleProcessList(new uint[1], 1);
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool AttachConsole(int processId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool FreeConsole();
 #endif
     }
 }
