@@ -53,6 +53,8 @@ namespace GitHub.Runner.Worker
         private Task _diskSpaceCheckTask = null;
         private CancellationTokenSource _serviceConnectivityCheckToken = new();
         private Task _serviceConnectivityCheckTask = null;
+        private CancellationTokenSource _brokerWebSocketProbeToken = new();
+        private Task<BrokerWebSocketProbeResult> _brokerWebSocketProbeTask = null;
         private IDapDebugger _dapDebugger;
 
         // Download all required actions.
@@ -639,6 +641,15 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Start checking service connectivity in background.");
                     _serviceConnectivityCheckTask = CheckServiceConnectivityAsync(context, _serviceConnectivityCheckToken.Token);
 
+                    // Temporary probe: gauge websocket compatibility with the broker listener,
+                    // only when run-service sends down a probe URL via the job message.
+                    var brokerWebSocketProbeUrl = context.Global.Variables?.Get(WellKnownDistributedTaskVariables.RunnerBrokerWebSocketProbeUrl);
+                    if (!string.IsNullOrEmpty(brokerWebSocketProbeUrl))
+                    {
+                        Trace.Info($"Start checking runner websocket connectivity in background.");
+                        _brokerWebSocketProbeTask = CheckBrokerLongPollWebSocketAsync(brokerWebSocketProbeUrl, message, _brokerWebSocketProbeToken.Token);
+                    }
+
                     // Start the DAP debugger and wait for a client connection inside
                     // "Set up job" so the step stays in-progress while we wait.
                     if (jobContext.Global.Debugger?.Enabled == true)
@@ -991,37 +1002,26 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Read dates from server variables with hardcoded fallbacks
-                    var node24DefaultDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node24DefaultDateVariable);
-                    var node24DefaultDate = string.IsNullOrEmpty(node24DefaultDateRaw) ? Constants.Runner.NodeMigration.Node24DefaultDate : node24DefaultDateRaw;
-                    var node20RemovalDateRaw = context.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
-                    var node20RemovalDate = string.IsNullOrEmpty(node20RemovalDateRaw) ? Constants.Runner.NodeMigration.Node20RemovalDate : node20RemovalDateRaw;
-
-                    // Add deprecation warning annotation for Node.js 20 actions (Phase 1 - actions still running on node20)
-                    if (context.Global.DeprecatedNode20Actions?.Count > 0)
+                    // Collect runner websocket probe result
+                    if (_brokerWebSocketProbeTask != null)
                     {
-                        var sortedActions = context.Global.DeprecatedNode20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
-                        var actionsList = string.Join(", ", sortedActions);
-                        var deprecationMessage = $"Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: {actionsList}. Actions will be forced to run with Node.js 24 by default starting {node24DefaultDate}. Node.js 20 will be removed from the runner on {node20RemovalDate}. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
-                        context.Warning(deprecationMessage);
-                    }
-
-                    // Add annotation for actions upgraded from Node.js 20 to Node.js 24 (Phase 2/3)
-                    if (context.Global.UpgradedToNode24Actions?.Count > 0)
-                    {
-                        var sortedActions = context.Global.UpgradedToNode24Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
-                        var actionsList = string.Join(", ", sortedActions);
-                        var upgradeMessage = $"Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: {actionsList}. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
-                        context.Warning(upgradeMessage);
-                    }
-
-                    // Add annotation for ARM32 actions stuck on Node.js 20 (ARM32 can't run node24)
-                    if (context.Global.Arm32Node20Actions?.Count > 0)
-                    {
-                        var sortedActions = context.Global.Arm32Node20Actions.OrderBy(a => a, StringComparer.OrdinalIgnoreCase);
-                        var actionsList = string.Join(", ", sortedActions);
-                        var arm32Message = $"The following actions are running on Node.js 20 because Node.js 24 is not available on Linux ARM32: {actionsList}. Linux ARM32 runners are deprecated and will no longer be supported after {node20RemovalDate}. Please migrate to a supported platform. For more information see: {Constants.Runner.NodeMigration.Node20DeprecationUrl}";
-                        context.Warning(arm32Message);
+                        _brokerWebSocketProbeToken.Cancel();
+                        try
+                        {
+                            var probeResult = await _brokerWebSocketProbeTask;
+                            if (probeResult != null)
+                            {
+                                var telemetryData = StringUtil.ConvertToJson(probeResult, Formatting.None);
+                                Trace.Info($"Runner websocket probe result: {telemetryData}");
+                                context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"broker_websocket_telemetry:{telemetryData}" });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to check runner websocket connectivity.");
+                            Trace.Error(ex);
+                            context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = $"Fail to check runner websocket connectivity. {ex.Message}" });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -1258,6 +1258,35 @@ namespace GitHub.Runner.Worker
             var telemetryData = StringUtil.ConvertToJson(testResult, Formatting.None);
             Trace.Verbose($"Connectivity check result: {telemetryData}");
             context.Global.JobTelemetry.Add(new JobTelemetry() { Type = JobTelemetryType.ConnectivityCheck, Message = telemetryData });
+        }
+
+        // Temporary probe: connects to the broker listener websocket using the job's
+        // SystemVssConnection credential and holds/reconnects until cancelled. Never throws.
+        private async Task<BrokerWebSocketProbeResult> CheckBrokerLongPollWebSocketAsync(
+            string probeUrl,
+            Pipelines.AgentJobRequestMessage message,
+            CancellationToken token)
+        {
+            try
+            {
+                ServiceEndpoint systemConnection = message.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+
+                var brokerServer = HostContext.CreateService<IBrokerServer>();
+                await brokerServer.ConnectAsync(new Uri(probeUrl), jobServerCredential);
+
+                return await brokerServer.RunLongPollWebSocketProbeAsync(token);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info("Exception caught while setting up runner websocket probe.");
+                Trace.Error(ex);
+                return new BrokerWebSocketProbeResult
+                {
+                    Connected = false,
+                    Errors = new List<string> { ex.Message },
+                };
+            }
         }
 
         private Dictionary<int, Process> SnapshotProcesses()

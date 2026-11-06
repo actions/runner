@@ -38,15 +38,15 @@
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.70.1",
-    "@typescript-eslint/parser": "^8.70.1",
+    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.1",
     "@vercel/ncc": "^0.45.0",
     "eslint": "^10.8.1",
     "eslint-plugin-github": "^6.1.2",
     "eslint-plugin-prettier": "^5.0.0",
     "globals": "^17.7.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.5.1",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.0.3",
     "typescript": "^6.0.3"
   }

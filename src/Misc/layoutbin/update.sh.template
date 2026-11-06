@@ -164,10 +164,34 @@ if [[ "$currentplatform" == 'darwin'  && $restartinteractiverunner -eq 0 ]]; the
                 if [[ ! -e "$path" ]]
                 then
                     date "+[%F %T-%4N] Creating fallback node at path $path" >> "$logfile" 2>&1
-                    mkdir -p "$trimmedpath"
-                    cp "$rootfolder/externals/$nodever/bin/node" "$path"
+                    # The new package may no longer bundle the service's Node version.
+                    fallbacknode="$rootfolder/externals.$existrunnerversion/RunnerService.$nodever"
+                    if [[ ! -f "$fallbacknode" ]]
+                    then
+                        fallbacknode="$rootfolder/externals.$existrunnerversion/$nodever/bin/node"
+                    fi
+                    if [[ ! -f "$fallbacknode" ]]
+                    then
+                        fallbacknode="$rootfolder/externals/$nodever/bin/node"
+                    fi
+                    if ! mkdir -p "$trimmedpath" >> "$logfile" 2>&1 || ! cp "$fallbacknode" "$path" >> "$logfile" 2>&1
+                    then
+                        date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to restore service executable from $fallbacknode to $path" >> "$logfile" 2>&1
+                        date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to restore service executable from $fallbacknode to $path" >> "$telemetryfile" 2>&1
+                        mv -fv "$logfile" "$logfile.failed"
+                        exit 1
+                    fi
                 else
                     date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
+                fi
+                # Keep only the active service's executable for the next update's repair.
+                # Its original version directory may be deleted before this script runs.
+                if ! cp "$path" "$rootfolder/externals/RunnerService.$nodever" >> "$logfile" 2>&1
+                then
+                    date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to preserve service executable $path" >> "$logfile" 2>&1
+                    date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to preserve service executable $path" >> "$telemetryfile" 2>&1
+                    mv -fv "$logfile" "$logfile.failed"
+                    exit 1
                 fi
             else
                 date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
@@ -204,7 +228,7 @@ fi
 
 date "+[%F %T-%4N] Update succeed" >> "$logfile"
 
-touch update.finished
+touch "$rootfolder/update.finished"
 date "+[%F %T-%4N] update.finished file creation succeed" >> "$logfile"
 
 # rename the update log file with %logfile%.succeed/.failed/succeedneedrestart

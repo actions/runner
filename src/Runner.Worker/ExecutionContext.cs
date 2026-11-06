@@ -488,6 +488,7 @@ namespace GitHub.Runner.Worker
         /// <summary>
         /// An embedded execution context shares the same record ID, record name, logger,
         /// but NOT the cancellation token (just like workflow steps contexts - they don't share a token)
+        /// When enabled, its GitHub context is a shallow copy of the containing execution context's GitHub context.
         /// </summary>
         public IExecutionContext CreateEmbeddedChild(
             string scopeName,
@@ -497,7 +498,17 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> intraActionState = null,
             string siblingScopeName = null)
         {
-            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, embeddedIssueCollector: _embeddedIssueCollector, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout(), recordOrder: _record.Order);
+            var child = Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, embeddedIssueCollector: _embeddedIssueCollector, cancellationTokenSource: null, intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName, timeout: GetRemainingTimeout(), recordOrder: _record.Order);
+
+            if (Global.Variables.GetBoolean(Constants.Runner.Features.FixEmbeddedGitHubContext) == true)
+            {
+                // Background actions and nested composites should have a GitHub context separate from the root.
+                var gitHubContext = ExpressionValues["github"] as GitHubContext;
+                ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
+                child.ExpressionValues["github"] = gitHubContext.ShallowCopy();
+            }
+
+            return child;
         }
 
         public void Start(string currentOperation = null)
@@ -963,15 +974,6 @@ namespace GitHub.Runner.Worker
 
             // Job level annotations
             Global.JobAnnotations = new List<Annotation>();
-
-            // Track Node.js 20 actions for deprecation warning
-            Global.DeprecatedNode20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // Track actions upgraded from Node.js 20 to Node.js 24
-            Global.UpgradedToNode24Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // Track actions stuck on Node.js 20 due to ARM32 (separate from general deprecation)
-            Global.Arm32Node20Actions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Job-scoped aggregate of artifact subjects declared via $GITHUB_ARTIFACTS.
             Global.ArtifactSubjects = new Dictionary<string, ArtifactSubject>(StringComparer.Ordinal);

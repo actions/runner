@@ -76,6 +76,16 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
+        /// <summary>
+        /// indicates session is created with broker service.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool BrokerSession
+        {
+            get;
+            set;
+        }
+
         [DataMember(EmitDefaultValue = false, IsRequired = false)]
         public BrokerMigrationMessage BrokerMigrationMessage
         {

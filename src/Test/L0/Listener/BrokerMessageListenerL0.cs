@@ -7,6 +7,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using Moq;
 using Xunit;
 
@@ -41,10 +42,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Tracing trace = tc.GetTrace();
 
                 // Arrange.
-                var expectedSession = new TaskAgentSession();
+                var expectedSession = JsonUtility.FromString<TaskAgentSession>($"{{\"sessionId\":\"{Guid.NewGuid()}\"}}");
                 _brokerServer
                     .Setup(x => x.CreateSessionAsync(
-                        It.Is<TaskAgentSession>(y => y != null),
+                        It.Is<TaskAgentSession>(y => y != null && y.BrokerSession),
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
@@ -61,8 +62,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.Equal(CreateSessionResult.Success, result);
                 _brokerServer
                    .Verify(x => x.CreateSessionAsync(
-                       It.Is<TaskAgentSession>(y => y != null),
+                       It.Is<TaskAgentSession>(y => y != null && y.BrokerSession),
                        tokenSource.Token), Times.Once());
+
+                await listener.DeleteSessionAsync();
+                _brokerServer.Verify(x => x.DeleteSessionAsync(expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
             }
         }
 

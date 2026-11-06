@@ -442,12 +442,19 @@ namespace GitHub.Runner.Listener
                 }
 
                 bool usedMigratedSettings = false;
+                bool allowMessageListenerFallback = true;
 
                 if (migratedSettings != null)
                 {
                     // Try to create session with migrated settings first
                     Trace.Info("Attempting to create session using migrated settings");
                     _listener = GetMessageListener(migratedSettings, isMigratedSettings: true);
+
+                    // We won't fallback to original MessageListener on github.com anymore
+                    if (_listener is BrokerMessageListener && migratedSettings.IsHostedServer)
+                    {
+                        allowMessageListenerFallback = false;
+                    }
 
                     try
                     {
@@ -458,12 +465,23 @@ namespace GitHub.Runner.Listener
                             settings = migratedSettings; // Use migrated settings for the rest of the process
                             usedMigratedSettings = true;
                         }
+                        else if (!allowMessageListenerFallback)
+                        {
+                            if (createSessionResult == CreateSessionResult.SessionConflict)
+                            {
+                                return Constants.Runner.ReturnCode.SessionConflict;
+                            }
+                            else if (createSessionResult == CreateSessionResult.Failure)
+                            {
+                                return Constants.Runner.ReturnCode.TerminatedError;
+                            }
+                        }
                         else
                         {
                             Trace.Warning($"Failed to create session with migrated settings: {createSessionResult}");
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (allowMessageListenerFallback)
                     {
                         Trace.Error($"Exception when creating session with migrated settings: {ex}");
                     }
@@ -688,7 +706,7 @@ namespace GitHub.Runner.Listener
                                 else
                                 {
                                     var messageRef = StringUtil.ConvertFromJson<RunnerJobRequestRef>(message.Body);
-                                    
+
                                     // Acknowledge (best-effort)
                                     if (messageRef.ShouldAcknowledge) // Temporary feature flag
                                     {
