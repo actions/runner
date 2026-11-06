@@ -237,6 +237,35 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 
 
+        [Theory]
+        [InlineData(4094)]
+        [InlineData(4095)]
+        [InlineData(4096)]
+        [InlineData(4097)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AddIssue_TruncationDoesNotSplitSurrogatePair(int prefixLength)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var ec = CreateIssueContext(hc);
+                var issue = new Issue
+                {
+                    Type = IssueType.Error,
+                    Message = new string('a', prefixLength) + "😀suffix"
+                };
+
+                ec.AddIssue(issue, ExecutionContextLogOptions.Default);
+
+                var expected = prefixLength + 2 <= 4096
+                    ? new string('a', prefixLength) + "😀"
+                    : new string('a', Math.Min(prefixLength, 4096));
+
+                Assert.Equal(expected, issue.Message);
+                _ = new System.Text.UTF8Encoding(false, true).GetBytes(issue.Message);
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -841,6 +870,37 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Theory]
+        [InlineData(254)]
+        [InlineData(255)]
+        [InlineData(256)]
+        [InlineData(257)]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PublishStepTelemetry_TruncationDoesNotSplitSurrogatePair(int prefixLength)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var ec = CreateIssueContext(hc);
+                ec.Start();
+                ec.StepTelemetry.Type = "node20";
+                ec.AddIssue(
+                    new Issue { Type = IssueType.Error, Message = new string('a', prefixLength) + "😀suffix" },
+                    ExecutionContextLogOptions.Default);
+
+                ec.Complete();
+
+                var telemetry = Assert.Single(ec.Global.StepsTelemetry);
+                var message = Assert.Single(telemetry.ErrorMessages);
+                var expected = prefixLength + 2 <= 256
+                    ? new string('a', prefixLength) + "😀"
+                    : new string('a', Math.Min(prefixLength, 256));
+
+                Assert.Equal(expected, message);
+                _ = new System.Text.UTF8Encoding(false, true).GetBytes(message);
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -1099,6 +1159,35 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Assert.
                 Assert.Equal(0, ec.Global.StepsResult.Count);
             }
+        }
+
+
+        private Runner.Worker.ExecutionContext CreateIssueContext(TestHostContext hc)
+        {
+            var jobRequest = new Pipelines.AgentJobRequestMessage(
+                new TaskOrchestrationPlanReference(),
+                new TimelineReference(),
+                Guid.NewGuid(),
+                "job",
+                "job",
+                null,
+                null,
+                null,
+                new Dictionary<string, VariableValue>(),
+                new List<MaskHint>(),
+                new Pipelines.JobResources(),
+                new DictionaryContextData(),
+                new Pipelines.WorkspaceOptions(),
+                new List<Pipelines.ActionStep>(),
+                null, null, null, null, null);
+            jobRequest.ContextData["github"] = new DictionaryContextData();
+
+            hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+
+            var ec = new Runner.Worker.ExecutionContext();
+            ec.Initialize(hc);
+            ec.InitializeJob(jobRequest, CancellationToken.None);
+            return ec;
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
