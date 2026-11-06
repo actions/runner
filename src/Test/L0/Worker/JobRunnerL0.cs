@@ -175,5 +175,84 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task AllowFailureConvertsFailedToNeutral()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>()))
+                    .Throws(new Exception());
+
+                var message = GetMessage(JobRequestMessageTypes.RunnerJobRequest);
+                message.AllowFailure = true;
+
+                await _jobRunner.RunAsync(message, _tokenSource.Token);
+
+                Assert.Equal(TaskResult.Neutral, _jobEc.Result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task AllowFailureDoesNotAffectSucceeded()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var message = GetMessage(JobRequestMessageTypes.RunnerJobRequest);
+                message.AllowFailure = true;
+
+                await _jobRunner.RunAsync(message, _tokenSource.Token);
+
+                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task AllowFailureEnvVarConvertsFailedToNeutral()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>()))
+                    .Throws(new Exception());
+
+                var message = GetMessage(JobRequestMessageTypes.RunnerJobRequest);
+
+                Environment.SetEnvironmentVariable("ACTIONS_ALLOW_FAILURE", "true");
+                try
+                {
+                    await _jobRunner.RunAsync(message, _tokenSource.Token);
+                    Assert.Equal(TaskResult.Neutral, _jobEc.Result);
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("ACTIONS_ALLOW_FAILURE", null);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task AllowFailureWithPipelineAgentJobRequest()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>()))
+                    .Throws(new Exception());
+
+                var message = GetMessage(JobRequestMessageTypes.PipelineAgentJobRequest);
+                message.AllowFailure = true;
+
+                await _jobRunner.RunAsync(message, _tokenSource.Token);
+
+                Assert.Equal(TaskResult.Neutral, _jobEc.Result);
+            }
+        }
     }
 }
