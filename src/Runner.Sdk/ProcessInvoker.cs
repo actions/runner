@@ -871,6 +871,14 @@ namespace GitHub.Runner.Sdk
 #if OS_LINUX
         private void WriteProcessOomScoreAdj(int processId, int oomScoreAdj)
         {
+            var disableOomScoreAdj = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_DISABLE_OOM_SCORE_ADJ");
+            if (string.Equals(disableOomScoreAdj, "true", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(disableOomScoreAdj, "1", StringComparison.OrdinalIgnoreCase))
+            {
+                Trace.Verbose("Skipping oom_score_adj write: ACTIONS_RUNNER_DISABLE_OOM_SCORE_ADJ is set (unprivileged container).");
+                return;
+            }
+
             try
             {
                 string procFilePath = $"/proc/{processId}/oom_score_adj";

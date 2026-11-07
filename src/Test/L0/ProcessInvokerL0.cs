@@ -510,6 +510,53 @@ namespace GitHub.Runner.Common.Tests
                 }
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task OomScoreAdjIsSkipped_WhenDisableEnvVarSet()
+        {
+            // Unprivileged containers (e.g. ARC runners) cannot write to /proc/<pid>/oom_score_adj.
+            // ACTIONS_RUNNER_DISABLE_OOM_SCORE_ADJ suppresses the write entirely so no exception is raised.
+            string testProcPath = $"/proc/{Process.GetCurrentProcess().Id}/oom_score_adj";
+            if (File.Exists(testProcPath))
+            {
+                Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DISABLE_OOM_SCORE_ADJ", "true");
+                try
+                {
+                    using (TestHostContext hc = new(this))
+                    using (var tokenSource = new CancellationTokenSource())
+                    {
+                        Tracing trace = hc.GetTrace();
+                        var processInvoker = new ProcessInvokerWrapper();
+                        processInvoker.Initialize(hc);
+                        int oomScoreAdj = -9999;
+                        processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                        {
+                            oomScoreAdj = int.Parse(e.Data);
+                            tokenSource.Cancel();
+                        };
+                        try
+                        {
+                            // The child process should inherit the parent's oom_score_adj unchanged (not 500).
+                            int parentOomScore = int.Parse(File.ReadAllText(testProcPath).Trim());
+                            var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", null, false, null, false, null, false, false,
+                                                                highPriorityProcess: false,
+                                                                cancellationToken: tokenSource.Token);
+                            Assert.Equal(parentOomScore, oomScoreAdj);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            trace.Info("Caught expected OperationCanceledException");
+                        }
+                    }
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_DISABLE_OOM_SCORE_ADJ", null);
+                }
+            }
+        }
 #endif
     }
 }
