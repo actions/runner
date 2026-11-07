@@ -395,7 +395,7 @@ namespace GitHub.Runner.Worker
                     if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
                     {
                         var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
-                        if (string.IsNullOrEmpty(line))
+                        if (string.IsNullOrEmpty(split[0]))
                         {
                             throw new Exception($"Invalid format '{line}'. Name must not be empty");
                         }
