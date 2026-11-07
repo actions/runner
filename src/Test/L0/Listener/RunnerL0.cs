@@ -126,7 +126,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     .Returns(Task.CompletedTask);
                 _messageListener.Setup(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()))
                     .Returns(Task.CompletedTask);
-                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()))
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>(), It.IsAny<string>()))
                     .Callback(() =>
                     {
 
@@ -164,7 +164,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.True(!runnerTask.IsFaulted, runnerTask.Exception?.ToString());
                     Assert.True(runnerTask.IsCanceled);
 
-                    _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Once(),
+                    _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Once(),
                          $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
                     _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                     _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
@@ -399,7 +399,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var runOnceJobCompleted = new TaskCompletionSource<TaskResult>();
                 _jobDispatcher.Setup(x => x.RunOnceJobCompleted)
                     .Returns(runOnceJobCompleted);
-                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()))
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>(), It.IsAny<string>()))
                     .Callback(() =>
                     {
                         runOnceJobCompleted.TrySetResult(TaskResult.Succeeded);
@@ -428,7 +428,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true, It.IsAny<string>()), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
@@ -503,7 +503,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var runOnceJobCompleted = new TaskCompletionSource<TaskResult>();
                 _jobDispatcher.Setup(x => x.RunOnceJobCompleted)
                     .Returns(runOnceJobCompleted);
-                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()))
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>(), It.IsAny<string>()))
                     .Callback(() =>
                     {
                         runOnceJobCompleted.TrySetResult(TaskResult.Succeeded);
@@ -532,7 +532,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once(),
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true, It.IsAny<string>()), Times.Once(),
                      $"{nameof(_jobDispatcher.Object.Run)} was not invoked.");
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
@@ -623,7 +623,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 }
 
                 _updater.Verify(x => x.SelfUpdate(It.IsAny<AgentRefreshMessage>(), It.IsAny<IJobDispatcher>(), false, It.IsAny<CancellationToken>()), Times.Once);
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Never());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true, It.IsAny<string>()), Times.Never());
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
@@ -853,7 +853,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true, It.IsAny<string>()), Times.Once());
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
@@ -954,7 +954,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true, "999"), Times.Once());
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
@@ -1047,7 +1047,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 }
 
                 _messageListener.Verify(x => x.AcknowledgeMessageAsync("999", It.IsAny<CancellationToken>()), Times.Once());
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>()), Times.Never());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), It.IsAny<bool>(), It.IsAny<string>()), Times.Never());
                 _runServer.Verify(x => x.GetJobMessageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never());
                 _credentialManager.Verify(x => x.LoadCredentials(true), Times.Never());
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
@@ -1128,7 +1128,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runServer.Setup(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()))
                     .Returns(Task.FromResult(CreateJobRequestMessage("test")));
                 _credentialManager.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
-                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), false))
+                _jobDispatcher.Setup(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), false, It.IsAny<string>()))
                     .Callback(() =>
                     {
                         signalWorkerStarted.Release();
@@ -1152,7 +1152,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
                 Assert.True(runnerTask.IsCanceled);
                 _messageListener.Verify(x => x.AcknowledgeMessageAsync("999", It.IsAny<CancellationToken>()), Times.Once());
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), false), Times.Once());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), false, It.IsAny<string>()), Times.Once());
                 _runServer.Verify(x => x.GetJobMessageAsync("999", "github", It.IsAny<CancellationToken>()), Times.Once());
                 _credentialManager.Verify(x => x.LoadCredentials(true), Times.Once());
                 _configurationManager.Verify(x => x.DeleteLocalRunnerConfig(), Times.Never());
@@ -1270,7 +1270,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.Equal(Constants.Runner.ReturnCode.Success, await runnerTask);
                 }
 
-                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true), Times.Once());
+                _jobDispatcher.Verify(x => x.Run(It.IsAny<Pipelines.AgentJobRequestMessage>(), true, It.IsAny<string>()), Times.Once());
                 _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
                 _messageListener.Verify(x => x.GetNextMessageAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeast(2));
