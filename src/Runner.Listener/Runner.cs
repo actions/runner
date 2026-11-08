@@ -113,6 +113,7 @@ namespace GitHub.Runner.Listener
                     var pat = command.GetGitHubPersonalAccessToken(required: true);
                     var checkExtensions = HostContext.GetService<IExtensionManager>().GetExtensions<ICheckExtension>();
                     var sortedChecks = checkExtensions.OrderBy(x => x.Order);
+                    var hasFailure = false;
                     foreach (var check in sortedChecks)
                     {
                         _term.WriteLine($"**********************************************************************************************************************");
@@ -122,6 +123,7 @@ namespace GitHub.Runner.Listener
                         var result = await check.RunCheck(url, pat);
                         if (!result)
                         {
+                            hasFailure = true;
                             _term.WriteLine($"**                                                                                                                  **");
                             _term.WriteLine($"**                                            F A I L                                                               **");
                             _term.WriteLine($"**                                                                                                                  **");
@@ -144,7 +146,7 @@ namespace GitHub.Runner.Listener
                         _term.WriteLine();
                     }
 
-                    return Constants.Runner.ReturnCode.Success;
+                    return hasFailure ? Constants.Runner.ReturnCode.TerminatedError : Constants.Runner.ReturnCode.Success;
                 }
 
                 // Configure runner prompt for args if not supplied
