@@ -40,7 +40,7 @@ namespace GitHub.Runner.Listener.Configuration
                         }
                         else
                         {
-                            Trace.Warning("Unable to succesfully set permissions for RSA key parameters file {0}. Received exit code {1} from {2}", _keyFile, exitCode, chmodPath);
+                            Trace.Warning("Unable to successfully set permissions for RSA key parameters file {0}. Received exit code {1} from {2}", _keyFile, exitCode, chmodPath);
                         }
                     }
                 }

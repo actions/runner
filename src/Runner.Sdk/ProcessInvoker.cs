@@ -297,7 +297,7 @@ namespace GitHub.Runner.Sdk
             _stopWatch = Stopwatch.StartNew();
             _proc.Start();
 
-            // Decrease invoked process priority, in platform specifc way, relative to parent
+            // Decrease invoked process priority, in platform specific way, relative to parent
             if (!highPriorityProcess)
             {
                 DecreaseProcessPriority(_proc);
@@ -704,11 +704,11 @@ namespace GitHub.Runner.Sdk
             }
 
             Trace.Verbose($"Start killing process tree of process '{pid.Value}'.");
-            Stack<ProcessTerminationInfo> processesNeedtoKill = new Stack<ProcessTerminationInfo>();
-            processesNeedtoKill.Push(new ProcessTerminationInfo(pid.Value, false));
-            while (processesNeedtoKill.Count() > 0)
+            Stack<ProcessTerminationInfo> processesToKill = new Stack<ProcessTerminationInfo>();
+            processesToKill.Push(new ProcessTerminationInfo(pid.Value, false));
+            while (processesToKill.Count() > 0)
             {
-                ProcessTerminationInfo procInfo = processesNeedtoKill.Pop();
+                ProcessTerminationInfo procInfo = processesToKill.Pop();
                 List<int> childProcessesIds = new List<int>();
                 if (!procInfo.ChildPidExpanded)
                 {
@@ -719,11 +719,11 @@ namespace GitHub.Runner.Sdk
                 if (childProcessesIds.Count > 0)
                 {
                     Trace.Info($"Need kill all child processes trees before kill process '{procInfo.Pid}'.");
-                    processesNeedtoKill.Push(new ProcessTerminationInfo(procInfo.Pid, true));
+                    processesToKill.Push(new ProcessTerminationInfo(procInfo.Pid, true));
                     foreach (var childPid in childProcessesIds)
                     {
                         Trace.Info($"Child process '{childPid}' needs be killed first.");
-                        processesNeedtoKill.Push(new ProcessTerminationInfo(childPid, false));
+                        processesToKill.Push(new ProcessTerminationInfo(childPid, false));
                     }
                 }
                 else

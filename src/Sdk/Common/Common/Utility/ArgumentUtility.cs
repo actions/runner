@@ -1151,7 +1151,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Throws an exception if the provided value equals to infinity.
+        /// Throws an exception if the provided value equals infinity.
         /// </summary>
         /// <param name="value">value to check</param>
         /// <param name="valueName">the variable or parameter name to display</param>
@@ -1161,7 +1161,7 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Throws an exception if the provided value equals to infinity.
+        /// Throws an exception if the provided value equals infinity.
         /// </summary>
         /// <param name="value">value to check</param>
         /// <param name="valueName">the variable or parameter name to display</param>
@@ -1238,7 +1238,7 @@ namespace GitHub.Services.Common
                         return true;
                     }
 
-                    // skip the low surogate
+                    // skip the low surrogate
                     i++;
                 }
             }

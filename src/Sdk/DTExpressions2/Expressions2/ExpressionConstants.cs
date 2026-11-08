@@ -42,7 +42,7 @@ namespace GitHub.DistributedTask.Expressions2
         internal const Char StartParameter = '(';   // function call
         internal const Char EndGroup = ')';         // logical grouping
         internal const Char EndIndex = ']';
-        internal const Char EndParameter = ')';     // function calll
+        internal const Char EndParameter = ')';     // function call
         internal const Char Separator = ',';
         internal const Char Dereference = '.';
         internal const Char Wildcard = '*';

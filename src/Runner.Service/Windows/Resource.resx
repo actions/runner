@@ -139,7 +139,7 @@
     <value>Runner listener has been updated to latest, restart the service to update the servicehost itself.</value>
   </data>
   <data name="CrashServiceHost" xml:space="preserve">
-    <value>Crash servicehost to trigger SCM restart the serivce.</value>
+    <value>Crash servicehost to trigger SCM restart the service.</value>
   </data>
   <data name="RunnerExitWithUndefinedReturnCode" xml:space="preserve">
     <value>Runner listener exit with undefined return code, re-launch runner in 5 seconds.</value>

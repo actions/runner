@@ -37,7 +37,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// Gets or sets the intialization vector used to encrypt this message.
+        /// Gets or sets the initialization vector used to encrypt this message.
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
         public Byte[] IV

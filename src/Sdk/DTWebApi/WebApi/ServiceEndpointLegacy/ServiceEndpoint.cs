@@ -140,7 +140,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// Indicates whether service endpoint is shared with other projects or not. 
+        /// Indicates whether or not service endpoint is shared with other projects. 
         /// </summary>
         [DataMember(EmitDefaultValue = true)]
         public Boolean IsShared

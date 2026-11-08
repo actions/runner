@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 
@@ -12,7 +12,7 @@ namespace GitHub.Actions.Expressions.Sdk
 
         /// <summary>
         /// The name is used for tracing. Normally the parser will set the name. However if a node
-        /// is added manually, then the name may not be set and will fallback to the type name.
+        /// is added manually, then the name may not be set and will fall back to the type name.
         /// </summary>
         public String Name
         {
@@ -28,7 +28,7 @@ namespace GitHub.Actions.Expressions.Sdk
         }
 
         /// <summary>
-        /// Indicates whether the evalation result should be stored on the context and used
+        /// Indicates whether the evaluation result should be stored on the context and used
         /// when the expanded result is traced.
         /// </summary>
         protected abstract Boolean TraceFullyExpanded { get; }
@@ -162,7 +162,7 @@ namespace GitHub.Actions.Expressions.Sdk
                     String.Equals(expandedExpression, $"'{traceValue}'", StringComparison.Ordinal))
                 {
                     // Don't bother tracing the expanded expression when the result is a number and the
-                    // expanded expresion is a precisely matching string.
+                    // expanded expression is a precisely matching string.
                 }
                 else
                 {

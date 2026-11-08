@@ -188,7 +188,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _issues = new List<Tuple<DTWebApi.Issue, string>>();
 
-            // Setup a job request
+            // Set up a job request
             TaskOrchestrationPlanReference plan = new();
             TimelineReference timeline = new();
             Guid jobId = Guid.NewGuid();

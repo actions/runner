@@ -12,7 +12,7 @@ However, one of the [most requested features](https://github.com/actions/runner/
 ### Goals
 - We want to keep consistent with current behavior
 - We want to support conditionals via the `if` keyword
-- Our built in functions like `success` should be implementable without calling them, for example you can do `job.status == success` rather then `success()` currently.
+- Our built in functions like `success` should be implementable without calling them, for example you can do `job.status == success` rather than `success()` currently.
 
 ### How does composite currently work?
 
@@ -32,7 +32,7 @@ Lets formalize that concept into a "real" idea.
 
 - We will add an `action_status` field to the github context to mimic the [job's context status](https://docs.github.com/en/actions/learn-github-actions/contexts#job-context).
   - We have an existing concept that does this `action_path` which is only set for composite actions on the github context.
-- In a composite action during a main step, the `success()` function will check if `action_status == success`, rather then `job_status == success`. Failure will work the same way. 
+- In a composite action during a main step, the `success()` function will check if `action_status == success`, rather than `job_status == success`. Failure will work the same way. 
   - Pre and post steps in composite actions will not change, they will continue to check the job status.
 
 
@@ -57,7 +57,7 @@ For example, lets imagine a scenario with a simple nested composite action
 The child composite actions steps should run in this example, the child composite action has not yet failed, so it should run all steps until a step fails. This is consistent with how a composite action currently works in production if the main job fails but a composite action is invoked with `if:always()` or `if: failure()`
 
 ### Other options explored
-We could add the `current_step_status` to the job context rather then `__status` to the steps context, however this comes with two major downsides:
+We could add the `current_step_status` to the job context rather than `__status` to the steps context, however this comes with two major downsides:
 - We need to support the field for every type of step, because its non trivial to remove a field from the job context once it has been added (its readonly)
   - For all actions besides composite it would only every be `success`
   - Its weird to have a `current_step` value on the job context

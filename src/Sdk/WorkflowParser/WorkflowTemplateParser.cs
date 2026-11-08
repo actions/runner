@@ -1,4 +1,4 @@
-#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
+﻿#nullable disable // Consider removing in the future to minimize likelihood of NullReferenceException; refer https://learn.microsoft.com/en-us/dotnet/csharp/nullable-references
 
 using System;
 using System.Collections.Generic;
@@ -102,7 +102,7 @@ namespace GitHub.Actions.WorkflowParser
             String path,
             CancellationToken cancellationToken)
         {
-            // Setup the template context
+            // Set up the template context
             var context = new TemplateContext
             {
                 CancellationToken = cancellationToken,
@@ -117,7 +117,7 @@ namespace GitHub.Actions.WorkflowParser
             context.SetFeatures(m_features);
             context.SetJobCountValidator(new JobCountValidator(context, m_parseOptions.MaxJobLimit));
 
-            // Setup the template loader
+            // Set up the template loader
             var loader = new YamlTemplateLoader(new ParseOptions(m_parseOptions), fileProvider);
 
             // Parse the template tokens

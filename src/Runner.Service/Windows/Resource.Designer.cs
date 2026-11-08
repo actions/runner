@@ -133,7 +133,7 @@ namespace RunnerService {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Crash servicehost to trigger SCM restart the serivce..
+        ///   Looks up a localized string similar to Crash servicehost to trigger SCM restart the service.
         /// </summary>
         internal static string CrashServiceHost {
             get {

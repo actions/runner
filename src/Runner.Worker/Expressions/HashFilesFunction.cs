@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker.Expressions
                         }
                         else
                         {
-                            throw new ArgumentOutOfRangeException($"Invalid glob option {parameterString}, avaliable option: '--follow-symbolic-links'.");
+                            throw new ArgumentOutOfRangeException($"Invalid glob option {parameterString}, available option: '--follow-symbolic-links'.");
                         }
                     }
                 }
@@ -189,7 +189,7 @@ namespace GitHub.Runner.Worker.Expressions
                         }
                         else
                         {
-                            throw new ArgumentOutOfRangeException($"Invalid glob option {parameterString}, avaliable option: '--follow-symbolic-links'.");
+                            throw new ArgumentOutOfRangeException($"Invalid glob option {parameterString}, available option: '--follow-symbolic-links'.");
                         }
                     }
                 }
