@@ -55,6 +55,7 @@ namespace GitHub.Runner.Listener
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new();
         private TaskAgentStatus _runnerStatus = TaskAgentStatus.Online;
         private CancellationTokenSource _getMessagesTokenSource;
+        private readonly TimeSpan _onlinePollGracePeriod = TimeSpan.FromSeconds(3);
         private VssCredentials _creds;
         private VssCredentials _credsV2;
         private bool _needRefreshCredsV2 = false;
@@ -222,8 +223,18 @@ namespace GitHub.Runner.Listener
             if (e.Status == TaskAgentStatus.Online)
             {
                 // The service assigns the next job when the previous one completes and
-                // delivers it on the poll that is open now. Aborting that poll drops the
-                // message; the new status goes out on the next poll instead.
+                // delivers it on the poll that is open now, so aborting it at once drops
+                // the message. But that poll still reports Busy, and the service will not
+                // offer this runner jobs until it ends. Give a delivery a short window,
+                // then restart the poll with the Online status.
+                try
+                {
+                    _getMessagesTokenSource?.CancelAfter(_onlinePollGracePeriod);
+                }
+                catch (ObjectDisposedException)
+                {
+                    Trace.Info("_getMessagesTokenSource is already disposed.");
+                }
                 return;
             }
 

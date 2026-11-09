@@ -338,7 +338,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async Task OnJobStatus_OnlineKeepsInFlightPollOpen_BusyCancelsIt()
+        public async Task OnJobStatus_OnlineGivesInFlightPollAGracePeriod_BusyCancelsIt()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -393,14 +393,14 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var busyPoll = polls[0];
                 Assert.Equal(TaskAgentStatus.Busy, busyPoll.Status);
 
-                // The job completes. The Busy poll must stay open so a job assigned now is not dropped.
+                // The job completes. The Busy poll stays open for a grace period so a job assigned now is not dropped.
                 listener.OnJobStatus(this, new JobStatusEventArgs(TaskAgentStatus.Online));
                 Assert.False(busyPoll.Token.IsCancellationRequested);
 
-                // The Busy poll returns empty; the next poll reports the new Online status.
-                busyPoll.Response.SetResult(null);
+                // Once the grace period ends the Busy poll is aborted and the next poll reports the Online status.
                 Assert.True(await pollStarted.WaitAsync(TimeSpan.FromSeconds(30)));
                 var onlinePoll = polls[1];
+                Assert.True(busyPoll.Token.IsCancellationRequested);
                 Assert.Equal(TaskAgentStatus.Online, onlinePoll.Status);
 
                 // A transition to Busy still aborts the open poll so the service learns the runner is busy.
