@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.34" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.13" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3" />
     <PackageReference Include="System.Threading.Channels" Version="10.0.14" />
