@@ -595,16 +595,24 @@ namespace GitHub.Runner.Sdk
         {
             Trace.Info($"Sending {signal} to process {_proc.Id}.");
             ConsoleCtrlDelegate ctrlEventHandler = new ConsoleCtrlDelegate(ConsoleCtrlHandler);
+            // A process that shares this console is signalled from it. Leaving it would leave
+            // this process without a console, and every process it starts later would open a
+            // console window of its own.
+            int[] sharingConsole = ConsoleProcesses();
+            bool sameConsole = sharingConsole.Contains(_proc.Id);
             try
             {
-                if (!FreeConsole())
+                if (!sameConsole)
                 {
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
-                }
+                    if (!FreeConsole())
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
 
-                if (!AttachConsole(_proc.Id))
-                {
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                    if (!AttachConsole(_proc.Id))
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
                 }
 
                 if (!SetConsoleCtrlHandler(ctrlEventHandler, true))
@@ -640,8 +648,46 @@ namespace GitHub.Runner.Sdk
             }
             finally
             {
-                FreeConsole();
+                if (!sameConsole)
+                {
+                    FreeConsole();
+                    RejoinConsole(sharingConsole);
+                }
+
                 SetConsoleCtrlHandler(ctrlEventHandler, false);
+            }
+        }
+
+        private int[] ConsoleProcesses()
+        {
+            var processes = new uint[64];
+            uint count = GetConsoleProcessList(processes, (uint)processes.Length);
+            if (count > processes.Length)
+            {
+                processes = new uint[count];
+                count = GetConsoleProcessList(processes, (uint)processes.Length);
+            }
+
+            return processes.Take((int)Math.Min(count, (uint)processes.Length)).Select(id => (int)id).ToArray();
+        }
+
+        private void RejoinConsole(int[] sharingConsole)
+        {
+            int self = Environment.ProcessId;
+            foreach (int processId in sharingConsole.Where(id => id != self && id != _proc.Id))
+            {
+                if (AttachConsole(processId))
+                {
+                    Trace.Info($"Rejoined the console shared with process {processId}.");
+                    return;
+                }
+
+                Trace.Verbose($"Could not rejoin the console through process {processId}: {Marshal.GetLastWin32Error()}");
+            }
+
+            if (sharingConsole.Length > 0)
+            {
+                Trace.Info("No process sharing the console is left to rejoin it through.");
             }
         }
 
@@ -819,6 +865,9 @@ namespace GitHub.Runner.Sdk
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool AttachConsole(int dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern uint GetConsoleProcessList(uint[] lpdwProcessList, uint dwProcessCount);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool SetConsoleCtrlHandler(ConsoleCtrlDelegate HandlerRoutine, bool Add);
