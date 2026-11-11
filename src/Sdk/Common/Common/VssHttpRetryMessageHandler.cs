@@ -108,7 +108,7 @@ namespace GitHub.Services.Common
                     }
 
                     // Verify the response is successful or the status code is one that may be retried. 
-                    if (response.IsSuccessStatusCode)
+                    if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.SwitchingProtocols)
                     {
                         break;
                     }
