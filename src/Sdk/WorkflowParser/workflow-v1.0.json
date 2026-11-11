@@ -1823,9 +1823,17 @@
             "type": "permission-level-any",
             "description": "Check runs and check suites."
           },
+          "code-quality": {
+            "type": "permission-level-any",
+            "description": "Code quality data."
+          },
           "contents": {
             "type": "permission-level-any",
             "description": "Repository contents, commits, branches, downloads, releases, and merges."
+          },
+          "copilot-requests": {
+            "type": "permission-level-write-or-no-access",
+            "description": "GitHub Copilot requests."
           },
           "deployments": {
             "type": "permission-level-any",
