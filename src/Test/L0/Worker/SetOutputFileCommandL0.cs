@@ -71,6 +71,26 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Theory]
+        [InlineData("=")]
+        [InlineData("=value")]
+        [InlineData("<<EOF")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetOutputFileCommand_EmptyName(string line)
+        {
+            using (var hostContext = Setup())
+            {
+                var outputFile = Path.Combine(_rootDirectory, "empty-name");
+                var content = new List<string> { line };
+                WriteContent(outputFile, content);
+
+                var exception = Assert.Throws<Exception>(() => _setOutputFileCommand.ProcessCommand(_executionContext.Object, outputFile, null));
+                Assert.Contains("Name must not be empty", exception.Message);
+                Assert.Empty(_outputs);
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
