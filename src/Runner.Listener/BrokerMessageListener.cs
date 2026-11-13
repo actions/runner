@@ -111,6 +111,7 @@ namespace GitHub.Runner.Listener
 
             string errorMessage = string.Empty;
             bool encounteringError = false;
+            int sessionCreationRetry = 0;
 
             while (true)
             {
@@ -118,24 +119,27 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Attempt to create session.");
                 try
                 {
-                    Trace.Info("Connecting to the Broker Server...");
-                    _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
-                    await _brokerServer.ConnectAsync(new Uri(serverUrlV2), _credsV2);
-                    Trace.Info("VssConnection created");
-
-                    if (!string.IsNullOrEmpty(serverUrl) &&
-                        !string.Equals(serverUrl, serverUrlV2, StringComparison.OrdinalIgnoreCase))
+                    using (HttpRetryScope.Begin(sessionCreationRetry))
                     {
-                        Trace.Info("Connecting to the Runner server...");
-                        await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                        Trace.Info("Connecting to the Broker Server...");
+                        _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+                        await _brokerServer.ConnectAsync(new Uri(serverUrlV2), _credsV2);
                         Trace.Info("VssConnection created");
+
+                        if (!string.IsNullOrEmpty(serverUrl) &&
+                            !string.Equals(serverUrl, serverUrlV2, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Trace.Info("Connecting to the Runner server...");
+                            await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                            Trace.Info("VssConnection created");
+                        }
+
+                        _term.WriteLine();
+                        _term.WriteSuccessMessage("Connected to GitHub");
+                        _term.WriteLine();
+
+                        _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
                     }
-
-                    _term.WriteLine();
-                    _term.WriteSuccessMessage("Connected to GitHub");
-                    _term.WriteLine();
-
-                    _session = await _brokerServer.CreateSessionAsync(taskAgentSession, token);
 
                     Trace.Info($"Session created.");
                     if (encounteringError)
@@ -232,6 +236,7 @@ namespace GitHub.Runner.Listener
                         encounteringError = true;
                     }
 
+                    sessionCreationRetry++;
                     Trace.Info("Sleeping for {0} seconds before retrying.", _sessionCreationRetryInterval.TotalSeconds);
                     await HostContext.Delay(_sessionCreationRetryInterval, token);
                 }
@@ -279,6 +284,8 @@ namespace GitHub.Runner.Listener
         {
             bool encounteringError = false;
             int continuousError = 0;
+            // Consecutive failed polls; unlike continuousError, this resets after any successful poll.
+            int pollRetry = 0;
             Stopwatch heartbeat = new();
             heartbeat.Restart();
             var maxRetryCount = 10;
@@ -289,20 +296,26 @@ namespace GitHub.Runner.Listener
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
-                    if (_needRefreshCredsV2)
+                    // Mark the poll as a retry only while recovering from a failed poll; routine long polls are not retries.
+                    using (HttpRetryScope.Begin(pollRetry))
                     {
-                        Trace.Info("Refreshing broker connection.");
-                        await RefreshBrokerConnectionAsync();
-                        _needRefreshCredsV2 = false;
+                        if (_needRefreshCredsV2)
+                        {
+                            Trace.Info("Refreshing broker connection.");
+                            await RefreshBrokerConnectionAsync();
+                            _needRefreshCredsV2 = false;
+                        }
+
+                        message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
+                                                                            _runnerStatus,
+                                                                            BuildConstants.RunnerPackage.Version,
+                                                                            VarUtil.OS,
+                                                                            VarUtil.OSArchitecture,
+                                                                            _settings.DisableUpdate,
+                                                                            _getMessagesTokenSource.Token);
                     }
 
-                    message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
-                                                                        _runnerStatus,
-                                                                        BuildConstants.RunnerPackage.Version,
-                                                                        VarUtil.OS,
-                                                                        VarUtil.OSArchitecture,
-                                                                        _settings.DisableUpdate,
-                                                                        _getMessagesTokenSource.Token);
+                    pollRetry = 0;
 
                     if (message == null)
                     {
@@ -359,6 +372,7 @@ namespace GitHub.Runner.Listener
                     else
                     {
                         continuousError++;
+                        pollRetry++;
                         //retry after a random backoff to avoid service throttling
                         //in case of there is a service error happened and all agents get kicked off of the long poll and all agent try to reconnect back at the same time.
                         if (continuousError <= 5)

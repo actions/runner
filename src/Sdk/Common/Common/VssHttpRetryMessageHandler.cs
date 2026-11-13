@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -99,6 +100,8 @@ namespace GitHub.Services.Common
                     {
                         retryInfo?.InitialAttempt(request);
                     }
+
+                    SetRetryHeader(request, attempt > 1 ? attempt - 1 : HttpRetryScope.Current);
 
                     response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
@@ -219,6 +222,19 @@ namespace GitHub.Services.Common
         protected virtual void TraceHttpRequestRetrying(VssTraceActivity activity, HttpRequestMessage request, Int32 attempt, TimeSpan backoffDuration, HttpStatusCode? httpStatusCode, WebExceptionStatus? webExceptionStatus, SocketError? socketErrorCode, WinHttpErrorCode? winHttpErrorCode, CurlErrorCode? curlErrorCode, string afdRefInfo)
         {
             VssHttpEventSource.Log.HttpRequestRetrying(activity, request, attempt, backoffDuration, httpStatusCode, webExceptionStatus, socketErrorCode, winHttpErrorCode, curlErrorCode, afdRefInfo);
+        }
+
+        /// <summary>
+        /// Sets the X-Is-Retry header to the retry number on retries, and removes it on first attempts
+        /// so a caller-set or reused header never reports a retry that did not happen.
+        /// </summary>
+        private static void SetRetryHeader(HttpRequestMessage request, Int32 retryNumber)
+        {
+            request.Headers.Remove(Internal.HttpHeaders.IsRetry);
+            if (retryNumber > 0)
+            {
+                request.Headers.TryAddWithoutValidation(Internal.HttpHeaders.IsRetry, retryNumber.ToString(CultureInfo.InvariantCulture));
+            }
         }
 
         private static bool IsLowPriority(HttpRequestMessage request)

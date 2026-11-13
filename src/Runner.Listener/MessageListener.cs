@@ -97,6 +97,7 @@ namespace GitHub.Runner.Listener
 
             string errorMessage = string.Empty;
             bool encounteringError = false;
+            int sessionCreationRetry = 0;
 
             while (true)
             {
@@ -104,18 +105,21 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Attempt to create session.");
                 try
                 {
-                    Trace.Info("Connecting to the Runner Server...");
-                    await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
-                    Trace.Info("VssConnection created");
+                    using (HttpRetryScope.Begin(sessionCreationRetry))
+                    {
+                        Trace.Info("Connecting to the Runner Server...");
+                        await _runnerServer.ConnectAsync(new Uri(serverUrl), _creds);
+                        Trace.Info("VssConnection created");
 
-                    _term.WriteLine();
-                    _term.WriteSuccessMessage("Connected to GitHub");
-                    _term.WriteLine();
+                        _term.WriteLine();
+                        _term.WriteSuccessMessage("Connected to GitHub");
+                        _term.WriteLine();
 
-                    _session = await _runnerServer.CreateAgentSessionAsync(
-                                                        _settings.PoolId,
-                                                        taskAgentSession,
-                                                        token);
+                        _session = await _runnerServer.CreateAgentSessionAsync(
+                                                            _settings.PoolId,
+                                                            taskAgentSession,
+                                                            token);
+                    }
                     Trace.Info($"Session created.");
                     if (encounteringError)
                     {
@@ -186,6 +190,7 @@ namespace GitHub.Runner.Listener
                         encounteringError = true;
                     }
 
+                    sessionCreationRetry++;
                     Trace.Info("Sleeping for {0} seconds before retrying.", _sessionCreationRetryInterval.TotalSeconds);
                     await HostContext.Delay(_sessionCreationRetryInterval, token);
                 }
@@ -248,39 +253,43 @@ namespace GitHub.Runner.Listener
                 _getMessagesTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
                 try
                 {
-                    message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
-                                                                _session.SessionId,
-                                                                _lastMessageId,
-                                                                _runnerStatus,
-                                                                BuildConstants.RunnerPackage.Version,
-                                                                VarUtil.OS,
-                                                                VarUtil.OSArchitecture,
-                                                                _settings.DisableUpdate,
-                                                                _getMessagesTokenSource.Token);
-
-                    // Decrypt the message body if the session is using encryption
-                    message = DecryptMessage(message);
-
-                    if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
+                    // Mark the poll as a retry only while recovering from a failed poll; routine long polls are not retries.
+                    using (HttpRetryScope.Begin(continuousError))
                     {
-                        var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
+                        message = await _runnerServer.GetAgentMessageAsync(_settings.PoolId,
+                                                                    _session.SessionId,
+                                                                    _lastMessageId,
+                                                                    _runnerStatus,
+                                                                    BuildConstants.RunnerPackage.Version,
+                                                                    VarUtil.OS,
+                                                                    VarUtil.OSArchitecture,
+                                                                    _settings.DisableUpdate,
+                                                                    _getMessagesTokenSource.Token);
 
-                        _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
-                        await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _credsV2);
-                        if (_needRefreshCredsV2)
+                        // Decrypt the message body if the session is using encryption
+                        message = DecryptMessage(message);
+
+                        if (message != null && message.MessageType == BrokerMigrationMessage.MessageType)
                         {
-                            Trace.Info("Refreshing credentials for V2.");
-                            await _brokerServer.ForceRefreshConnection(_credsV2);
-                            _needRefreshCredsV2 = false;
-                        }
+                            var migrationMessage = JsonUtility.FromString<BrokerMigrationMessage>(message.Body);
 
-                        message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
-                                                                        _runnerStatus,
-                                                                        BuildConstants.RunnerPackage.Version,
-                                                                        VarUtil.OS,
-                                                                        VarUtil.OSArchitecture,
-                                                                        _settings.DisableUpdate,
-                                                                        token);
+                            _credsV2 = _credMgr.LoadCredentials(allowAuthUrlV2: true);
+                            await _brokerServer.UpdateConnectionIfNeeded(migrationMessage.BrokerBaseUrl, _credsV2);
+                            if (_needRefreshCredsV2)
+                            {
+                                Trace.Info("Refreshing credentials for V2.");
+                                await _brokerServer.ForceRefreshConnection(_credsV2);
+                                _needRefreshCredsV2 = false;
+                            }
+
+                            message = await _brokerServer.GetRunnerMessageAsync(_session.SessionId,
+                                                                            _runnerStatus,
+                                                                            BuildConstants.RunnerPackage.Version,
+                                                                            VarUtil.OS,
+                                                                            VarUtil.OSArchitecture,
+                                                                            _settings.DisableUpdate,
+                                                                            token);
+                        }
                     }
 
                     if (message != null)
