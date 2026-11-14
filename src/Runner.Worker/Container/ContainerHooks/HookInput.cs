@@ -10,6 +10,8 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     public class HookInput
     {
         public HookCommand Command { get; set; }
+        // Capability negotiation prevents new hooks from reporting false success to old runners.
+        public bool SupportsStepExitCode => Command == HookCommand.RunScriptStep || Command == HookCommand.RunContainerStep;
         public string ResponseFile { get; set; }
         public IHookArgs Args { get; set; }
         public JObject State { get; set; }
