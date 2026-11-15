@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -69,7 +70,7 @@ namespace GitHub.Runner.Worker
         Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; }
 
         // Keep track of embedded steps states
-        Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; }
+        ConcurrentDictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; }
 
         bool EchoOnActionCommand { get; set; }
 
@@ -151,6 +152,7 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new();
         private readonly object _loggerLock = new();
         private readonly object _matchersLock = new();
+        private readonly object _postJobStepsLock = new();
         private readonly ExecutionContext _parentExecutionContext;
 
         private event OnMatcherChanged _onMatcherChanged;
@@ -227,7 +229,7 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has EmbeddedStepsWithPostRegistered
         public Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; private set; }
 
-        public Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
+        public ConcurrentDictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
 
@@ -335,38 +337,43 @@ namespace GitHub.Runner.Worker
         public void RegisterPostJobStep(IStep step)
         {
             string siblingScopeName = null;
-            if (this.IsEmbedded)
+
+            // Background steps register post steps concurrently, and these collections live on the job context
+            lock (Root._postJobStepsLock)
             {
-                if (step is IActionRunner actionRunner)
+                if (this.IsEmbedded)
                 {
-                    if (Root.EmbeddedStepsWithPostRegistered.ContainsKey(actionRunner.Action.Id))
+                    if (step is IActionRunner actionRunner)
                     {
-                        Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
+                        if (Root.EmbeddedStepsWithPostRegistered.ContainsKey(actionRunner.Action.Id))
+                        {
+                            Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
+                        }
+                        else
+                        {
+                            Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;
+                        }
+                        return;
                     }
-                    else
-                    {
-                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;
-                    }
+                }
+                else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
+                {
+                    Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                     return;
                 }
-            }
-            else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
-            {
-                Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
-                return;
-            }
-            if (step is IActionRunner runner)
-            {
-                siblingScopeName = runner.Action.ContextName;
-            }
+                if (step is IActionRunner runner)
+                {
+                    siblingScopeName = runner.Action.ContextName;
+                }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, siblingScopeName);
-            if (step is JobExtensionRunner)
-            {
-                step.ExecutionContext.StepTelemetry.Type = "runner";
-                step.ExecutionContext.StepTelemetry.Action = step.DisplayName.ToLowerInvariant().Replace(' ', '_');
+                step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, siblingScopeName);
+                if (step is JobExtensionRunner)
+                {
+                    step.ExecutionContext.StepTelemetry.Type = "runner";
+                    step.ExecutionContext.StepTelemetry.Action = step.DisplayName.ToLowerInvariant().Replace(' ', '_');
+                }
+                Root.PostJobSteps.Push(step);
             }
-            Root.PostJobSteps.Push(step);
 
             if (Root.Global.Debugger?.Enabled == true)
             {
@@ -1065,7 +1072,7 @@ namespace GitHub.Runner.Worker
             EmbeddedStepsWithPostRegistered = new Dictionary<Guid, string>();
 
             // EmbeddedIntraActionState for job ExecutionContext
-            EmbeddedIntraActionState = new Dictionary<Guid, Dictionary<string, string>>();
+            EmbeddedIntraActionState = new ConcurrentDictionary<Guid, Dictionary<string, string>>();
 
             // Job timeline record.
             InitializeTimelineRecord(
