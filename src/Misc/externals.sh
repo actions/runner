@@ -170,19 +170,18 @@ function acquireNpmPackage() {
 
 function updateNpmPackage() {
     local target_dir="$1"
-    local node="$target_dir/bin/node"
-    local npm_cli="$target_dir/lib/node_modules/npm/bin/npm-cli.js"
     local npm_package="$2"
+    local npm_dir="$target_dir/lib/node_modules/npm"
+    local undici_package="$npm_dir/node_modules/undici/package.json"
 
-    [ -x "$node" ] || failed "node executable is missing from $target_dir"
-    [ -f "$npm_cli" ] || failed "npm CLI is missing from $target_dir"
-
-    local actual_integrity=$("$node" -e "const crypto = require('crypto'); const fs = require('fs'); process.stdout.write('sha512-' + crypto.createHash('sha512').update(fs.readFileSync(process.argv[1])).digest('base64'))" "$npm_package")
+    local actual_integrity="sha512-$(openssl dgst -sha512 -binary "$npm_package" | openssl base64 -A)"
     [ "$actual_integrity" = "$NPM_INTEGRITY" ] || failed "npm package integrity check failed"
 
-    "$node" "$npm_cli" install --global --prefix "$target_dir" --ignore-scripts --no-audit --no-fund "$npm_package" || checkRC 'npm install'
+    rm -rf "$npm_dir" || checkRC 'rm'
+    mkdir -p "$npm_dir" || checkRC 'mkdir'
+    tar xzf "$npm_package" -C "$npm_dir" --strip-components=1 || checkRC 'tar'
 
-    local undici_version=$("$node" -p "require('$target_dir/lib/node_modules/npm/node_modules/undici/package.json').version")
+    local undici_version=$(awk -F'"' '/"version"/ {print $4; exit}' "$undici_package")
     [ "$undici_version" = "$NPM_UNDICI_VERSION" ] || failed "npm bundled undici version is $undici_version, expected $NPM_UNDICI_VERSION"
 }
 
@@ -225,7 +224,7 @@ if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
 fi
 
 if [[ "$PACKAGERUNTIME" == "osx-x64" || "$PACKAGERUNTIME" == "osx-arm64" || "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "linux-arm64" ]]; then
-    npm_package=$(acquireNpmPackage)
+    npm_package=$(acquireNpmPackage) || failed "npm package download failed"
     if [[ "$PRECACHE" == "" ]]; then
         updateNpmPackage "$LAYOUT_DIR/externals/node24" "$npm_package"
         if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
