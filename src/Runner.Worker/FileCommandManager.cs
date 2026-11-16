@@ -55,6 +55,18 @@ namespace GitHub.Runner.Worker
                 TryDeleteFile(newPath);
                 File.Create(newPath).Dispose();
 
+                // Give extensions a chance to populate the file before
+                // the step starts (e.g., read-only views of job state).
+                // Errors are logged but must not fail step setup.
+                try
+                {
+                    fileCommand.PopulateInitialContents(context, newPath, container);
+                }
+                catch (Exception ex)
+                {
+                    _trace.Warning($"Failed to populate initial contents for file command '{fileCommand.ContextName}': {ex}");
+                }
+
                 var pathToSet = container != null ? container.TranslateToContainerPath(newPath) : newPath;
                 context.SetGitHubContext(fileCommand.ContextName, pathToSet);
             }
@@ -102,6 +114,14 @@ namespace GitHub.Runner.Worker
         string FilePrefix { get; }
 
         void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container);
+
+        // Optional hook invoked by FileCommandManager.InitializeFiles
+        // after creating the empty per-step file. Extensions that need to
+        // pre-populate the file (e.g., a read-only view of job-scoped
+        // state) override this; the default no-op preserves the existing
+        // "empty file at start of step" behavior for write-only file
+        // commands such as GITHUB_ENV, GITHUB_OUTPUT, GITHUB_PATH, etc.
+        void PopulateInitialContents(IExecutionContext context, string filePath, ContainerInfo container) { }
     }
 
     public sealed class AddPathFileCommand : RunnerService, IFileCommandExtension
@@ -122,8 +142,16 @@ namespace GitHub.Runner.Worker
                     {
                         continue;
                     }
-                    context.Global.PrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
-                    context.Global.PrependPath.Add(line);
+                    if (context.DeferredPrependPath != null)
+                    {
+                        context.DeferredPrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
+                        context.DeferredPrependPath.Add(line);
+                    }
+                    else
+                    {
+                        context.Global.PrependPath.RemoveAll(x => string.Equals(x, line, StringComparison.CurrentCulture));
+                        context.Global.PrependPath.Add(line);
+                    }
                 }
             }
         }
@@ -172,8 +200,15 @@ namespace GitHub.Runner.Worker
             string name,
             string value)
         {
-            context.Global.EnvironmentVariables[name] = value;
-            context.SetEnvContext(name, value);
+            if (context.DeferredEnvironmentVariables != null)
+            {
+                context.DeferredEnvironmentVariables[name] = value;
+            }
+            else
+            {
+                context.Global.EnvironmentVariables[name] = value;
+                context.SetEnvContext(name, value);
+            }
             context.Debug($"{name}='{value}'");
         }
 
@@ -302,7 +337,14 @@ namespace GitHub.Runner.Worker
             var pairs = new EnvFileKeyValuePairs(context, filePath);
             foreach (var pair in pairs)
             {
-                context.SetOutput(pair.Key, pair.Value, out var reference);
+                if (context.DeferredOutputs != null)
+                {
+                    context.DeferredOutputs[pair.Key] = pair.Value;
+                }
+                else
+                {
+                    context.SetOutput(pair.Key, pair.Value, out var reference);
+                }
                 context.Debug($"Set output {pair.Key} = {pair.Value}");
             }
         }

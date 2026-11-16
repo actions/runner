@@ -8,6 +8,7 @@ namespace GitHub.DistributedTask.Pipelines.Expressions
         public const String Email = nameof(Email);
         public const String IPv4Address = nameof(IPv4Address);
         public const String SHA1 = nameof(SHA1);
+        public const String CommitHash = nameof(CommitHash);
         public const String Url = nameof(Url);
 
         /// <summary>
@@ -24,7 +25,8 @@ namespace GitHub.DistributedTask.Pipelines.Expressions
                 case IPv4Address:
                     return s_validIPv4Address;
                 case SHA1:
-                    return s_validSha1;
+                case CommitHash:
+                    return s_validCommitHash;
                 case Url:
                     return s_validUrl;
                 default:
@@ -46,9 +48,9 @@ namespace GitHub.DistributedTask.Pipelines.Expressions
             )
         );
 
-        // 40 hex characters
-        private static readonly Lazy<Regex> s_validSha1 = new Lazy<Regex>(() => new Regex(
-            @"\b[0-9a-f]{40}\b",
+        // 40 or 64 hex characters (SHA-1 or SHA-256 commit hash)
+        private static readonly Lazy<Regex> s_validCommitHash = new Lazy<Regex>(() => new Regex(
+            @"\b(?:[0-9a-f]{40}|[0-9a-f]{64})\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, RegexUtility.GetRegexTimeOut()
             )
         );

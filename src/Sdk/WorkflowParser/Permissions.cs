@@ -32,6 +32,7 @@ namespace GitHub.Actions.WorkflowParser
             SecurityEvents = copy.SecurityEvents;
             IdToken = copy.IdToken;
             Models = copy.Models;
+            VulnerabilityAlerts = copy.VulnerabilityAlerts;
         }
 
         public Permissions(
@@ -61,6 +62,19 @@ namespace GitHub.Actions.WorkflowParser
                 : PermissionLevel.NoAccess;
         }
 
+        public Permissions(
+            PermissionLevel permissionLevel,
+            bool includeIdToken,
+            bool includeAttestations,
+            bool includeModels,
+            bool includeVulnerabilityAlerts)
+            : this(permissionLevel, includeIdToken, includeAttestations, includeModels)
+        {
+            VulnerabilityAlerts = includeVulnerabilityAlerts
+                ? (permissionLevel == PermissionLevel.Write ? PermissionLevel.Read : permissionLevel)
+                : PermissionLevel.NoAccess;
+        }
+
         private static KeyValuePair<string, (PermissionLevel, PermissionLevel)>[] ComparisonKeyMapping(Permissions left, Permissions right)
         {
             return new[]
@@ -81,6 +95,7 @@ namespace GitHub.Actions.WorkflowParser
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("security-events", (left.SecurityEvents, right.SecurityEvents)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("id-token", (left.IdToken, right.IdToken)),
                 new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("models", (left.Models, right.Models)),
+                new KeyValuePair<string, (PermissionLevel, PermissionLevel)>("vulnerability-alerts", (left.VulnerabilityAlerts, right.VulnerabilityAlerts)),
             };
         }
 
@@ -149,6 +164,13 @@ namespace GitHub.Actions.WorkflowParser
 
         [DataMember(Name = "models", EmitDefaultValue = false)]
         public PermissionLevel Models
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Name = "vulnerability-alerts", EmitDefaultValue = false)]
+        public PermissionLevel VulnerabilityAlerts
         {
             get;
             set;

@@ -25,6 +25,7 @@ namespace GitHub.DistributedTask.Pipelines
             Inputs = actionToClone.Inputs?.Clone();
             ContextName = actionToClone?.ContextName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
+            Background = actionToClone.Background;
         }
 
         public override StepType Type => StepType.Action;
@@ -48,6 +49,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Inputs { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public bool Background { get; set; }
 
         public override Step Clone()
         {

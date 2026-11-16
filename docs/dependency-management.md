@@ -180,7 +180,7 @@ When updating Node.js versions, remember to:
 
 ### Docker Updates
 
-- Updates include both Docker Engine and Docker Buildx
+- Updates can include Docker Engine, Docker Buildx, or both
 - Verify compatibility with runner container workflows
 
 ## Troubleshooting

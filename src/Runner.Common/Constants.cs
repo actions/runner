@@ -179,40 +179,17 @@ namespace GitHub.Runner.Common
                 public static readonly string EmitCompositeMarkers = "actions_runner_emit_composite_markers";
                 public static readonly string BatchActionResolution = "actions_batch_action_resolution";
                 public static readonly string UseBearerTokenForCodeload = "actions_use_bearer_token_for_codeload";
+                public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
+                public static readonly string AllowArtifactsFile = "actions_runner_allow_artifacts_file";
+                public static readonly string SelfRepository = "actions_self_repository";
+                public static readonly string FixEmbeddedGitHubContext = "actions_fix_embedded_github_context";
             }
 
-            // Node version migration related constants
-            public static class NodeMigration
+            // Categories reported to the service alongside an infrastructure failure so
+            // it can distinguish between the different ways runner infrastructure fails.
+            public static class InfrastructureFailureCategories
             {
-                // Node versions
-                public static readonly string Node20 = "node20";
-                public static readonly string Node24 = "node24";
-
-                // Environment variables for controlling node version selection
-                public static readonly string ForceNode24Variable = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24";
-                public static readonly string AllowUnsecureNodeVersionVariable = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
-
-                // Feature flags for controlling the migration phases
-                public static readonly string UseNode24ByDefaultFlag = "actions.runner.usenode24bydefault";
-                public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
-                public static readonly string WarnOnNode20Flag = "actions.runner.warnonnode20";
-
-                // Feature flags for Linux ARM32 deprecation
-                public static readonly string DeprecateLinuxArm32Flag = "actions_runner_deprecate_linux_arm32";
-                public static readonly string KillLinuxArm32Flag = "actions_runner_kill_linux_arm32";
-
-                // Blog post URL for Node 20 deprecation
-                public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
-
-                // Node 20 migration dates (hardcoded fallbacks, can be overridden via job variables)
-                public static readonly string Node24DefaultDate = "June 2nd, 2026";
-                public static readonly string Node20RemovalDate = "September 16th, 2026";
-
-                // Variable keys for server-overridable dates
-                public static readonly string Node24DefaultDateVariable = "actions_runner_node24_default_date";
-                public static readonly string Node20RemovalDateVariable = "actions_runner_node20_removal_date";
-
-                public static readonly string LinuxArm32DeprecationMessage = "Linux ARM32 runners are deprecated and will no longer be supported after {0}. Please migrate to a supported platform.";
+                public static readonly string DebuggerTunnelFailure = "debugger_tunnel_failure";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -226,6 +203,12 @@ namespace GitHub.Runner.Common
             public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see: https://docs.github.com/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
             public static readonly string UnsupportedSummarySize = "$GITHUB_STEP_SUMMARY upload aborted, supports content up to a size of {0}k, got {1}k. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
             public static readonly string SummaryUploadError = "$GITHUB_STEP_SUMMARY upload aborted, an error occurred when uploading the summary. For more information see: https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary";
+
+            // $GITHUB_ARTIFACTS file command
+            public static readonly string ArtifactsFileSizeExceeded = "$GITHUB_ARTIFACTS file exceeds the maximum size of {0} KiB (got {1} KiB).";
+            public static readonly string ArtifactsAggregateLimitExceeded = "The job has exceeded the maximum of {0} declared artifacts.";
+            public static readonly string ArtifactsInvalidLine = "Invalid $GITHUB_ARTIFACTS entry on line {0}: {1}";
+            public static readonly string ArtifactsConflictingDigest = "Conflicting digest for artifact '{0}': previously declared as '{1}', now declared as '{2}'.";
         }
 
         public static class RunnerEvent
@@ -304,9 +287,9 @@ namespace GitHub.Runner.Common
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
                 // Set this env var to "nodeXY" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
-                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION";
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
+                public static readonly string DisableStdoutMultilineLogPrefixing = "ACTIONS_RUNNER_DISABLE_STDOUT_MULTILINE_LOG_PREFIXING";
                 public static readonly string ActionArchiveCacheDirectory = "ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE";
                 public static readonly string SymlinkCachedActions = "ACTIONS_RUNNER_SYMLINK_CACHED_ACTIONS";
                 public static readonly string EmitCompositeMarkers = "ACTIONS_RUNNER_EMIT_COMPOSITE_MARKERS";

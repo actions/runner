@@ -30,6 +30,7 @@ namespace GitHub.Services.Common
                 HttpStatusCode.BadGateway,
                 HttpStatusCode.GatewayTimeout,
                 HttpStatusCode.ServiceUnavailable,
+                HttpStatusCode.TooManyRequests,
             };
 
             this.m_retryFilters = new HashSet<VssHttpRetryableStatusCodeFilter>(filters);

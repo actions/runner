@@ -537,6 +537,46 @@ namespace GitHub.Runner.Worker.Dap
 
     #endregion
 
+    #region Source Request/Response
+
+    /// <summary>
+    /// Arguments for 'source' request.
+    /// </summary>
+    public class SourceArguments
+    {
+        /// <summary>
+        /// Source descriptor. Some clients send sourceReference only here.
+        /// </summary>
+        [JsonProperty("source", NullValueHandling = NullValueHandling.Ignore)]
+        public Source Source { get; set; }
+
+        /// <summary>
+        /// The reference to the source.
+        /// </summary>
+        [JsonProperty("sourceReference", NullValueHandling = NullValueHandling.Ignore)]
+        public int? SourceReference { get; set; }
+    }
+
+    /// <summary>
+    /// Response body for 'source' request.
+    /// </summary>
+    public class SourceResponseBody
+    {
+        /// <summary>
+        /// Content of the source as a string.
+        /// </summary>
+        [JsonProperty("content")]
+        public string Content { get; set; }
+
+        /// <summary>
+        /// Optional content type / mime type of the source.
+        /// </summary>
+        [JsonProperty("mimeType", NullValueHandling = NullValueHandling.Ignore)]
+        public string MimeType { get; set; }
+    }
+
+    #endregion
+
     #region Scopes Request/Response
 
     /// <summary>

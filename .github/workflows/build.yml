@@ -21,17 +21,13 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64, osx-arm64 ]
+        runtime: [ linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
           devScript: ./dev.sh
 
         - runtime: linux-arm64
-          os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: linux-arm
           os: ubuntu-latest
           devScript: ./dev.sh
 
@@ -53,7 +49,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     # Build runner layout
     - name: Build & Layout Release
@@ -66,7 +62,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'osx-arm64' && matrix.runtime != 'win-arm64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -95,11 +91,11 @@ jobs:
             docker_platform: linux/arm64
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: Get latest runner version
       id: latest_runner
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |

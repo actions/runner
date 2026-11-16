@@ -26,9 +26,14 @@ namespace GitHub.Actions.WorkflowParser
         internal const Int32 MaxNodeNameLength = 100;
 
         /// <summary>
-        /// Alias for the self repository.
+        /// Alias for the self local-workspace repository type (./ syntax).
         /// </summary>
         internal const String SelfAlias = "self";
+
+        /// <summary>
+        /// RepositoryType for self-repository references ($/ syntax).
+        /// </summary>
+        internal const String SelfRepositoryAlias = "selfRepository";
 
         public static class PermissionsPolicy
         {

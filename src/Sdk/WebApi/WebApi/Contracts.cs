@@ -179,6 +179,14 @@ namespace GitHub.Services.Results.Contracts
         public string CompletedAt;
         [DataMember]
         public Conclusion Conclusion;
+        [DataMember(EmitDefaultValue = false)]
+        public bool IsBackground;
+        [DataMember(EmitDefaultValue = false)]
+        public string BackgroundControlType;
+        [DataMember(EmitDefaultValue = false)]
+        public string[] BackgroundControlStepIds;
+        [DataMember(EmitDefaultValue = false)]
+        public string ParallelGroupId;
     }
 
     public enum Status

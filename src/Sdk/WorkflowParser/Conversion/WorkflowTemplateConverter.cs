@@ -1605,6 +1605,11 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     {
                         id = WorkflowConstants.SelfAlias;
                     }
+                    else if (GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(action.Uses!.Value, out _, out var selfError) ||
+                        selfError != null)
+                    {
+                        id = WorkflowConstants.SelfRepositoryAlias;
+                    }
                     else
                     {
                         var usesSegments = action.Uses!.Value.Split('@');
@@ -1753,9 +1758,15 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                     With = with,
                 };
 
-                if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
+                var isSelfRepository = GitHub.DistributedTask.Pipelines.PipelineConstants.TryParseSelfRepository(uses.Value, out _, out var selfError);
+                if (selfError != null)
+                {
+                    context.Error(uses, selfError);
+                }
+                else if (!uses.Value.StartsWith(WorkflowTemplateConstants.DockerUriPrefix, StringComparison.Ordinal) &&
                     !uses.Value.StartsWith("./") &&
-                    !uses.Value.StartsWith(".\\"))
+                    !uses.Value.StartsWith(".\\") &&
+                    !isSelfRepository)
                 {
                     var usesSegments = uses.Value.Split('@');
                     var pathSegments = usesSegments[0].Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
@@ -1877,7 +1888,7 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         permissionsStr.AssertUnexpectedValue(permissionsStr.Value);
                         break;
                 }
-                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission);
+                return new Permissions(permissionLevel, includeIdToken: true, includeAttestations: true, includeModels: context.GetFeatures().AllowModelsPermission, includeVulnerabilityAlerts: context.GetFeatures().AllowVulnerabilityAlertsPermission);
             }
 
             var mapping = token.AssertMapping("permissions");
@@ -1955,6 +1966,23 @@ namespace GitHub.Actions.WorkflowParser.Conversion
                         else
                         {
                             context.Error(key, $"The permission 'models' is not allowed");
+                        }
+                        break;
+                    case "vulnerability-alerts":
+                        if (context.GetFeatures().AllowVulnerabilityAlertsPermission)
+                        {
+                            if (permissionLevel == PermissionLevel.Write)
+                            {
+                                permissions.VulnerabilityAlerts = PermissionLevel.Read;
+                            }
+                            else
+                            {
+                                permissions.VulnerabilityAlerts = permissionLevel;
+                            }
+                        }
+                        else
+                        {
+                            context.Error(key, $"The permission 'vulnerability-alerts' is not allowed");
                         }
                         break;
                     default:
@@ -2274,6 +2302,10 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Needs),
             new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Strategy),
             new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Matrix),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Steps),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Job),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(WorkflowTemplateConstants.Env),
         };
         private static readonly IFunctionInfo[] s_jobConditionFunctions = new IFunctionInfo[]
         {
@@ -2290,6 +2322,13 @@ namespace GitHub.Actions.WorkflowParser.Conversion
             new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Success, 0, 0),
             new FunctionInfo<NoOperation>(WorkflowTemplateConstants.HashFiles, 1, Byte.MaxValue),
         };
-        private static readonly IFunctionInfo[] s_snapshotConditionFunctions = null;
+        private static readonly IFunctionInfo[] s_snapshotConditionFunctions = new IFunctionInfo[]
+        {
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Always, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Cancelled, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Failure, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.Success, 0, 0),
+            new FunctionInfo<NoOperation>(WorkflowTemplateConstants.HashFiles, 1, Byte.MaxValue),
+        };
     }
 }

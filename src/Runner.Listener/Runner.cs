@@ -442,12 +442,19 @@ namespace GitHub.Runner.Listener
                 }
 
                 bool usedMigratedSettings = false;
+                bool allowMessageListenerFallback = true;
 
                 if (migratedSettings != null)
                 {
                     // Try to create session with migrated settings first
                     Trace.Info("Attempting to create session using migrated settings");
                     _listener = GetMessageListener(migratedSettings, isMigratedSettings: true);
+
+                    // We won't fallback to original MessageListener on github.com anymore
+                    if (_listener is BrokerMessageListener && migratedSettings.IsHostedServer)
+                    {
+                        allowMessageListenerFallback = false;
+                    }
 
                     try
                     {
@@ -458,12 +465,23 @@ namespace GitHub.Runner.Listener
                             settings = migratedSettings; // Use migrated settings for the rest of the process
                             usedMigratedSettings = true;
                         }
+                        else if (!allowMessageListenerFallback)
+                        {
+                            if (createSessionResult == CreateSessionResult.SessionConflict)
+                            {
+                                return Constants.Runner.ReturnCode.SessionConflict;
+                            }
+                            else if (createSessionResult == CreateSessionResult.Failure)
+                            {
+                                return Constants.Runner.ReturnCode.TerminatedError;
+                            }
+                        }
                         else
                         {
                             Trace.Warning($"Failed to create session with migrated settings: {createSessionResult}");
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (allowMessageListenerFallback)
                     {
                         Trace.Error($"Exception when creating session with migrated settings: {ex}");
                     }
@@ -498,6 +516,7 @@ namespace GitHub.Runner.Listener
                 bool skipSessionDeletion = false;
                 bool restartSession = false; // Flag to indicate session restart
                 bool restartSessionPending = false;
+                bool cleanupLocalConfigAfter404 = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -695,6 +714,12 @@ namespace GitHub.Runner.Listener
                                         {
                                             await _listener.AcknowledgeMessageAsync(messageRef.RunnerRequestId, messageQueueLoopTokenSource.Token);
                                         }
+                                        catch (RunnerRequestJobNotFoundException) when (settings.Ephemeral)
+                                        {
+                                            Trace.Info($"Acknowledge returned job-not-found for ephemeral runner request '{messageRef.RunnerRequestId}'. Exiting runner.");
+                                            runOnceJobCompleted = true;
+                                            return Constants.Runner.ReturnCode.Success;
+                                        }
                                         catch (Exception ex)
                                         {
                                             Trace.Error($"Best-effort acknowledge failed for request '{messageRef.RunnerRequestId}'");
@@ -813,6 +838,14 @@ namespace GitHub.Runner.Listener
                                 Trace.Error($"Received message {message.MessageId} with unsupported message type {message.MessageType}.");
                             }
                         }
+                        catch (Exception ex) when (ex is TaskAgentNotFoundException || ex is RunnerNotFoundException)
+                        {
+                            Trace.Info($"Runner registration no longer exists while retrieving messages. {ex.Message}");
+                            _term.WriteError("The runner no longer exists on the server. Cleaning up local configuration.");
+                            skipSessionDeletion = true;
+                            cleanupLocalConfigAfter404 = true;
+                            break;
+                        }
                         finally
                         {
                             if (!skipMessageDeletion && message != null)
@@ -859,7 +892,7 @@ namespace GitHub.Runner.Listener
 
                     messageQueueLoopTokenSource.Dispose();
 
-                    if (settings.Ephemeral && runOnceJobCompleted)
+                    if ((settings.Ephemeral && runOnceJobCompleted) || cleanupLocalConfigAfter404)
                     {
                         configManager.DeleteLocalRunnerConfig();
                     }

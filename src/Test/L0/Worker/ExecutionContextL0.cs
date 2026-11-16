@@ -17,6 +17,93 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class ExecutionContextL0
     {
+        [Theory]
+        [InlineData("true", true, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData("true", false, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData("true", false, ActionRunStage.Pre, "owner/probe", "probe-sha")]
+        [InlineData("true", false, ActionRunStage.Post, "owner/probe", "probe-sha")]
+        [InlineData("true", true, ActionRunStage.Main, "", "")]
+        [InlineData("false", true, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData(null, true, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData("false", false, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData(null, false, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateEmbeddedChild_GitHubContextInheritanceHonorsFeatureFlag(string featureFlag, bool isBackground, ActionRunStage stage, string repository, string actionRef)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "job", "job", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                if (featureFlag != null)
+                {
+                    jobRequest.Variables[Constants.Runner.Features.FixEmbeddedGitHubContext] = new VariableValue(featureFlag);
+                }
+                jobRequest.ContextData["github"] = new DictionaryContextData();
+                hc.SetSingleton(new Mock<IJobServerQueue>().Object);
+                hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+                hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+                jobContext.SetGitHubContext("action_repository", "actions/checkout");
+                jobContext.SetGitHubContext("action_ref", "v6");
+
+                var composite = jobContext.CreateChild(Guid.NewGuid(), "probe", "probe", null, "probe", stage, isBackground: isBackground);
+                // Background actions and nested composites have a GitHub context separate from the root.
+                composite.ExpressionValues["github"] = ((GitHubContext)composite.ExpressionValues["github"]).ShallowCopy();
+                composite.SetGitHubContext("action_repository", repository);
+                composite.SetGitHubContext("action_ref", actionRef);
+                composite.SetGitHubContext("action_path", "/actions/probe");
+
+                var child = composite.CreateEmbeddedChild("probe", "first", Guid.NewGuid(), stage);
+                var sibling = composite.CreateEmbeddedChild("probe", "second", Guid.NewGuid(), stage);
+
+                if (featureFlag != "true")
+                {
+                    Assert.Same(jobContext.ExpressionValues["github"], child.ExpressionValues["github"]);
+                    Assert.Same(jobContext.ExpressionValues["github"], sibling.ExpressionValues["github"]);
+                    Assert.Equal("actions/checkout", child.GetGitHubContext("action_repository"));
+                    Assert.Equal("v6", child.GetGitHubContext("action_ref"));
+                    Assert.Equal(repository, composite.GetGitHubContext("action_repository"));
+                    Assert.Equal(actionRef, composite.GetGitHubContext("action_ref"));
+                    return;
+                }
+
+                Assert.Equal(repository, child.GetGitHubContext("action_repository"));
+                Assert.Equal(actionRef, child.GetGitHubContext("action_ref"));
+                Assert.Equal("/actions/probe", child.GetGitHubContext("action_path"));
+                Assert.NotSame(composite.ExpressionValues["github"], child.ExpressionValues["github"]);
+                Assert.NotSame(child.ExpressionValues["github"], sibling.ExpressionValues["github"]);
+                Assert.Same(jobContext, child.Root);
+                Assert.Same(composite.Global, child.Global);
+                Assert.Equal(composite.Id, child.Id);
+                Assert.True(child.IsEmbedded);
+                Assert.Equal(stage, child.Stage);
+
+                child.SetGitHubContext("action_repository", "owner/nested");
+                child.SetGitHubContext("action_ref", "nested-sha");
+                child.SetGitHubContext("action_path", "/actions/nested");
+                var nested = child.CreateEmbeddedChild("probe.first", "nested", Guid.NewGuid(), stage);
+
+                Assert.Equal("owner/nested", nested.GetGitHubContext("action_repository"));
+                Assert.Equal("nested-sha", nested.GetGitHubContext("action_ref"));
+                Assert.Equal("/actions/nested", nested.GetGitHubContext("action_path"));
+                Assert.NotSame(child.ExpressionValues["github"], nested.ExpressionValues["github"]);
+                nested.SetGitHubContext("action_repository", "owner/deeper");
+                Assert.Equal("owner/nested", child.GetGitHubContext("action_repository"));
+
+                foreach (var context in new[] { composite, sibling })
+                {
+                    Assert.Equal(repository, context.GetGitHubContext("action_repository"));
+                    Assert.Equal(actionRef, context.GetGitHubContext("action_ref"));
+                    Assert.Equal("/actions/probe", context.GetGitHubContext("action_path"));
+                }
+                Assert.Equal("actions/checkout", jobContext.GetGitHubContext("action_repository"));
+                Assert.Equal("v6", jobContext.GetGitHubContext("action_ref"));
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -358,6 +445,119 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.Complete();
 
                 jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long?>()), Times.Exactly(10));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RegisterPostJobStep_JobExtensionRunner_DefaultsRunnerTelemetry()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                // Act.
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var extensionStep = new JobExtensionRunner(
+                    runAsync: (_, _) => System.Threading.Tasks.Task.CompletedTask,
+                    condition: "always()",
+                    displayName: "Create Custom Image",
+                    data: null);
+
+                jobContext.RegisterPostJobStep(extensionStep);
+
+                // Assert: telemetry defaults are populated for non-action post-job steps.
+                Assert.NotNull(extensionStep.ExecutionContext);
+                Assert.Equal("runner", extensionStep.ExecutionContext.StepTelemetry.Type);
+                Assert.Equal("create_custom_image", extensionStep.ExecutionContext.StepTelemetry.Action);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RegisterPostJobStep_ActionRunner_DoesNotOverrideTelemetry()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new();
+                TimelineReference timeline = new();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var pagingLogger3 = new Mock<IPagingLogger>();
+                var pagingLogger4 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                var actionRunner = new ActionRunner();
+                actionRunner.Initialize(hc);
+
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.EnqueueInstance(pagingLogger3.Object);
+                hc.EnqueueInstance(pagingLogger4.Object);
+                hc.EnqueueInstance(actionRunner as IActionRunner);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                // Act.
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var action = jobContext.CreateChild(Guid.NewGuid(), "action", "action", null, null, 0);
+
+                var postRunner = hc.CreateService<IActionRunner>();
+                postRunner.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = "post", DisplayName = "Post Action", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner.Stage = ActionRunStage.Post;
+                postRunner.Condition = "always()";
+                postRunner.DisplayName = "Post Action";
+
+                action.RegisterPostJobStep(postRunner);
+
+                // Assert: action post-step telemetry is left for the handler to fill in,
+                // so RegisterPostJobStep should NOT pre-populate runner-owned defaults.
+                Assert.NotNull(postRunner.ExecutionContext);
+                Assert.Null(postRunner.ExecutionContext.StepTelemetry.Type);
+                Assert.Null(postRunner.ExecutionContext.StepTelemetry.Action);
             }
         }
 
@@ -1203,19 +1403,19 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        // TODO: this test can be deleted when `AddCheckRunIdToJobContext` is fully rolled out
+        // AddCheckRunIdToJobContext is now permanently enabled server-side (hardcoded to "true"
+        // in acquirejobhandler.go). The runner always copies ContextData["job"] entries, so the
+        // flag-disabled test is no longer applicable. Replaced with a test that verifies
+        // check_run_id is always hydrated regardless of the flag value.
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void InitializeJob_HydratesJobContextWithCheckRunId_FeatureFlagDisabled()
+        public void InitializeJob_HydratesJobContextWithCheckRunId_AlwaysCopied()
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                // Arrange: Create a job request message and make sure the feature flag is disabled
-                var variables = new Dictionary<string, VariableValue>()
-                {
-                    [Constants.Runner.Features.AddCheckRunIdToJobContext] = new VariableValue("false"),
-                };
+                // Arrange: No feature flag set at all
+                var variables = new Dictionary<string, VariableValue>();
                 var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
                 var pagingLogger = new Moq.Mock<IPagingLogger>();
                 var jobServerQueue = new Moq.Mock<IJobServerQueue>();
@@ -1233,9 +1433,80 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act
                 ec.InitializeJob(jobRequest, CancellationToken.None);
 
-                // Assert
+                // Assert: check_run_id is always copied regardless of flag
                 Assert.NotNull(ec.JobContext);
-                Assert.Null(ec.JobContext.CheckRunId); // with the feature flag disabled we should not have added a CheckRunId to the JobContext
+                Assert.Equal(123456, ec.JobContext.CheckRunId);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_HydratesJobContextWithWorkflowIdentity()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange
+                var variables = new Dictionary<string, VariableValue>();
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: Server sends all 4 workflow identity fields
+                var jobContext = new Pipelines.ContextData.DictionaryContextData();
+                jobContext["workflow_ref"] = new StringContextData("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main");
+                jobContext["workflow_sha"] = new StringContextData("abc123def456");
+                jobContext["workflow_repository"] = new StringContextData("my-org/my-repo");
+                jobContext["workflow_file_path"] = new StringContextData(".github/workflows/reusable.yml");
+                jobRequest.ContextData["job"] = jobContext;
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert: all properties hydrated from server
+                Assert.NotNull(ec.JobContext);
+                Assert.Equal("my-org/my-repo/.github/workflows/reusable.yml@refs/heads/main", ec.JobContext.WorkflowRef);
+                Assert.Equal("abc123def456", ec.JobContext.WorkflowSha);
+                Assert.Equal("my-org/my-repo", ec.JobContext.WorkflowRepository);
+                Assert.Equal(".github/workflows/reusable.yml", ec.JobContext.WorkflowFilePath);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_WorkflowIdentityNotSet_WhenServerSendsNoData()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Server sends no workflow identity in job context
+                var variables = new Dictionary<string, VariableValue>();
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "some job name", "some job name", null, null, null, variables, new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                var pagingLogger = new Moq.Mock<IPagingLogger>();
+                var jobServerQueue = new Moq.Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Arrange: empty job context
+                jobRequest.ContextData["job"] = new Pipelines.ContextData.DictionaryContextData();
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert: no workflow identity
+                Assert.NotNull(ec.JobContext);
+                Assert.Null(ec.JobContext.WorkflowRef);
+                Assert.Null(ec.JobContext.WorkflowSha);
+                Assert.Null(ec.JobContext.WorkflowRepository);
+                Assert.Null(ec.JobContext.WorkflowFilePath);
             }
         }
 

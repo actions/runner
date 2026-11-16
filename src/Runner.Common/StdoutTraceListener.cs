@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -9,10 +9,12 @@ namespace GitHub.Runner.Common
     public sealed class StdoutTraceListener : ConsoleTraceListener
     {
         private readonly string _hostType;
+        private readonly bool _disablePrefixMultilineLogs = false;
 
         public StdoutTraceListener(string hostType)
         {
             this._hostType = hostType;
+            this._disablePrefixMultilineLogs = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Agent.DisableStdoutMultilineLogPrefixing));
         }
 
         // Copied and modified slightly from .Net Core source code. Modification was required to make it compile.
@@ -26,11 +28,20 @@ namespace GitHub.Runner.Common
 
             if (!string.IsNullOrEmpty(message))
             {
-                var messageLines = message.Split(Environment.NewLine);
-                foreach (var messageLine in messageLines)
+                if (!this._disablePrefixMultilineLogs)
+                {
+                    var messageLines = message.Split(Environment.NewLine);
+                    foreach (var messageLine in messageLines)
+                    {
+                        WriteHeader(source, eventType, id);
+                        WriteLine(messageLine);
+                        WriteFooter(eventCache);
+                    }
+                }
+                else
                 {
                     WriteHeader(source, eventType, id);
-                    WriteLine(messageLine);
+                    WriteLine(message);
                     WriteFooter(eventCache);
                 }
             }

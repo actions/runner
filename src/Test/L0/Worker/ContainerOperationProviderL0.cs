@@ -141,6 +141,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private void Setup([CallerMemberName] string testName = "")
         {
+            // Ensure no leaked container hooks path from other tests so the docker manager is initialized.
+            Environment.SetEnvironmentVariable(Constants.Hooks.ContainerHooksPath, null);
             containers.Add(new ContainerInfo() { ContainerImage = "ubuntu:16.04" });
             _hc = new TestHostContext(this, testName);
             _ec = new Mock<IExecutionContext>();

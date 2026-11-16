@@ -82,5 +82,69 @@ namespace GitHub.Runner.Worker
                 }
             }
         }
+
+        public string WorkflowRef
+        {
+            get
+            {
+                if (this.TryGetValue("workflow_ref", out var value) && value is StringContextData str)
+                {
+                    return str.Value;
+                }
+                return null;
+            }
+            set
+            {
+                this["workflow_ref"] = value != null ? new StringContextData(value) : null;
+            }
+        }
+
+        public string WorkflowSha
+        {
+            get
+            {
+                if (this.TryGetValue("workflow_sha", out var value) && value is StringContextData str)
+                {
+                    return str.Value;
+                }
+                return null;
+            }
+            set
+            {
+                this["workflow_sha"] = value != null ? new StringContextData(value) : null;
+            }
+        }
+
+        public string WorkflowRepository
+        {
+            get
+            {
+                if (this.TryGetValue("workflow_repository", out var value) && value is StringContextData str)
+                {
+                    return str.Value;
+                }
+                return null;
+            }
+            set
+            {
+                this["workflow_repository"] = value != null ? new StringContextData(value) : null;
+            }
+        }
+
+        public string WorkflowFilePath
+        {
+            get
+            {
+                if (this.TryGetValue("workflow_file_path", out var value) && value is StringContextData str)
+                {
+                    return str.Value;
+                }
+                return null;
+            }
+            set
+            {
+                this["workflow_file_path"] = value != null ? new StringContextData(value) : null;
+            }
+        }
     }
 }

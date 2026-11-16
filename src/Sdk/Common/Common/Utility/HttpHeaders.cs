@@ -31,5 +31,7 @@ namespace GitHub.Services.Common.Internal
         public const string WwwAuthenticate = "WWW-Authenticate";
 
         public const string AfdResponseRef = "X-MSEdge-Ref";
+
+        public const string RetryAfter = "Retry-After";
     }
 }
