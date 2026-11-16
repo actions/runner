@@ -27,6 +27,7 @@ This document outlines the automated dependency management process for the GitHu
 - **Schedule**: Mondays at 6:00 AM UTC
 - **Purpose**: Updates Node.js 20 and 24 versions in `src/Misc/externals.sh`
 - **Source**: [nodejs.org](https://nodejs.org) and [actions/alpine_nodejs](https://github.com/actions/alpine_nodejs)
+- **Bundled npm**: Pinned separately from the Node 24 archive in `src/Misc/externals.sh`; layout creation verifies its integrity and the expected version at `externals/node24/lib/node_modules/npm/node_modules/undici/package.json`.
 - **Priority**: First (NPM depends on current Node.js versions)
 
 ### 3. NPM Security Audit

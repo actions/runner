@@ -7,6 +7,10 @@ NODE_ALPINE_URL=https://github.com/actions/alpine_nodejs/releases/download
 # When you update Node versions you must also create a new release of alpine_nodejs at that updated version.
 # Follow the instructions here: https://github.com/actions/alpine_nodejs?tab=readme-ov-file#getting-started
 NODE24_VERSION="24.22.3"
+NPM_VERSION="11.21.2"
+NPM_URL=https://registry.npmjs.org/npm/-/npm-${NPM_VERSION}.tgz
+NPM_INTEGRITY="sha512-7HPApk+AflMUavSseL1Pm6CnYqMIHk53x+KmuhqmTDqPkjPMgxIpTPcTqsE91EKNw4gFBJV9fnXiSdGm1DXq9A=="
+NPM_UNDICI_VERSION="6.29.1"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -135,6 +139,53 @@ function acquireExternalTool() {
     fi
 }
 
+function acquireNpmPackage() {
+    local relative_url="${NPM_URL#*://}"
+    local download_target="$DOWNLOAD_DIR/$relative_url"
+    local download_basename="$(basename "$download_target")"
+    local download_dir="$(dirname "$download_target")"
+
+    if [ ! -f "$download_target" ]; then
+        local partial_target="$DOWNLOAD_DIR/partial/$download_basename"
+        mkdir -p "$(dirname "$partial_target")" || checkRC 'mkdir'
+        rm -f "$partial_target" || checkRC 'rm'
+
+        echo "Downloading $NPM_URL" >&2
+        mkdir -p "$download_dir" || checkRC 'mkdir'
+
+        CURL_VERSION=$(curl --version | awk 'NR==1{print $2}')
+        echo "Curl version: $CURL_VERSION" >&2
+
+        if [[ "$(printf '%s\n' "7.71.0" "$CURL_VERSION" | sort -V | head -n1)" != "7.71.0" ]]; then
+            curl -fSL --retry 3 -o "$partial_target" "$NPM_URL" 2>"${download_target}_download.log" || checkRC 'curl'
+        else
+            curl -fSL --retry 3 --retry-all-errors -o "$partial_target" "$NPM_URL" 2>"${download_target}_download.log" || checkRC 'curl'
+        fi
+
+        mv "$partial_target" "$download_target" || checkRC 'mv'
+    fi
+
+    echo "$download_target"
+}
+
+function updateNpmPackage() {
+    local target_dir="$1"
+    local node="$target_dir/bin/node"
+    local npm_cli="$target_dir/lib/node_modules/npm/bin/npm-cli.js"
+    local npm_package="$2"
+
+    [ -x "$node" ] || failed "node executable is missing from $target_dir"
+    [ -f "$npm_cli" ] || failed "npm CLI is missing from $target_dir"
+
+    local actual_integrity=$("$node" -e "const crypto = require('crypto'); const fs = require('fs'); process.stdout.write('sha512-' + crypto.createHash('sha512').update(fs.readFileSync(process.argv[1])).digest('base64'))" "$npm_package")
+    [ "$actual_integrity" = "$NPM_INTEGRITY" ] || failed "npm package integrity check failed"
+
+    "$node" "$npm_cli" install --global --prefix "$target_dir" --ignore-scripts --no-audit --no-fund "$npm_package" || checkRC 'npm install'
+
+    local undici_version=$("$node" -p "require('$target_dir/lib/node_modules/npm/node_modules/undici/package.json').version")
+    [ "$undici_version" = "$NPM_UNDICI_VERSION" ] || failed "npm bundled undici version is $undici_version, expected $NPM_UNDICI_VERSION"
+}
+
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/$PACKAGERUNTIME/node.exe" node24/bin
@@ -171,4 +222,14 @@ fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-arm64.tar.gz" node24 fix_nested_dir
+fi
+
+if [[ "$PACKAGERUNTIME" == "osx-x64" || "$PACKAGERUNTIME" == "osx-arm64" || "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "linux-arm64" ]]; then
+    npm_package=$(acquireNpmPackage)
+    if [[ "$PRECACHE" == "" ]]; then
+        updateNpmPackage "$LAYOUT_DIR/externals/node24" "$npm_package"
+        if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
+            updateNpmPackage "$LAYOUT_DIR/externals/node24_alpine" "$npm_package"
+        fi
+    fi
 fi
