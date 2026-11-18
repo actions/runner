@@ -120,17 +120,6 @@ curl -O -L https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>
 tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 ```
 
-## Linux arm
-
-```bash
-# Create a folder
-mkdir actions-runner && cd actions-runner
-# Download the latest runner package
-curl -O -L https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
-# Extract the installer
-tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
-```
-
 ## Using your self hosted runner
 
 For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
@@ -145,4 +134,3 @@ The SHA-256 checksums for the packages included in this build are shown below:
 - actions-runner-osx-arm64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA osx-arm64 --><OSX_ARM64_SHA><!-- END SHA osx-arm64 -->
 - actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-x64 --><LINUX_X64_SHA><!-- END SHA linux-x64 -->
 - actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-arm64 --><LINUX_ARM64_SHA><!-- END SHA linux-arm64 -->
-- actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz <!-- BEGIN SHA linux-arm --><LINUX_ARM_SHA><!-- END SHA linux-arm -->

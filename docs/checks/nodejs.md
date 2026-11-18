@@ -4,11 +4,11 @@
 
 Make sure the built-in node.js has access to GitHub.com or GitHub Enterprise Server.
 
-The runner carries its own copies of node.js executables under `<runner_root>/externals/node20/` and `<runner_root>/externals/node24/`.
+The runner carries its own Node.js 24 executable under `<runner_root>/externals/node24/`. Node.js 20 is no longer bundled.
 
-All javascript base Actions will get executed by the built-in `node` at either `<runner_root>/externals/node20/` or `<runner_root>/externals/node24/` depending on the version specified in the action's metadata.
+All JavaScript actions run on the bundled Node.js 24 runtime. Action metadata using `node12`, `node16`, or `node20` is still accepted, but these actions run on Node.js 24. The `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` and `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` migration settings no longer affect runtime selection.
 
-The runner's own internal operations (for example `hashFiles()` and this check) use `<runner_root>/externals/node24/`. Set `ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION=node20` to use `node20` instead.
+The runner's own internal operations (for example `hashFiles()` and this check) also use Node.js 24. The temporary `ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION=node20` fallback has been removed; this environment variable no longer changes the internal runtime.
 
 > Not the `node` from `$PATH`
 
