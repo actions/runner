@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
+using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using Moq;
 using Sdk.RSWebApi.Contracts;
@@ -743,6 +749,213 @@ namespace GitHub.Runner.Common.Tests.Listener
                     Assert.Equal(TaskResult.Succeeded, result);
                 }
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task WorkerLaunchFailureFailsJobRequest()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var jobDispatcher = new JobDispatcher();
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                var jobServer = new Mock<IJobServer>();
+                hc.SetSingleton<IJobServer>(jobServer.Object);
+                hc.SetSingleton<IJobNotification>(new Mock<IJobNotification>().Object);
+                hc.SetSingleton<ITerminal>(new Mock<ITerminal>().Object);
+
+                hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
+                hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings() { PoolId = 1 });
+                jobDispatcher.Initialize(hc);
+
+                var message = CreateClassicJobRequestMessage();
+                message.Variables[Constants.Runner.Features.FailJobOnWorkerLaunchFailure] = new VariableValue("true");
+
+                SetupWorkerLaunchFailure();
+                SetupClassicJobRequestRenewal();
+
+                var jobRecord = new TimelineRecord() { Id = message.JobId, RecordType = "Job" };
+                var timeline = new Timeline(message.Timeline.Id);
+                timeline.Records.Add(jobRecord);
+                jobServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.CompletedTask);
+                jobServer.Setup(x => x.GetTimelineAsync(It.IsAny<Guid>(), It.IsAny<string>(), message.Plan.PlanId, message.Timeline.Id, It.IsAny<CancellationToken>())).Returns(Task.FromResult(timeline));
+                IEnumerable<TimelineRecord> updatedRecords = null;
+                jobServer.Setup(x => x.UpdateTimelineRecordsAsync(It.IsAny<Guid>(), It.IsAny<string>(), message.Plan.PlanId, message.Timeline.Id, It.IsAny<IEnumerable<TimelineRecord>>(), It.IsAny<CancellationToken>()))
+                    .Callback((Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken token) => updatedRecords = records)
+                    .Returns(Task.FromResult(new List<TimelineRecord>()));
+                JobCompletedEvent jobCompletedEvent = null;
+                jobServer.Setup(x => x.RaisePlanEventAsync(It.IsAny<Guid>(), It.IsAny<string>(), message.Plan.PlanId, It.IsAny<JobCompletedEvent>(), It.IsAny<CancellationToken>()))
+                    .Callback((Guid scopeIdentifier, string hubName, Guid planId, JobCompletedEvent eventData, CancellationToken token) => jobCompletedEvent = eventData)
+                    .Returns(Task.CompletedTask);
+
+                jobDispatcher.Run(message, true);
+                await jobDispatcher.WaitAsync(CancellationToken.None);
+
+                Assert.True(jobDispatcher.RunOnceJobCompleted.Task.IsCompleted, "JobDispatcher should complete the job when the worker fails to launch.");
+                Assert.Equal(TaskResult.Failed, await jobDispatcher.RunOnceJobCompleted.Task);
+                _processChannel.Verify(x => x.SendAsync(It.IsAny<MessageType>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+                _runnerServer.Verify(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), TaskResult.Failed, It.IsAny<CancellationToken>()), Times.Once);
+                // Lock renewal is stopped once the job is failed instead of renewing indefinitely.
+                int renewCount = _runnerServer.Invocations.Count(i => i.Method.Name == nameof(IRunnerServer.RenewAgentRequestAsync));
+                Assert.True(renewCount >= 1);
+                await Task.Delay(TimeSpan.FromMilliseconds(100));
+                Assert.Equal(renewCount, _runnerServer.Invocations.Count(i => i.Method.Name == nameof(IRunnerServer.RenewAgentRequestAsync)));
+
+                // The job timeline record is failed with the launch error, and the plan gets a failed JobCompletedEvent.
+                var updatedRecord = Assert.Single(updatedRecords);
+                Assert.Equal(TaskResult.Failed, updatedRecord.Result);
+                Assert.Equal(TimelineRecordState.Completed, updatedRecord.State);
+                var issue = Assert.Single(updatedRecord.Issues);
+                Assert.Equal(IssueType.Error, issue.Type);
+                Assert.Contains("failed to start the worker process", issue.Message);
+                Assert.Contains("An Application Control policy has blocked this file.", issue.Message);
+                Assert.Equal(Constants.Runner.WorkerLaunchFailure, issue.Data[Constants.Runner.InternalTelemetryIssueDataKey]);
+                Assert.NotNull(jobCompletedEvent);
+                Assert.Equal(message.JobId, jobCompletedEvent.JobId);
+                Assert.Equal(TaskResult.Failed, jobCompletedEvent.Result);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task WorkerLaunchFailureKeepsExistingBehaviorWhenFeatureDisabled()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var jobDispatcher = new JobDispatcher();
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                var jobServer = new Mock<IJobServer>();
+                hc.SetSingleton<IJobServer>(jobServer.Object);
+                hc.SetSingleton<IJobNotification>(new Mock<IJobNotification>().Object);
+                hc.SetSingleton<ITerminal>(new Mock<ITerminal>().Object);
+
+                hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
+                hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings() { PoolId = 1 });
+                jobDispatcher.Initialize(hc);
+
+                var message = CreateClassicJobRequestMessage();
+
+                SetupWorkerLaunchFailure();
+                SetupClassicJobRequestRenewal();
+                _processChannel.Setup(x => x.SendAsync(It.IsAny<MessageType>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+                jobDispatcher.Run(message, true);
+                await jobDispatcher.WaitAsync(CancellationToken.None);
+
+                // Without the feature flag the job message is still sent to the worker and the job is not failed by the runner.
+                Assert.True(jobDispatcher.RunOnceJobCompleted.Task.IsCompleted);
+                Assert.NotEqual(TaskResult.Failed, await jobDispatcher.RunOnceJobCompleted.Task);
+                _processChannel.Verify(x => x.SendAsync(MessageType.NewJobRequest, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+                _runnerServer.Verify(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<TaskResult>(), It.IsAny<CancellationToken>()), Times.Never);
+                jobServer.Verify(x => x.UpdateTimelineRecordsAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<IEnumerable<TimelineRecord>>(), It.IsAny<CancellationToken>()), Times.Never);
+                jobServer.Verify(x => x.RaisePlanEventAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<JobCompletedEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task WorkerLaunchFailureFailsRunServiceJobWithAnnotation()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var jobDispatcher = new JobDispatcher();
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunServer>(_runServer.Object);
+                hc.SetSingleton<IJobNotification>(new Mock<IJobNotification>().Object);
+                hc.SetSingleton<ITerminal>(new Mock<ITerminal>().Object);
+
+                hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
+                hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings() { PoolId = 1 });
+                jobDispatcher.Initialize(hc);
+
+                var message = GetAgentJobRequestMessage();
+                typeof(AgentJobRequestMessage).GetProperty(nameof(AgentJobRequestMessage.MessageType)).SetValue(message, JobRequestMessageTypes.RunnerJobRequest);
+                message.Variables[Constants.Runner.Features.FailJobOnWorkerLaunchFailure] = new VariableValue("true");
+                var systemConnection = GetServiceEndpoint();
+                systemConnection.Name = WellKnownServiceEndpointNames.SystemVssConnection;
+                systemConnection.Url = new Uri("https://pipelines.actions.githubusercontent.com");
+                systemConnection.Authorization.Parameters["AccessToken"] = CreateUnsignedJwt();
+                message.Resources.Endpoints.Add(systemConnection);
+
+                SetupWorkerLaunchFailure();
+
+                _runServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>())).Returns(Task.CompletedTask);
+                _runServer.Setup(x => x.RenewJobAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(new RenewJobResponse() { LockedUntil = DateTime.UtcNow.AddMinutes(5) }));
+
+                IList<Annotation> reportedAnnotations = null;
+                _runServer.Setup(x => x.CompleteJobAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), TaskResult.Failed, It.IsAny<Dictionary<string, VariableValue>>(), It.IsAny<IList<StepResult>>(), It.IsAny<IList<Annotation>>(), It.IsAny<string>(), It.IsAny<IList<Telemetry>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Callback((Guid planId, Guid jobId, TaskResult result, Dictionary<string, VariableValue> outputs, IList<StepResult> stepResults, IList<Annotation> jobAnnotations, string environmentUrl, IList<Telemetry> telemetry, string billingOwnerId, string infrastructureFailureCategory, CancellationToken token) => reportedAnnotations = jobAnnotations)
+                    .Returns(Task.CompletedTask);
+
+                jobDispatcher.Run(message, true);
+                await jobDispatcher.WaitAsync(CancellationToken.None);
+
+                Assert.Equal(TaskResult.Failed, await jobDispatcher.RunOnceJobCompleted.Task);
+                _processChannel.Verify(x => x.SendAsync(It.IsAny<MessageType>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+                _runServer.Verify(x => x.CompleteJobAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), TaskResult.Failed, It.IsAny<Dictionary<string, VariableValue>>(), It.IsAny<IList<StepResult>>(), It.IsAny<IList<Annotation>>(), It.IsAny<string>(), It.IsAny<IList<Telemetry>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+                Assert.NotNull(reportedAnnotations);
+                var annotation = Assert.Single(reportedAnnotations);
+                Assert.Contains("failed to start the worker process", annotation.Message);
+                Assert.Contains("An Application Control policy has blocked this file.", annotation.Message);
+            }
+        }
+
+        private static AgentJobRequestMessage CreateClassicJobRequestMessage()
+        {
+            var message = GetAgentJobRequestMessage();
+            var systemConnection = GetServiceEndpoint();
+            systemConnection.Name = WellKnownServiceEndpointNames.SystemVssConnection;
+            systemConnection.Url = new Uri("https://pipelines.actions.githubusercontent.com");
+            systemConnection.Authorization.Parameters["AccessToken"] = CreateUnsignedJwt();
+            message.Resources.Endpoints.Add(systemConnection);
+            return message;
+        }
+
+        private void SetupClassicJobRequestRenewal()
+        {
+            var request = new TaskAgentJobRequest();
+            PropertyInfo lockedUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            lockedUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+            _runnerServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(request));
+            _runnerServer.Setup(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<TaskResult>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(new TaskAgentJobRequest()));
+        }
+
+        private void SetupWorkerLaunchFailure()
+        {
+            _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
+                .Callback((StartProcessDelegate startDel) => { startDel("1", "2"); });
+            _processInvoker.Setup(x => x.ExecuteAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    "spawnclient 1 2",
+                    It.IsAny<IDictionary<string, string>>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<Encoding>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<Channel<string>>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.FromException<int>(new Win32Exception(4551, "An Application Control policy has blocked this file.")));
+        }
+
+        private static string CreateUnsignedJwt()
+        {
+            static string Base64Url(string value) => Convert.ToBase64String(Encoding.UTF8.GetBytes(value)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            return $"{Base64Url("{\"alg\":\"none\",\"typ\":\"JWT\"}")}.{Base64Url("{\"orch_id\":\"orchestration\"}")}.";
         }
 
         private static void EnableRunServiceJobForJobDispatcher(JobDispatcher jobDispatcher)
