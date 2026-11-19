@@ -396,12 +396,8 @@ namespace GitHub.Runner.Worker
             // Embedded steps (composite) keep track of the state at the root level
             if (context.IsEmbedded)
             {
-                var id = context.EmbeddedId;
-                if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
-                {
-                    context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                }
-                context.Root.EmbeddedIntraActionState[id][stateName] = command.Data;
+                var state = context.Root.EmbeddedIntraActionState.GetOrAdd(context.EmbeddedId, _ => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+                state[stateName] = command.Data;
             }
             // Otherwise modify the ExecutionContext
             else
