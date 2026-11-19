@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Worker;
 using Xunit;
@@ -137,6 +138,30 @@ namespace GitHub.Runner.Common.Tests.Worker
             ctx.WorkflowFilePath = ".github/workflows/ci.yml";
             ctx.WorkflowFilePath = null;
             Assert.Null(ctx.WorkflowFilePath);
+        }
+
+        [Fact]
+        public void GetRuntimeEnvironmentVariables_ReturnsCorrectVariables()
+        {
+            var ctx = new JobContext();
+            ctx.CheckRunId = 12345;
+            ctx.Status = ActionResult.Success;
+            ctx.WorkflowRef = "owner/repo/.github/workflows/ci.yml@refs/heads/main";
+            ctx.WorkflowSha = "abc123def456";
+            ctx.WorkflowRepository = "owner/repo";
+            ctx.WorkflowFilePath = ".github/workflows/ci.yml";
+
+            var dict = new Dictionary<string, string>(ctx.GetRuntimeEnvironmentVariables());
+            Assert.Equal("12345", dict["JOB_CHECK_RUN_ID"]);
+            Assert.Equal("success", dict["JOB_STATUS"]);
+            Assert.Equal("owner/repo/.github/workflows/ci.yml@refs/heads/main", dict["JOB_WORKFLOW_REF"]);
+            Assert.Equal("abc123def456", dict["JOB_WORKFLOW_SHA"]);
+            Assert.Equal("owner/repo", dict["JOB_WORKFLOW_REPOSITORY"]);
+            Assert.Equal(".github/workflows/ci.yml", dict["JOB_WORKFLOW_FILE_PATH"]);
+
+            ctx = new JobContext();
+            dict = new Dictionary<string, string>(ctx.GetRuntimeEnvironmentVariables());
+            Assert.Empty(dict);
         }
     }
 }
