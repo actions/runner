@@ -261,6 +261,13 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         [DataMember(EmitDefaultValue = false)]
+        public bool AllowFailure
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
         public DebuggerTunnelInfo DebuggerTunnel
         {
             get;
