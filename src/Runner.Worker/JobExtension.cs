@@ -1160,8 +1160,8 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Low diskspace warning is not enabled.");
                     return;
                 }
-                var workDirRoot = Directory.GetDirectoryRoot(HostContext.GetDirectory(WellKnownDirectory.Work));
-                var driveInfo = new DriveInfo(workDirRoot);
+                // Query the filesystem backing the work directory, which can differ from the root filesystem.
+                var driveInfo = new DriveInfo(HostContext.GetDirectory(WellKnownDirectory.Work));
                 var freeSpaceInMB = driveInfo.AvailableFreeSpace / 1024 / 1024;
                 if (freeSpaceInMB < lowDiskSpaceThreshold)
                 {
