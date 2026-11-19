@@ -96,6 +96,14 @@ namespace GitHub.Runner.Worker
                     }
                     InitializeSecretMasker(jobMessage);
                     SetCulture(jobMessage);
+#if !OS_WINDOWS
+                    // Steps have not started yet, so every process they launch inherits the new process group.
+                    if (jobMessage.Variables.TryGetValue(Constants.Runner.Features.WorkerOwnProcessGroup, out VariableValue ownProcessGroup) &&
+                        StringUtil.ConvertToBoolean(ownProcessGroup?.Value))
+                    {
+                        MoveToOwnProcessGroup();
+                    }
+#endif
 
                     // Start the job.
                     Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(jobMessage)}");
@@ -215,6 +223,61 @@ namespace GitHub.Runner.Worker
             {
                 // Set the default thread culture.
                 HostContext.SetDefaultCulture(culture.Value);
+            }
+        }
+
+        /// <summary>
+        /// Without a controlling terminal, Runner.Worker inherits the process group of whatever launched the runner,
+        /// so job steps share a process group with Runner.Listener and its supervisor. That group is orphaned, which means
+        /// a step that leaves a stopped process behind when another process in the group exits (for example .NET's
+        /// Process.Kill(entireProcessTree: true), which SIGSTOPs before it kills) makes the kernel send SIGHUP and SIGCONT
+        /// to the whole group, killing the runner. Moving the worker into its own group keeps those signals away from
+        /// Runner.Listener, and the new group is not orphaned while the listener (same session, other group) is its parent.
+        /// With a controlling terminal, Ctrl+C and job control already behave, so the process group is left as it is.
+        /// With RUNNER_MANUALLY_TRAP_SIG, run.sh starts the runner in a job-control group that is not orphaned and
+        /// forwards SIGINT to that whole group, so the process group is left as it is there too.
+        /// https://github.com/actions/runner-images/issues/14833
+        /// </summary>
+        internal void MoveToOwnProcessGroup()
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RUNNER_MANUALLY_TRAP_SIG")))
+            {
+                Trace.Info("RUNNER_MANUALLY_TRAP_SIG is set, keep the current process group.");
+                return;
+            }
+
+            try
+            {
+                var native = HostContext.GetService<IProcessGroupNative>();
+                int terminalErrno = native.ProbeControllingTerminal();
+                if (terminalErrno == 0)
+                {
+                    Trace.Info("Controlling terminal found, keep the current process group.");
+                    return;
+                }
+
+                // Only ENXIO (no controlling terminal) and ENOENT (no /dev/tty at all) mean there is no terminal.
+                // Any other failure leaves the answer unknown, so keep the current process group.
+                if (terminalErrno != ProcessGroupNative.ENXIO && terminalErrno != ProcessGroupNative.ENOENT)
+                {
+                    Trace.Info($"Unable to check for a controlling terminal, errno {terminalErrno}, keep the current process group.");
+                    return;
+                }
+
+                int setpgidErrno = native.MoveToNewProcessGroup();
+                if (setpgidErrno == 0)
+                {
+                    Trace.Info($"Moved into own process group {native.GetProcessGroup()}.");
+                }
+                else
+                {
+                    Trace.Warning($"Failed to move into own process group, errno {setpgidErrno}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best effort, the job can still run in the inherited process group.
+                Trace.Warning($"Failed to move into own process group: {ex.Message}");
             }
         }
 
