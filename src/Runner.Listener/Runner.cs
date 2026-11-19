@@ -777,7 +777,7 @@ namespace GitHub.Runner.Listener
                                     }
 
                                     // Dispatch
-                                    jobDispatcher.Run(jobRequestMessage, runOnce);
+                                    jobDispatcher.Run(jobRequestMessage, runOnce, messageRef.RunnerRequestId);
 
                                     // Run once?
                                     if (runOnce)

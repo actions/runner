@@ -745,6 +745,48 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CancelsJobByRunnerRequestId()
+        {
+            using (var hc = new TestHostContext(this))
+            {
+                var jobDispatcher = new JobDispatcher();
+                hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+
+                hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
+                hc.EnqueueInstance<IProcessInvoker>(_processInvoker.Object);
+
+                _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings() { PoolId = 1 });
+                jobDispatcher.Initialize(hc);
+
+                Pipelines.AgentJobRequestMessage message = CreateJobRequestMessage();
+                Guid runnerRequestId = Guid.NewGuid();
+
+                _processInvoker.Setup(x => x.ExecuteAsync(It.IsAny<String>(), It.IsAny<String>(), "spawnclient 1 2", null, It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult<int>(56));
+                _processChannel.Setup(x => x.StartServer(It.IsAny<StartProcessDelegate>()))
+                    .Callback((StartProcessDelegate startDel) => { startDel("1", "2"); });
+
+                var request = new TaskAgentJobRequest();
+                PropertyInfo lockedUntilProperty = request.GetType().GetProperty("LockedUntil", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(lockedUntilProperty);
+                lockedUntilProperty.SetValue(request, DateTime.UtcNow.AddMinutes(5));
+
+                _runnerServer.Setup(x => x.RenewAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(request));
+                _runnerServer.Setup(x => x.FinishAgentRequestAsync(It.IsAny<int>(), It.IsAny<long>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<TaskResult>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult<TaskAgentJobRequest>(new TaskAgentJobRequest()));
+
+                jobDispatcher.Run(message, false, runnerRequestId.ToString());
+
+                Assert.False(jobDispatcher.Cancel(new JobCancelMessage(Guid.NewGuid(), TimeSpan.FromMinutes(5))));
+                Assert.True(jobDispatcher.Cancel(new JobCancelMessage(runnerRequestId, TimeSpan.FromMinutes(5))));
+
+                await jobDispatcher.WaitAsync(CancellationToken.None);
+            }
+        }
+
         private static void EnableRunServiceJobForJobDispatcher(JobDispatcher jobDispatcher)
         {
             // Set the value of the _isRunServiceJob field to true
