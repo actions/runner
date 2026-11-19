@@ -309,45 +309,48 @@ namespace GitHub.Runner.Worker.Container
         {
             ArgUtil.NotNull(output, nameof(output));
 
-            string arg = $"exec {options} {containerId} {command}".Trim();
-            context.Command($"{DockerPath} {arg}");
-
-            object outputLock = new();
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
-            {
-                if (!string.IsNullOrEmpty(message.Data))
-                {
-                    lock (outputLock)
-                    {
-                        output.Add(message.Data);
-                    }
-                }
-            };
-
-            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
-            {
-                if (!string.IsNullOrEmpty(message.Data))
-                {
-                    lock (outputLock)
-                    {
-                        output.Add(message.Data);
-                    }
-                }
-            };
-
             if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
             {
                 throw new NotSupportedException("Container operations are only supported on Linux runners");
             }
-            return await processInvoker.ExecuteAsync(
-                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                            fileName: DockerPath,
-                            arguments: arg,
-                            environment: null,
-                            requireExitCodeZero: false,
-                            outputEncoding: null,
-                            cancellationToken: CancellationToken.None);
+
+            string arg = $"exec {options} {containerId} {command}".Trim();
+            context.Command($"{DockerPath} {arg}");
+
+            object outputLock = new();
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                {
+                    if (!string.IsNullOrEmpty(message.Data))
+                    {
+                        lock (outputLock)
+                        {
+                            output.Add(message.Data);
+                        }
+                    }
+                };
+
+                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                {
+                    if (!string.IsNullOrEmpty(message.Data))
+                    {
+                        lock (outputLock)
+                        {
+                            output.Add(message.Data);
+                        }
+                    }
+                };
+
+                return await processInvoker.ExecuteAsync(
+                                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                fileName: DockerPath,
+                                arguments: arg,
+                                environment: null,
+                                requireExitCodeZero: false,
+                                outputEncoding: null,
+                                cancellationToken: CancellationToken.None);
+            }
         }
 
         public async Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
@@ -361,7 +364,7 @@ namespace GitHub.Runner.Worker.Container
             return DockerUtil.ParseDockerPort(portMappingLines);
         }
 
-        public Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
+        public async Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
         {
             string args = $"--config {configFileDirectory} login {registry} -u {username} --password-stdin";
             context.Command($"{DockerPath} {args}");
@@ -369,18 +372,19 @@ namespace GitHub.Runner.Worker.Container
             var input = Channel.CreateBounded<string>(new BoundedChannelOptions(1) { SingleReader = true, SingleWriter = true });
             input.Writer.TryWrite(password);
 
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-
-            return processInvoker.ExecuteAsync(
-                workingDirectory: context.GetGitHubContext("workspace"),
-                fileName: DockerPath,
-                arguments: args,
-                environment: null,
-                requireExitCodeZero: false,
-                outputEncoding: null,
-                killProcessOnCancel: false,
-                redirectStandardIn: input,
-                cancellationToken: context.CancellationToken);
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                return await processInvoker.ExecuteAsync(
+                    workingDirectory: context.GetGitHubContext("workspace"),
+                    fileName: DockerPath,
+                    arguments: args,
+                    environment: null,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: false,
+                    redirectStandardIn: input,
+                    cancellationToken: context.CancellationToken);
+            }
         }
 
         private Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
@@ -390,59 +394,64 @@ namespace GitHub.Runner.Worker.Container
 
         private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IDictionary<string, string> environment, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived, CancellationToken cancellationToken = default(CancellationToken))
         {
-            string arg = $"{command} {options}".Trim();
-            context.Command($"{DockerPath} {arg}");
-
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += stdoutDataReceived;
-            processInvoker.ErrorDataReceived += stderrDataReceived;
-
-
             if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
             {
                 throw new NotSupportedException("Container operations are only supported on Linux runners");
             }
-            return await processInvoker.ExecuteAsync(
-                workingDirectory: context.GetGitHubContext("workspace"),
-                fileName: DockerPath,
-                arguments: arg,
-                environment: environment,
-                requireExitCodeZero: false,
-                outputEncoding: null,
-                killProcessOnCancel: false,
-                cancellationToken: cancellationToken);
+
+            string arg = $"{command} {options}".Trim();
+            context.Command($"{DockerPath} {arg}");
+
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += stdoutDataReceived;
+                processInvoker.ErrorDataReceived += stderrDataReceived;
+
+                return await processInvoker.ExecuteAsync(
+                    workingDirectory: context.GetGitHubContext("workspace"),
+                    fileName: DockerPath,
+                    arguments: arg,
+                    environment: environment,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: false,
+                    cancellationToken: cancellationToken);
+            }
         }
 
         private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, string workingDirectory, CancellationToken cancellationToken = default(CancellationToken))
         {
-            string arg = $"{command} {options}".Trim();
-            context.Command($"{DockerPath} {arg}");
-
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
-            {
-                context.Output(message.Data);
-            };
-
-            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
-            {
-                context.Output(message.Data);
-            };
-
             if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
             {
                 throw new NotSupportedException("Container operations are only supported on Linux runners");
             }
-            return await processInvoker.ExecuteAsync(
-                workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
-                fileName: DockerPath,
-                arguments: arg,
-                environment: null,
-                requireExitCodeZero: false,
-                outputEncoding: null,
-                killProcessOnCancel: false,
-                redirectStandardIn: null,
-                cancellationToken: cancellationToken);
+
+            string arg = $"{command} {options}".Trim();
+            context.Command($"{DockerPath} {arg}");
+
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                {
+                    context.Output(message.Data);
+                };
+
+                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                {
+                    context.Output(message.Data);
+                };
+
+                return await processInvoker.ExecuteAsync(
+                    workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
+                    fileName: DockerPath,
+                    arguments: arg,
+                    environment: null,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: false,
+                    redirectStandardIn: null,
+                    cancellationToken: cancellationToken);
+            }
         }
 
         private async Task<List<string>> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options)
@@ -451,32 +460,34 @@ namespace GitHub.Runner.Worker.Container
             context.Command($"{DockerPath} {arg}");
 
             List<string> output = new();
-            var processInvoker = HostContext.CreateService<IProcessInvoker>();
-            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
-                if (!string.IsNullOrEmpty(message.Data))
+                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
                 {
-                    output.Add(message.Data);
-                    context.Output(message.Data);
-                }
-            };
+                    if (!string.IsNullOrEmpty(message.Data))
+                    {
+                        output.Add(message.Data);
+                        context.Output(message.Data);
+                    }
+                };
 
-            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
-            {
-                if (!string.IsNullOrEmpty(message.Data))
+                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
                 {
-                    context.Output(message.Data);
-                }
-            };
+                    if (!string.IsNullOrEmpty(message.Data))
+                    {
+                        context.Output(message.Data);
+                    }
+                };
 
-            await processInvoker.ExecuteAsync(
-                            workingDirectory: context.GetGitHubContext("workspace"),
-                            fileName: DockerPath,
-                            arguments: arg,
-                            environment: null,
-                            requireExitCodeZero: true,
-                            outputEncoding: null,
-                            cancellationToken: CancellationToken.None);
+                await processInvoker.ExecuteAsync(
+                                workingDirectory: context.GetGitHubContext("workspace"),
+                                fileName: DockerPath,
+                                arguments: arg,
+                                environment: null,
+                                requireExitCodeZero: true,
+                                outputEncoding: null,
+                                cancellationToken: CancellationToken.None);
+            }
 
             return output;
         }
