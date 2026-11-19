@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Container
         public static string ParseRegistryHostnameFromImageName(string name)
         {
             var nameSplit = name.Split('/');
-            // Single slash is implictly from Dockerhub, unless first part has .tld or :port
+            // Single slash is implicitly from Dockerhub, unless first part has .tld or :port
             if (nameSplit.Length == 2 && (nameSplit[0].Contains(":") || nameSplit[0].Contains(".")))
             {
                 return nameSplit[0];

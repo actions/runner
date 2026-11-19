@@ -207,7 +207,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
                     _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.999.0", true, It.IsAny<CancellationToken>()))
-                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = $"https://github.com/actions/runner/notexists" }));
+                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.999.0"), DownloadUrl = $"https://github.com/actions/runner/nonexistent" }));
 
                     var p1 = new ProcessInvokerWrapper();
                     p1.Initialize(hc);

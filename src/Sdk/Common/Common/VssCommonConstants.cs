@@ -113,7 +113,7 @@ namespace GitHub.Services.Common
         /// <summary>
         /// The DB layer only supports byte, even though the data layer contracts suggests a
         /// 32-bit integer. Note: changing this constant implies that every new identity object
-        /// that is created, going forward will have this resource version set. Existing identites
+        /// that is created, going forward will have this resource version set. Existing identities
         /// will need to be updated to the current resource version level manually.
         /// 
         /// This is created for rolling out of a feature based on identity not service host. 

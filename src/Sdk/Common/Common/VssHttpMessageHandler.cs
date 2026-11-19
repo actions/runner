@@ -212,7 +212,7 @@ namespace GitHub.Services.Common
                     traceInfo?.TraceBufferedRequestTime();
 
                     // ConfigureAwait(false) enables the continuation to be run outside any captured
-                    // SyncronizationContext (such as ASP.NET's) which keeps things from deadlocking...
+                    // SynchronizationContext (such as ASP.NET's) which keeps things from deadlocking...
 
                     response = await m_messageInvoker.SendAsync(request, tokenSource.Token).ConfigureAwait(false);
 

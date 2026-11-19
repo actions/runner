@@ -258,7 +258,7 @@ namespace GitHub.Runner.Common
                 catch (Exception ex)
                 {
                     failedAttemptsToPostBatchedLinesByWebsocket++;
-                    Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
+                    Trace.Info($"Caught exception during append web console line to websocket, let's fall back to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
                     Trace.Verbose(ex.ToString());
                     if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                     {
