@@ -35,16 +35,16 @@
     "@actions/glob": "^0.7.0"
   },
   "devDependencies": {
-    "@stylistic/eslint-plugin": "^5.10.0",
+    "@stylistic/eslint-plugin": "^6.0.1",
     "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.72.1",
-    "@typescript-eslint/parser": "^8.72.1",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
     "@vercel/ncc": "^0.45.0",
     "eslint": "^8.47.0",
     "eslint-plugin-github": "^6.1.2",
     "eslint-plugin-prettier": "^5.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.6.0",
+    "lint-staged": "^17.6.1",
     "prettier": "^3.0.3",
     "typescript": "^6.0.3"
   }
