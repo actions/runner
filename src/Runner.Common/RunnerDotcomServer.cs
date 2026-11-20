@@ -120,6 +120,10 @@ namespace GitHub.Runner.Common
                 {
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    if (retry > 1)
+                    {
+                        httpClient.DefaultRequestHeaders.TryAddWithoutValidation(GitHub.Services.Common.Internal.HttpHeaders.IsRetry, (retry - 1).ToString());
+                    }
 
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try

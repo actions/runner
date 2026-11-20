@@ -2,13 +2,18 @@
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
 using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using GitHub.Services.Location;
@@ -304,6 +309,91 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 var expectedLabels = userLabels.Split(",").ToList();
 
                 _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Select(x => x.Name).ToHashSet().SetEquals(expectedLabels))), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureSetsRetryHeaderOnRetriedGitHubRequestsOnly()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                var requests = new List<(string Path, string RetryHeader)>();
+                var responses = new Dictionary<string, Queue<(HttpStatusCode, string)>>()
+                {
+                    ["/orgs/myorg/actions/runners/registration-token"] = new Queue<(HttpStatusCode, string)>(new[]
+                    {
+                        (HttpStatusCode.InternalServerError, "{}"),
+                        (HttpStatusCode.OK, "{\"token\":\"registrationToken\",\"expires_at\":\"2099-01-01T00:00:00Z\"}"),
+                    }),
+                    ["/actions/runner-registration"] = new Queue<(HttpStatusCode, string)>(new[]
+                    {
+                        (HttpStatusCode.InternalServerError, "{}"),
+                        (HttpStatusCode.BadGateway, "{}"),
+                        (HttpStatusCode.OK, "{\"url\":\"https://pipelines.actions.githubusercontent.com/abc\",\"token_schema\":\"OAuthAccessToken\",\"token\":\"accessToken\",\"use_v2_flow\":false}"),
+                    }),
+                };
+
+                var handlerFactory = new Mock<IHttpClientHandlerFactory>();
+                handlerFactory
+                    .Setup(x => x.CreateClientHandler(It.IsAny<RunnerWebProxy>()))
+                    .Returns(() => new RecordingHandler(requests, responses));
+                tc.SetSingleton<IHttpClientHandlerFactory>(handlerFactory.Object);
+
+                // Stop configuration once the GitHub requests are done; only their headers are under test.
+                _runnerServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>())).ThrowsAsync(new InvalidOperationException("stop"));
+
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--url", "https://github.com/myorg",
+                       "--pat", "personalAccessToken",
+                       "--unattended",
+                    });
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => configManager.ConfigureAsync(command));
+                Assert.Equal("stop", ex.Message);
+
+                Assert.Equal(
+                    new (string, string)[]
+                    {
+                        ("/orgs/myorg/actions/runners/registration-token", null),
+                        ("/orgs/myorg/actions/runners/registration-token", "1"),
+                        ("/actions/runner-registration", null),
+                        ("/actions/runner-registration", "1"),
+                        ("/actions/runner-registration", "2"),
+                    },
+                    requests);
+            }
+        }
+
+        private sealed class RecordingHandler : HttpClientHandler
+        {
+            private readonly List<(string Path, string RetryHeader)> _requests;
+            private readonly Dictionary<string, Queue<(HttpStatusCode, string)>> _responses;
+
+            public RecordingHandler(List<(string Path, string RetryHeader)> requests, Dictionary<string, Queue<(HttpStatusCode, string)>> responses)
+            {
+                _requests = requests;
+                _responses = responses;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var path = request.RequestUri.AbsolutePath;
+                _requests.Add((path, request.Headers.TryGetValues("X-Is-Retry", out var values) ? values.Single() : null));
+                var (statusCode, body) = _responses[path].Dequeue();
+                return Task.FromResult(new HttpResponseMessage(statusCode)
+                {
+                    Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                });
             }
         }
 

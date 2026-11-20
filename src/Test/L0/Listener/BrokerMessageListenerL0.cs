@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -481,6 +482,105 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 // Verify LoadSettings was never called
                 _config.Verify(x => x.LoadSettings(), Times.Never());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task CreatesSession_MarksRetriesInHttpRetryScope()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                // Arrange.
+                var observedScopes = new List<int>();
+                var expectedSession = new TaskAgentSession();
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(async (TaskAgentSession session, CancellationToken token) =>
+                    {
+                        await Task.Yield();
+                        observedScopes.Add(HttpRetryScope.Current);
+                        if (observedScopes.Count < 3)
+                        {
+                            throw new NotSupportedException("Error during create session");
+                        }
+
+                        return expectedSession;
+                    });
+
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+
+                // Act.
+                BrokerMessageListener listener = new();
+                listener.Initialize(tc);
+
+                CreateSessionResult result = await listener.CreateSessionAsync(tokenSource.Token);
+
+                // Assert.
+                Assert.Equal(CreateSessionResult.Success, result);
+                Assert.Equal(new[] { 0, 1, 2 }, observedScopes);
+                Assert.Equal(0, HttpRetryScope.Current);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task GetNextMessage_MarksOnlyPollsAfterFailureAsRetries()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                // Arrange.
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
+                _brokerServer
+                    .Setup(x => x.CreateSessionAsync(
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(new TaskAgentSession()));
+
+                var observedScopes = new List<int>();
+                var expectedMessage = new TaskAgentMessage();
+                _brokerServer
+                    .Setup(x => x.GetRunnerMessageAsync(
+                        It.IsAny<Guid?>(),
+                        It.IsAny<TaskAgentStatus>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>(),
+                        It.IsAny<bool>(),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(async () =>
+                    {
+                        await Task.Yield();
+                        observedScopes.Add(HttpRetryScope.Current);
+                        switch (observedScopes.Count)
+                        {
+                            case 1:
+                            case 2:
+                                throw new Exception("transient poll failure");
+                            case 3:
+                                return null;
+                            default:
+                                return expectedMessage;
+                        }
+                    });
+
+                BrokerMessageListener listener = new();
+                listener.Initialize(tc);
+                Assert.Equal(CreateSessionResult.Success, await listener.CreateSessionAsync(tokenSource.Token));
+
+                // Act.
+                TaskAgentMessage message = await listener.GetNextMessageAsync(tokenSource.Token);
+
+                // Assert.
+                Assert.Equal(expectedMessage, message);
+                Assert.Equal(new[] { 0, 1, 2, 0 }, observedScopes);
+                Assert.Equal(0, HttpRetryScope.Current);
             }
         }
 
