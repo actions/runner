@@ -187,14 +187,13 @@ namespace GitHub.Runner.Worker.Handlers
             if (FeatureManager.IsContainerHooksEnabled(context.Global.Variables))
             {
                 TranslateToContainerPath(environment);
-                await containerHookManager.RunScriptStepAsync(context,
+                return await containerHookManager.RunScriptStepAsync(context,
                                                                                    Container,
                                                                                    workingDirectory,
                                                                                    fileName,
                                                                                    arguments,
                                                                                    environment,
                                                                                    PrependPath);
-                return (int)(context.Result ?? 0);
             }
 
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));

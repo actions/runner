@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
     {
         Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task RunContainerStepAsync(IExecutionContext context, ContainerInfo container, string dockerFile);
-        Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, string prependPath);
+        Task<int> RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string workingDirectory, string fileName, string arguments, IDictionary<string, string> environment, string prependPath);
         Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
         string GetContainerHookData();
     }
@@ -81,15 +81,16 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             };
 
             var prependPath = GetPrependPath(context);
-            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
+            var response = await ExecuteHookScript<StepHookResponse>(context, input, ActionRunStage.Pre, prependPath);
             if (response == null)
             {
                 return;
             }
             SaveHookState(context, response.State, input);
+            ApplyStepExitCode(context, response);
         }
 
-        public async Task RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string workingDirectory, string entryPoint, string entryPointArgs, IDictionary<string, string> environmentVariables, string prependPath)
+        public async Task<int> RunScriptStepAsync(IExecutionContext context, ContainerInfo container, string workingDirectory, string entryPoint, string entryPointArgs, IDictionary<string, string> environmentVariables, string prependPath)
         {
             Trace.Entering();
             var input = new HookInput
@@ -107,13 +108,24 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 State = context.Global.ContainerHookState
             };
 
-            var response = await ExecuteHookScript<HookResponse>(context, input, ActionRunStage.Pre, prependPath);
+            var response = await ExecuteHookScript<StepHookResponse>(context, input, ActionRunStage.Pre, prependPath);
 
             if (response == null)
             {
-                return;
+                return 0;
             }
             SaveHookState(context, response.State, input);
+            return response.ExitCode?.Value<int>() ?? 0;
+        }
+
+        private static void ApplyStepExitCode(IExecutionContext context, StepHookResponse response)
+        {
+            // Missing exitCode is the legacy successful-hook protocol.
+            if (response.ExitCode != null && response.ExitCode.Value<int>() != 0)
+            {
+                context.Error($"Process completed with exit code {response.ExitCode.Value<int>()}.");
+                context.Result = TaskResult.Failed;
+            }
         }
 
         public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)

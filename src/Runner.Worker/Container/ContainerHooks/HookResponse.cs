@@ -9,6 +9,21 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
         public JObject State { get; set; }
         public virtual void Validate(HookInput input) { }
     }
+    public class StepHookResponse : HookResponse
+    {
+        // Keep the JSON token so malformed/string/fractional exit codes cannot be coerced.
+        public JToken ExitCode { get; set; }
+
+        public override void Validate(HookInput input)
+        {
+            if (ExitCode != null &&
+                (ExitCode.Type != JTokenType.Integer ||
+                 !long.TryParse(ExitCode.ToString(), out var code) || code < 0 || code > 255))
+            {
+                throw new Exception("The hook response 'exitCode' must be an integer between 0 and 255.");
+            }
+        }
+    }
     public class PrepareJobResponse : HookResponse
     {
         public ResponseContext Context { get; set; }
