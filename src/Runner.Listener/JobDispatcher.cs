@@ -504,12 +504,16 @@ namespace GitHub.Runner.Listener
                                     cancellationToken: csSendJobRequest.Token);
                             }
                         }
-                        catch (OperationCanceledException)
+                        catch (Exception ex) when (ex is OperationCanceledException || ex is IOException)
                         {
-                            // message send been cancelled.
-                            // timeout 30 sec. kill worker.
-                            Trace.Info($"Job request message sending for job {message.JobId} been cancelled, kill running worker.");
+                            // Stop both tasks before awaiting either: a broken pipe can accompany a faulted worker.
+                            Trace.Info($"Job request message sending for job {message.JobId} failed ({ex.GetType().Name}), stop worker and renewal.");
+                            if (ex is IOException)
+                            {
+                                Trace.Error(ex);
+                            }
                             workerProcessCancelTokenSource.Cancel();
+                            lockRenewalTokenSource.Cancel();
                             try
                             {
                                 await workerProcessTask;
@@ -518,12 +522,11 @@ namespace GitHub.Runner.Listener
                             {
                                 Trace.Info("worker process has been killed.");
                             }
-
-                            Trace.Info($"Stop renew job request for job {message.JobId}.");
-                            // stop renew lock
-                            lockRenewalTokenSource.Cancel();
-                            // renew job request should never blows up.
-                            await renewJobRequest;
+                            finally
+                            {
+                                // Observe renewal completion even if the worker task reports a startup error.
+                                await renewJobRequest;
+                            }
 
                             // not finish the job request since the job haven't run on worker at all, we will not going to set a result to server.
                             return TaskResult.Failed;
