@@ -98,11 +98,11 @@ namespace GitHub.DistributedTask.Logging
                 var secretSection = string.Empty;
                 if (value.Contains("&+"))
                 {
-                    secretSection = value.Substring(0, value.IndexOf("&+") + "&+".Length);
+                    secretSection = value.Substring(0, value.IndexOf("&+", StringComparison.Ordinal) + "&+".Length);
                 }
                 else
                 {
-                    secretSection = value.Substring(0, value.LastIndexOf("&") + "&".Length);
+                    secretSection = value.Substring(0, value.LastIndexOf("&", StringComparison.Ordinal) + "&".Length);
                 }
 
                 // Don't mask short secrets
@@ -123,15 +123,15 @@ namespace GitHub.DistributedTask.Logging
                 var secretSection = string.Empty;
                 if (value.Contains("&+"))
                 {
-                    if (value.Length > value.IndexOf("&+") + "&+".Length + 1)
+                    if (value.Length > value.IndexOf("&+", StringComparison.Ordinal) + "&+".Length + 1)
                     {
                         // +1 to skip the letter that got colored
-                        secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1);
+                        secretSection = value.Substring(value.IndexOf("&+", StringComparison.Ordinal) + "&+".Length + 1);
                     }
                 }
                 else
                 {
-                    secretSection = value.Substring(value.LastIndexOf("&") + "&".Length);
+                    secretSection = value.Substring(value.LastIndexOf("&", StringComparison.Ordinal) + "&".Length);
                 }
 
                 if (secretSection.Length >= 6)
