@@ -53,6 +53,8 @@ namespace GitHub.Runner.Common.Util
                         return "ARM";
                     case Constants.Architecture.Arm64:
                         return "ARM64";
+                    case Constants.Architecture.LoongArch64:
+                        return "LOONGARCH64";
                     default:
                         throw new NotSupportedException(); // Should never reach here.
                 }
