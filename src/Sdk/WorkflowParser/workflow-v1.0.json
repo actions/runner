@@ -2750,7 +2750,8 @@
         "vars",
         "needs",
         "strategy",
-        "matrix"
+        "matrix",
+        "env"
       ],
       "one-of": [
         "string",
@@ -2766,7 +2767,8 @@
         "needs",
         "secrets",
         "strategy",
-        "matrix"
+        "matrix",
+        "env"
       ],
       "one-of": [
         "string",
