@@ -2,13 +2,20 @@
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
+using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
 using Moq;
+using Moq.Protected;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using GitHub.Services.Location;
@@ -144,6 +151,128 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IRSAKeyManager>(_rsaKeyManager.Object);
 
             return tc;
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public void TenantCredentialRateLimitDelayPrefersRetryAfterAndReset()
+        {
+            var now = DateTimeOffset.FromUnixTimeSeconds(1_000);
+            using (var response = new HttpResponseMessage(HttpStatusCode.Forbidden))
+            {
+                response.Headers.TryAddWithoutValidation("X-RateLimit-Remaining", "0");
+                response.Headers.TryAddWithoutValidation("X-RateLimit-Reset", "1120");
+                response.Headers.TryAddWithoutValidation("Retry-After", "30");
+
+                Assert.True(ConfigurationManager.TryGetRateLimitRetryDelay(response, "API rate limit exceeded", now, out var delay));
+                Assert.Equal(TimeSpan.FromSeconds(30), delay);
+            }
+
+            using (var response = new HttpResponseMessage(HttpStatusCode.Forbidden))
+            {
+                response.Headers.TryAddWithoutValidation("X-RateLimit-Remaining", "0");
+                response.Headers.TryAddWithoutValidation("X-RateLimit-Reset", "1120");
+
+                Assert.True(ConfigurationManager.TryGetRateLimitRetryDelay(response, "API rate limit exceeded", now, out var delay));
+                Assert.Equal(TimeSpan.FromSeconds(120), delay);
+            }
+
+            using (var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests))
+            {
+                response.Headers.TryAddWithoutValidation("Retry-After", now.AddSeconds(45).ToString("R", CultureInfo.InvariantCulture));
+
+                Assert.True(ConfigurationManager.TryGetRateLimitRetryDelay(response, null, now, out var delay));
+                Assert.Equal(TimeSpan.FromSeconds(45), delay);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public void TenantCredentialRateLimitDelayDistinguishesOrdinaryForbiddenResponses()
+        {
+            using (var response = new HttpResponseMessage(HttpStatusCode.Forbidden))
+            {
+                response.Headers.TryAddWithoutValidation("Retry-After", "30");
+                response.Headers.TryAddWithoutValidation("X-RateLimit-Remaining", "10");
+
+                Assert.False(ConfigurationManager.TryGetRateLimitRetryDelay(response, "Resource not accessible by integration", DateTimeOffset.UtcNow, out _));
+            }
+
+            using (var response = new HttpResponseMessage(HttpStatusCode.Forbidden))
+            {
+                Assert.True(ConfigurationManager.TryGetRateLimitRetryDelay(response, "You have exceeded a secondary rate limit", DateTimeOffset.UtcNow, out var delay));
+                Assert.Equal(TimeSpan.FromMinutes(1), delay);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureWaitsForTenantCredentialRetryAfter()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                var rateLimitResponse = new HttpResponseMessage(HttpStatusCode.Forbidden)
+                {
+                    Content = new StringContent("{\"message\":\"API rate limit exceeded\"}")
+                };
+                rateLimitResponse.Headers.TryAddWithoutValidation("X-RateLimit-Remaining", "0");
+                rateLimitResponse.Headers.TryAddWithoutValidation("X-RateLimit-Reset", "1791093600");
+                rateLimitResponse.Headers.TryAddWithoutValidation("X-RateLimit-Resource", "core");
+                rateLimitResponse.Headers.TryAddWithoutValidation("Retry-After", "120");
+                var tenantResponse = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"url\":\"https://pipelines.actions.githubusercontent.com/tenant\",\"token_schema\":\"OAuthAccessToken\",\"token\":\"tenant-token\",\"use_v2_flow\":true}")
+                };
+
+                var handlers = new Queue<HttpClientHandler>(new[]
+                {
+                    CreateMockHttpClientHandler(rateLimitResponse),
+                    CreateMockHttpClientHandler(tenantResponse)
+                });
+                var handlerFactory = new Mock<IHttpClientHandlerFactory>();
+                handlerFactory.Setup(factory => factory.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(() => handlers.Dequeue());
+                tc.SetSingleton(handlerFactory.Object);
+
+                var delays = new List<TimeSpan>();
+                tc.Delaying += (_, args) => delays.Add(args.Delay);
+
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+                _store.Setup(store => store.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
+
+                var command = new CommandSettings(tc, new[]
+                {
+                    "configure",
+                    "--url", "https://github.com/octo/repo",
+                    "--name", _expectedAgentName,
+                    "--runnergroup", _secondRunnerGroupName,
+                    "--work", _expectedWorkFolder,
+                    "--token", _expectedToken,
+                    "--ephemeral",
+                    "--disableupdate",
+                    "--unattended"
+                });
+
+                await configManager.ConfigureAsync(command);
+
+                Assert.Equal(new[] { TimeSpan.FromSeconds(120) }, delays);
+                Assert.Empty(handlers);
+                _store.Setup(store => store.IsConfigured()).Returns(true);
+                Assert.Equal("https://pipelines.actions.githubusercontent.com/tenant", configManager.LoadSettings().ServerUrl);
+            }
+        }
+
+        private static HttpClientHandler CreateMockHttpClientHandler(HttpResponseMessage response)
+        {
+            var handler = new Mock<HttpClientHandler>();
+            handler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(response);
+            return handler.Object;
         }
 
         [Fact]

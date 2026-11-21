@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -838,6 +839,7 @@ namespace GitHub.Runner.Listener.Configuration
             int retryCount = 0;
             while (retryCount < 3)
             {
+                TimeSpan? rateLimitRetryDelay = null;
                 using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
                 {
@@ -853,7 +855,7 @@ namespace GitHub.Runner.Listener.Configuration
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
                     {
-                        var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
+                        using var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
                         responseStatus = response.StatusCode;
                         var githubRequestId = UrlUtil.GetGitHubRequestId(response.Headers);
 
@@ -868,6 +870,12 @@ namespace GitHub.Runner.Listener.Configuration
                             _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}' (Request Id: {githubRequestId})");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
+                            if (TryGetRateLimitRetryDelay(response, errorResponse, DateTimeOffset.UtcNow, out var retryDelay))
+                            {
+                                rateLimitRetryDelay = retryDelay;
+                                _term.WriteError($"Rate limit response headers: {GetRateLimitHeaderSummary(response)}");
+                            }
+
                             response.EnsureSuccessStatusCode();
                         }
                     }
@@ -878,11 +886,102 @@ namespace GitHub.Runner.Listener.Configuration
                         Trace.Error(ex);
                     }
                 }
+
+                if (rateLimitRetryDelay.HasValue)
+                {
+                    Trace.Info($"Retrying after GitHub rate limit in {rateLimitRetryDelay.Value.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)} seconds");
+                    await HostContext.Delay(rateLimitRetryDelay.Value, System.Threading.CancellationToken.None);
+                    continue;
+                }
+
                 var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
                 Trace.Info($"Retrying in {backOff.Seconds} seconds");
                 await Task.Delay(backOff);
             }
             return null;
+        }
+
+        internal static bool TryGetRateLimitRetryDelay(HttpResponseMessage response, string errorResponse, DateTimeOffset utcNow, out TimeSpan retryDelay)
+        {
+            retryDelay = TimeSpan.Zero;
+            if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests && response.StatusCode != System.Net.HttpStatusCode.Forbidden)
+            {
+                return false;
+            }
+
+            bool remainingIsZero = TryGetHeaderValue(response, "X-RateLimit-Remaining", out var remaining)
+                && string.Equals(remaining.Trim(), "0", StringComparison.Ordinal);
+            bool errorIdentifiesRateLimit = errorResponse?.IndexOf("rate limit", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden && !remainingIsZero && !errorIdentifiesRateLimit)
+            {
+                return false;
+            }
+
+            if (TryGetHeaderValue(response, "Retry-After", out var retryAfter))
+            {
+                if (long.TryParse(retryAfter.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var retryAfterSeconds))
+                {
+                    try
+                    {
+                        retryDelay = TimeSpan.FromSeconds(retryAfterSeconds);
+                        return true;
+                    }
+                    catch (OverflowException)
+                    {
+                        retryDelay = TimeSpan.MaxValue;
+                        return true;
+                    }
+                }
+
+                if (DateTimeOffset.TryParse(retryAfter, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var retryAfterDate))
+                {
+                    retryDelay = retryAfterDate > utcNow ? retryAfterDate - utcNow : TimeSpan.Zero;
+                    return true;
+                }
+            }
+
+            if (remainingIsZero
+                && TryGetHeaderValue(response, "X-RateLimit-Reset", out var reset)
+                && long.TryParse(reset.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var resetUnixTime))
+            {
+                try
+                {
+                    var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetUnixTime);
+                    retryDelay = resetTime > utcNow ? resetTime - utcNow : TimeSpan.Zero;
+                    return true;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // Ignore invalid reset timestamps and use the secondary-limit fallback below.
+                }
+            }
+
+            // GitHub recommends waiting at least one minute for secondary rate limits
+            // when the response does not provide a retry time.
+            retryDelay = TimeSpan.FromMinutes(1);
+            return true;
+        }
+
+        private static string GetRateLimitHeaderSummary(HttpResponseMessage response)
+        {
+            var headerNames = new[] { "X-RateLimit-Remaining", "X-RateLimit-Reset", "X-RateLimit-Resource", "Retry-After" };
+            var headers = headerNames
+                .Select(name => TryGetHeaderValue(response, name, out var value) ? $"{name}: {value}" : null)
+                .Where(value => value != null);
+            var summary = string.Join(", ", headers);
+            return string.IsNullOrEmpty(summary) ? "no rate limit headers were provided" : summary;
+        }
+
+        private static bool TryGetHeaderValue(HttpResponseMessage response, string headerName, out string value)
+        {
+            if (response.Headers.TryGetValues(headerName, out var values))
+            {
+                value = values.FirstOrDefault();
+                return !string.IsNullOrWhiteSpace(value);
+            }
+
+            value = null;
+            return false;
         }
     }
 }
