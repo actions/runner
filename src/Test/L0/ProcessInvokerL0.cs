@@ -296,6 +296,56 @@ namespace GitHub.Runner.Common.Tests
                 Assert.True(elapsedSeconds <= expectedSeconds, $"cancellation failed, because task took too long to run. {elapsedSeconds}");
             }
         }
+
+        //Run a process that spawns a child, cancel it, and make sure the child is killed too.
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task TestCancelKillsProcessTree()
+        {
+            using (TestHostContext hc = new(this))
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = hc.GetTrace();
+                var processInvoker = new ProcessInvokerWrapper();
+                processInvoker.Initialize(hc);
+                var childPid = new TaskCompletionSource<int>();
+                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                {
+                    childPid.TrySetResult(int.Parse(e.Data));
+                };
+                Task execTask = processInvoker.ExecuteAsync("", "bash", "-c \"sleep 60 & echo $!; wait\"", null, false, null, killProcessOnCancel: true, tokenSource.Token);
+
+                int pid = await childPid.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.True(IsProcessRunning(pid), "child process should be running before cancellation");
+
+                tokenSource.Cancel();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execTask);
+
+                // The killed child is reaped asynchronously by its new parent, so give it a moment.
+                Stopwatch watch = Stopwatch.StartNew();
+                while (IsProcessRunning(pid) && watch.Elapsed < TimeSpan.FromSeconds(5))
+                {
+                    await Task.Delay(100);
+                }
+                Assert.False(IsProcessRunning(pid), $"child process {pid} survived cancellation of its parent");
+            }
+        }
+
+        private static bool IsProcessRunning(int pid)
+        {
+            try
+            {
+                using (var process = Process.GetProcessById(pid))
+                {
+                    return !process.HasExited;
+                }
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
 #endif
 
         [Fact]
