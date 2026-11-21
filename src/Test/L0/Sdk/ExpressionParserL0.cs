@@ -82,5 +82,58 @@ namespace GitHub.Runner.Common.Tests.Sdk
 
             Assert.Contains("Unrecognized named-value", ex.Message);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Sdk")]
+        public void CreateTree_EnvNamedValue_AcceptedInsideLargerExpression_WhenRegistered()
+        {
+            // Regression test for https://github.com/actions/runner/issues/2372
+            // "env" must be a registrable named value, including when referenced inside
+            // a larger expression (ex. jobs.<job_id>.with.<with_id> of reusable workflows).
+            var parser = new ExpressionParser();
+            var namedValues = new List<INamedValueInfo>
+            {
+                new NamedValueInfo<ContextValueNode>("github"),
+                new NamedValueInfo<ContextValueNode>("inputs"),
+                new NamedValueInfo<ContextValueNode>("vars"),
+                new NamedValueInfo<ContextValueNode>("needs"),
+                new NamedValueInfo<ContextValueNode>("strategy"),
+                new NamedValueInfo<ContextValueNode>("matrix"),
+                new NamedValueInfo<ContextValueNode>("env"),
+            };
+
+            Assert.NotNull(parser.CreateTree("env.SOMETHING", null, namedValues, null));
+            Assert.NotNull(parser.CreateTree("format('value: {0}', env.SOMETHING)", null, namedValues, null));
+            Assert.NotNull(parser.CreateTree("env.SOMETHING == '1000' && github.event_name == 'push'", null, namedValues, null));
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Sdk")]
+        public void CreateTree_EnvNamedValue_RejectedWithIssueMessage_WhenNotRegistered()
+        {
+            // Reproduces the exact error from issue #2372 when the allowed context list
+            // does not include "env": "Unrecognized named-value: 'env'. Located at position 1 ..."
+            var parser = new ExpressionParser();
+            var namedValues = new List<INamedValueInfo>
+            {
+                new NamedValueInfo<ContextValueNode>("github"),
+                new NamedValueInfo<ContextValueNode>("inputs"),
+                new NamedValueInfo<ContextValueNode>("vars"),
+                new NamedValueInfo<ContextValueNode>("needs"),
+                new NamedValueInfo<ContextValueNode>("strategy"),
+                new NamedValueInfo<ContextValueNode>("matrix"),
+            };
+
+            var ex = Assert.Throws<ParseException>(() =>
+                parser.CreateTree("env.SOMETHING", null, namedValues, null));
+            Assert.Contains("Unrecognized named-value: 'env'", ex.Message);
+            Assert.Contains("position 1", ex.Message);
+
+            var ex2 = Assert.Throws<ParseException>(() =>
+                parser.CreateTree("format('value: {0}', env.SOMETHING)", null, namedValues, null));
+            Assert.Contains("Unrecognized named-value: 'env'", ex2.Message);
+        }
     }
 }
