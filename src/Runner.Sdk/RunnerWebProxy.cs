@@ -185,7 +185,7 @@ namespace GitHub.Runner.Sdk
                 return null;
             }
 
-            if (destination.Scheme == Uri.UriSchemeHttps)
+            if (destination.Scheme == Uri.UriSchemeHttps || destination.Scheme == Uri.UriSchemeWss)
             {
                 return new Uri(_httpsProxyAddress);
             }
@@ -197,12 +197,12 @@ namespace GitHub.Runner.Sdk
 
         public bool IsBypassed(Uri uri)
         {
-            if (uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(_httpsProxyAddress))
+            if ((uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeWss) && string.IsNullOrEmpty(_httpsProxyAddress))
             {
                 return true;
             }
 
-            if (uri.Scheme == Uri.UriSchemeHttp && string.IsNullOrEmpty(_httpProxyAddress))
+            if ((uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeWs) && string.IsNullOrEmpty(_httpProxyAddress))
             {
                 return true;
             }

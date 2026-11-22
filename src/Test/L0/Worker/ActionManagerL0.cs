@@ -3649,15 +3649,12 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_SelfRepository_ResolvesNestedInComposite()
+        public async void PrepareActions_SelfRepository_ResolvesBareRootNestedInComposite()
         {
-            // Composite action at $/actions/parent uses $/actions/child (same repo).
-            // This tests the batch path fix: $/ refs in nextLevel must be resolved
+            // Composite action at $/actions/parent uses the same repository's root action.
+            // This tests that a bare $/ in nextLevel is resolved
             // BEFORE ResolveNewActionsAsync, otherwise GetDownloadInfoLookupKey throws.
-            // We pre-stage only the parent action.yml on disk so the composite steps
-            // are discovered, but we DON'T stage the child — a download failure for
-            // the child is fine; the important thing is that $/ was resolved
-            // (no InvalidOperationException from GetDownloadInfoLookupKey).
+            // Both manifests are pre-staged in the downloaded repository archive.
             Environment.SetEnvironmentVariable("ACTIONS_BATCH_ACTION_RESOLUTION", "true");
             try
             {
@@ -3674,7 +3671,7 @@ runs:
                 jobContext.WorkflowSha = RepoSha;
                 _ec.Setup(x => x.JobContext).Returns(jobContext);
 
-                // Stage parent action on disk as a composite that uses $/actions/child.
+                // Stage parent action on disk as a composite that uses the repository root.
                 // We use rootStepId != default to avoid directory deletion,
                 // and create the watermark + action.yml in the expected location.
                 string actionsDir = Path.Combine(_workFolder, Constants.Path.ActionsDirectory);
@@ -3686,11 +3683,10 @@ description: 'Composite parent'
 runs:
   using: 'composite'
   steps:
-    - uses: $/actions/child
+    - uses: $/
 ");
-                // Stage child action too (as a leaf node action)
-                Directory.CreateDirectory(Path.Combine(destDir, "actions", "child"));
-                File.WriteAllText(Path.Combine(destDir, "actions", "child", Constants.Path.ActionManifestYmlFile), @"
+                // Stage the repository-root action too (as a leaf node action)
+                File.WriteAllText(Path.Combine(destDir, Constants.Path.ActionManifestYmlFile), @"
 name: 'Child'
 description: 'Node child'
 runs:

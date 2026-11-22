@@ -120,7 +120,7 @@ if ERRORLEVEL 1 (
 
 echo [%date% %time%] Update succeed >> "%logfile%" 2>&1
 
-type nul > update.finished
+type nul > "%rootfolder%\update.finished"
 echo [%date% %time%] update.finished file creation succeed >> "%logfile%" 2>&1
 
 rem rename the update log file with %logfile%.succeed/.failed/succeedneedrestart
@@ -143,4 +143,3 @@ goto :eof
 echo [%date% %time%] Rename "%logfile%" to be "%logfile%.failed" >> "%logfile%" 2>&1
 move "%logfile%" "%logfile%.failed" >nul
 goto :eof
-
