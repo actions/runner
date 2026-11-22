@@ -6,6 +6,8 @@
 
 Please see "[Supported architectures and operating systems for self-hosted runners](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#linux)."
 
+Linux ARM32 runners are no longer supported. Use a Linux x64 or ARM64 runner instead.
+
 ## Install .Net Core 3.x Linux Dependencies
 
 The [config.sh](../../src/Misc/layoutroot/config.sh) will check .Net Core 3.x dependencies during runner configuration.  

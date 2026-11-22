@@ -17,6 +17,93 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class ExecutionContextL0
     {
+        [Theory]
+        [InlineData("true", true, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData("true", false, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData("true", false, ActionRunStage.Pre, "owner/probe", "probe-sha")]
+        [InlineData("true", false, ActionRunStage.Post, "owner/probe", "probe-sha")]
+        [InlineData("true", true, ActionRunStage.Main, "", "")]
+        [InlineData("false", true, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData(null, true, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData("false", false, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [InlineData(null, false, ActionRunStage.Main, "owner/probe", "probe-sha")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void CreateEmbeddedChild_GitHubContextInheritanceHonorsFeatureFlag(string featureFlag, bool isBackground, ActionRunStage stage, string repository, string actionRef)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "job", "job", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+                if (featureFlag != null)
+                {
+                    jobRequest.Variables[Constants.Runner.Features.FixEmbeddedGitHubContext] = new VariableValue(featureFlag);
+                }
+                jobRequest.ContextData["github"] = new DictionaryContextData();
+                hc.SetSingleton(new Mock<IJobServerQueue>().Object);
+                hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+                hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+                jobContext.SetGitHubContext("action_repository", "actions/checkout");
+                jobContext.SetGitHubContext("action_ref", "v6");
+
+                var composite = jobContext.CreateChild(Guid.NewGuid(), "probe", "probe", null, "probe", stage, isBackground: isBackground);
+                // Background actions and nested composites have a GitHub context separate from the root.
+                composite.ExpressionValues["github"] = ((GitHubContext)composite.ExpressionValues["github"]).ShallowCopy();
+                composite.SetGitHubContext("action_repository", repository);
+                composite.SetGitHubContext("action_ref", actionRef);
+                composite.SetGitHubContext("action_path", "/actions/probe");
+
+                var child = composite.CreateEmbeddedChild("probe", "first", Guid.NewGuid(), stage);
+                var sibling = composite.CreateEmbeddedChild("probe", "second", Guid.NewGuid(), stage);
+
+                if (featureFlag != "true")
+                {
+                    Assert.Same(jobContext.ExpressionValues["github"], child.ExpressionValues["github"]);
+                    Assert.Same(jobContext.ExpressionValues["github"], sibling.ExpressionValues["github"]);
+                    Assert.Equal("actions/checkout", child.GetGitHubContext("action_repository"));
+                    Assert.Equal("v6", child.GetGitHubContext("action_ref"));
+                    Assert.Equal(repository, composite.GetGitHubContext("action_repository"));
+                    Assert.Equal(actionRef, composite.GetGitHubContext("action_ref"));
+                    return;
+                }
+
+                Assert.Equal(repository, child.GetGitHubContext("action_repository"));
+                Assert.Equal(actionRef, child.GetGitHubContext("action_ref"));
+                Assert.Equal("/actions/probe", child.GetGitHubContext("action_path"));
+                Assert.NotSame(composite.ExpressionValues["github"], child.ExpressionValues["github"]);
+                Assert.NotSame(child.ExpressionValues["github"], sibling.ExpressionValues["github"]);
+                Assert.Same(jobContext, child.Root);
+                Assert.Same(composite.Global, child.Global);
+                Assert.Equal(composite.Id, child.Id);
+                Assert.True(child.IsEmbedded);
+                Assert.Equal(stage, child.Stage);
+
+                child.SetGitHubContext("action_repository", "owner/nested");
+                child.SetGitHubContext("action_ref", "nested-sha");
+                child.SetGitHubContext("action_path", "/actions/nested");
+                var nested = child.CreateEmbeddedChild("probe.first", "nested", Guid.NewGuid(), stage);
+
+                Assert.Equal("owner/nested", nested.GetGitHubContext("action_repository"));
+                Assert.Equal("nested-sha", nested.GetGitHubContext("action_ref"));
+                Assert.Equal("/actions/nested", nested.GetGitHubContext("action_path"));
+                Assert.NotSame(child.ExpressionValues["github"], nested.ExpressionValues["github"]);
+                nested.SetGitHubContext("action_repository", "owner/deeper");
+                Assert.Equal("owner/nested", child.GetGitHubContext("action_repository"));
+
+                foreach (var context in new[] { composite, sibling })
+                {
+                    Assert.Equal(repository, context.GetGitHubContext("action_repository"));
+                    Assert.Equal(actionRef, context.GetGitHubContext("action_ref"));
+                    Assert.Equal("/actions/probe", context.GetGitHubContext("action_path"));
+                }
+                Assert.Equal("actions/checkout", jobContext.GetGitHubContext("action_repository"));
+                Assert.Equal("v6", jobContext.GetGitHubContext("action_ref"));
+            }
+        }
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]

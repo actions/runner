@@ -58,24 +58,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
-            bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
-            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
-
-            var (nodeVersion, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
-
-            if (nodeVersion == null)
-            {
-                executionContext.Error(warningMessage);
-                throw new InvalidOperationException(warningMessage);
-            }
-
-            if (!string.IsNullOrEmpty(warningMessage))
-            {
-                executionContext.Warning(warningMessage);
-            }
-
-            return Task.FromResult(nodeVersion);
+            return Task.FromResult(preferredVersion);
         }
 
         public async Task<int> ExecuteAsync(IExecutionContext context,
@@ -152,23 +135,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion)
         {
-            bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
-            bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
-            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
-
-            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
-
-            if (nodeExternal == null)
-            {
-                executionContext.Error(warningMessage);
-                throw new InvalidOperationException(warningMessage);
-            }
-
-            if (!string.IsNullOrEmpty(warningMessage))
-            {
-                executionContext.Warning(warningMessage);
-            }
-
+            var nodeExternal = preferredVersion;
             if (FeatureManager.IsContainerHooksEnabled(executionContext.Global.Variables))
             {
                 if (Container.IsAlpine)
@@ -293,23 +260,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         private string CheckPlatformForAlpineContainer(IExecutionContext executionContext, string preferredVersion)
         {
-            bool deprecateArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.DeprecateLinuxArm32Flag) ?? false;
-            bool killArm32 = executionContext.Global.Variables?.GetBoolean(Constants.Runner.NodeMigration.KillLinuxArm32Flag) ?? false;
-            string node20RemovalDate = executionContext.Global.Variables?.Get(Constants.Runner.NodeMigration.Node20RemovalDateVariable);
-
-            var (nodeExternal, warningMessage) = Common.Util.NodeUtil.CheckNodeVersionForLinuxArm32(preferredVersion, deprecateArm32, killArm32, node20RemovalDate);
-
-            if (nodeExternal == null)
-            {
-                executionContext.Error(warningMessage);
-                throw new InvalidOperationException(warningMessage);
-            }
-
-            if (!string.IsNullOrEmpty(warningMessage))
-            {
-                executionContext.Warning(warningMessage);
-            }
-
             // Check for Alpine container compatibility
             if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
             {
@@ -318,7 +268,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
                 throw new NotSupportedException(msg);
             }
-            nodeExternal = $"{preferredVersion}_alpine";
+            var nodeExternal = $"{preferredVersion}_alpine";
             executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
             return nodeExternal;
         }

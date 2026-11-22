@@ -96,10 +96,11 @@ namespace GitHub.Runner.Listener
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT")))
 #endif
                 {
-                    string flagFile = "update.finished";
+                    string flagFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "update.finished");
                     IOUtil.DeleteFile(flagFile);
                     // kick off update script
                     Process invokeScript = new();
+                    invokeScript.StartInfo.WorkingDirectory = HostContext.GetDirectory(WellKnownDirectory.Root);
 #if OS_WINDOWS
                     invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
                     invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
