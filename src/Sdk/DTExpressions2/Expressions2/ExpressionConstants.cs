@@ -13,6 +13,7 @@ namespace GitHub.DistributedTask.Expressions2
             AddFunction<Contains>("contains", 2, 2);
             AddFunction<EndsWith>("endsWith", 2, 2);
             AddFunction<Format>("format", 1, Byte.MaxValue);
+            AddFunction<Split>("split", 1, 2);
             AddFunction<Join>("join", 1, 2);
             AddFunction<StartsWith>("startsWith", 2, 2);
             AddFunction<ToJson>("toJson", 1, 1);
