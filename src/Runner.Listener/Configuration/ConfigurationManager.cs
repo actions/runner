@@ -786,6 +786,11 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
+                    httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
+                    if (retryCount > 0)
+                    {
+                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
+                    }
 
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
@@ -843,6 +848,11 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
+                    if (retryCount > 0)
+                    {
+                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
+                    }
 
                     var bodyObject = new Dictionary<string, string>()
                     {

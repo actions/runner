@@ -1,14 +1,11 @@
-﻿using GitHub.DistributedTask.WebApi;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using GitHub.Services.WebApi;
-using GitHub.Services.Common;
-using GitHub.Runner.Sdk;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Linq;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
 
 namespace GitHub.Runner.Common
 {
@@ -120,6 +117,11 @@ namespace GitHub.Runner.Common
                 {
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
+                    if (retry > 1)
+                    {
+                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
+                    }
 
                     var responseStatus = System.Net.HttpStatusCode.OK;
                     try
