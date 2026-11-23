@@ -33,5 +33,7 @@ namespace GitHub.Services.Common.Internal
         public const string AfdResponseRef = "X-MSEdge-Ref";
 
         public const string RetryAfter = "Retry-After";
+
+        public const string IsRetry = "X-Is-Retry";
     }
 }
