@@ -326,6 +326,12 @@ namespace GitHub.Runner.Listener
                         //open zip stream in async mode
                         using (HttpClient httpClient = new(HostContext.CreateHttpClientHandler()))
                         {
+                            httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
+                            if (attempt > 1)
+                            {
+                                httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
+                            }
+
                             if (!string.IsNullOrEmpty(_targetPackage.Token))
                             {
                                 Trace.Info($"Adding authorization token ({_targetPackage.Token.Length} chars)");

@@ -291,6 +291,12 @@ namespace GitHub.Runner.Listener
                         //open zip stream in async mode
                         using (HttpClient httpClient = new(HostContext.CreateHttpClientHandler()))
                         {
+                            httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
+                            if (attempt > 1)
+                            {
+                                httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
+                            }
+
                             Trace.Info($"Downloading {packageDownloadUrl}");
 
                             using (FileStream fs = new(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
