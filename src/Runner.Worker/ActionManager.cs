@@ -1670,7 +1670,7 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
                                 if (retryCount > 0)
                                 {
-                                    httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, retryCount.ToString());
+                                    httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
                                 }
 
                                 using (var response = await httpClient.GetAsync(downloadUrl))

@@ -789,7 +789,7 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
                     if (retryCount > 0)
                     {
-                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, retryCount.ToString());
+                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
                     }
 
                     var responseStatus = System.Net.HttpStatusCode.OK;
@@ -851,7 +851,7 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
                     if (retryCount > 0)
                     {
-                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, retryCount.ToString());
+                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
                     }
 
                     var bodyObject = new Dictionary<string, string>()

@@ -103,7 +103,7 @@ namespace GitHub.Services.Common
                     }
                     else
                     {
-                        request.Headers.Add(HttpHeaders.IsRetry, (attempt - 1).ToString());
+                        request.Headers.Add(HttpHeaders.IsRetry, "1");
                     }
 
                     response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);

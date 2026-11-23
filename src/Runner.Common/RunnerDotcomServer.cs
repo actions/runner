@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common
                     httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
                     if (retry > 1)
                     {
-                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, (retry - 1).ToString());
+                        httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
                     }
 
                     var responseStatus = System.Net.HttpStatusCode.OK;

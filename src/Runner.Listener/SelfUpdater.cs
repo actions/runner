@@ -329,7 +329,7 @@ namespace GitHub.Runner.Listener
                             httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
                             if (attempt > 1)
                             {
-                                httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, (attempt - 1).ToString());
+                                httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
                             }
 
                             if (!string.IsNullOrEmpty(_targetPackage.Token))
