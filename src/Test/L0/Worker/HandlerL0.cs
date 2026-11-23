@@ -319,7 +319,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.CancellationToken).Returns(CancellationToken.None);
 
             var stepHost = new Mock<IStepHost>();
-            stepHost.Setup(x => x.DetermineNodeRuntimeVersion(It.IsAny<IExecutionContext>(), It.IsAny<string>())).ReturnsAsync("node20");
+            stepHost.Setup(x => x.DetermineNodeRuntimeVersion(It.IsAny<IExecutionContext>(), It.IsAny<string>())).ReturnsAsync("node24");
             stepHost.Setup(x => x.ResolvePathForStepHost(It.IsAny<IExecutionContext>(), It.IsAny<string>())).Returns((IExecutionContext ec, string path) => path);
             stepHost.Setup(x => x.ExecuteAsync(
                 It.IsAny<IExecutionContext>(),
@@ -343,7 +343,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             handler.RuntimeVariables = serverVariables;
             handler.ActionDirectory = actionDirectory;
             handler.Action = new RepositoryPathReference() { Name = "actions/checkout", Ref = "v2" };
-            handler.Data = new NodeJSActionExecutionData() { Script = scriptFile, NodeVersion = "node20" };
+            handler.Data = new NodeJSActionExecutionData() { Script = scriptFile, NodeVersion = "node24" };
 
             await handler.RunAsync(ActionRunStage.Main);
 

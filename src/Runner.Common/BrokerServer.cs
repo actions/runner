@@ -98,9 +98,15 @@ namespace GitHub.Runner.Common
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var socket = await ConnectWebSocketAsync(cancellationToken);
+                var (socket, connectEx) = await ConnectWebSocketAsync(cancellationToken);
                 if (socket == null)
                 {
+                    var errorMsg = connectEx.InnerException?.Message ?? connectEx.Message;
+                    if (!result.Errors.Contains(errorMsg))
+                    {
+                        result.Errors.Add(errorMsg);
+                    }
+
                     result.ConnectFailures++;
                     result.LastCloseReason = "connect_failed";
 
@@ -158,9 +164,10 @@ namespace GitHub.Runner.Common
                     {
                         Trace.Info("Exception caught while holding runner websocket, will reconnect.");
                         Trace.Error(ex);
-                        if (!result.Errors.Contains(ex.Message))
+                        var errorMsg = ex.InnerException?.Message ?? ex.Message;
+                        if (!result.Errors.Contains(errorMsg))
                         {
-                            result.Errors.Add(ex.Message);
+                            result.Errors.Add(errorMsg);
                         }
                         result.LastCloseReason = "error";
                     }
@@ -177,20 +184,20 @@ namespace GitHub.Runner.Common
             return result;
         }
 
-        private async Task<ClientWebSocket> ConnectWebSocketAsync(CancellationToken cancellationToken)
+        private async Task<(ClientWebSocket Socket, Exception Error)> ConnectWebSocketAsync(CancellationToken cancellationToken)
         {
             try
             {
                 Trace.Info("Attempting to start runner websocket client.");
                 var socket = await _brokerHttpClient.ConnectRunnerLongPollWebSocketAsync(cancellationToken);
                 Trace.Info("Successfully started runner websocket client.");
-                return socket;
+                return (socket, null);
             }
             catch (Exception ex)
             {
                 Trace.Info("Exception caught during runner websocket connect, will retry.");
                 Trace.Error(ex);
-                return null;
+                return (null, ex);
             }
         }
 

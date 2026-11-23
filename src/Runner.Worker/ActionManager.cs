@@ -1667,6 +1667,12 @@ namespace GitHub.Runner.Worker
                                 httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(executionContext, downloadUrl, downloadAuthToken);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                                httpClient.DefaultRequestHeaders.Remove(Services.Common.Internal.HttpHeaders.IsRetry);
+                                if (retryCount > 0)
+                                {
+                                    httpClient.DefaultRequestHeaders.Add(Services.Common.Internal.HttpHeaders.IsRetry, "1");
+                                }
+
                                 using (var response = await httpClient.GetAsync(downloadUrl))
                                 {
                                     requestId = UrlUtil.GetGitHubRequestId(response.Headers);

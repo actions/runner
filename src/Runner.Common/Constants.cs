@@ -182,6 +182,7 @@ namespace GitHub.Runner.Common
                 public static readonly string OverrideDebuggerWelcomeMessage = "actions_runner_override_debugger_welcome_message";
                 public static readonly string AllowArtifactsFile = "actions_runner_allow_artifacts_file";
                 public static readonly string SelfRepository = "actions_self_repository";
+                public static readonly string FixEmbeddedGitHubContext = "actions_fix_embedded_github_context";
             }
 
             // Categories reported to the service alongside an infrastructure failure so
@@ -189,40 +190,6 @@ namespace GitHub.Runner.Common
             public static class InfrastructureFailureCategories
             {
                 public static readonly string DebuggerTunnelFailure = "debugger_tunnel_failure";
-            }
-
-            // Node version migration related constants
-            public static class NodeMigration
-            {
-                // Node versions
-                public static readonly string Node20 = "node20";
-                public static readonly string Node24 = "node24";
-
-                // Environment variables for controlling node version selection
-                public static readonly string ForceNode24Variable = "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24";
-                public static readonly string AllowUnsecureNodeVersionVariable = "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION";
-
-                // Feature flags for controlling the migration phases
-                public static readonly string UseNode24ByDefaultFlag = "actions.runner.usenode24bydefault";
-                public static readonly string RequireNode24Flag = "actions.runner.requirenode24";
-                public static readonly string WarnOnNode20Flag = "actions.runner.warnonnode20";
-
-                // Feature flags for Linux ARM32 deprecation
-                public static readonly string DeprecateLinuxArm32Flag = "actions_runner_deprecate_linux_arm32";
-                public static readonly string KillLinuxArm32Flag = "actions_runner_kill_linux_arm32";
-
-                // Blog post URL for Node 20 deprecation
-                public static readonly string Node20DeprecationUrl = "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/";
-
-                // Node 20 migration dates (hardcoded fallbacks, can be overridden via job variables)
-                public static readonly string Node24DefaultDate = "June 16th, 2026";
-                public static readonly string Node20RemovalDate = "September 23rd, 2026";
-
-                // Variable keys for server-overridable dates
-                public static readonly string Node24DefaultDateVariable = "actions_runner_node24_default_date";
-                public static readonly string Node20RemovalDateVariable = "actions_runner_node20_removal_date";
-
-                public static readonly string LinuxArm32DeprecationMessage = "Linux ARM32 runners are deprecated and will no longer be supported after {0}. Please migrate to a supported platform.";
             }
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
@@ -320,7 +287,6 @@ namespace GitHub.Runner.Common
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
                 // Set this env var to "nodeXY" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
-                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION";
                 public static readonly string ForcedActionsNodeVersion = "ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION";
                 public static readonly string PrintLogToStdout = "ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT";
                 public static readonly string DisableStdoutMultilineLogPrefixing = "ACTIONS_RUNNER_DISABLE_STDOUT_MULTILINE_LOG_PREFIXING";

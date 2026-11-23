@@ -95,9 +95,15 @@ namespace GitHub.Services.Common
                 string retryAfterHeader = null;
                 try
                 {
+                    request.Headers.Remove(HttpHeaders.IsRetry);
+
                     if (attempt == 1)
                     {
                         retryInfo?.InitialAttempt(request);
+                    }
+                    else
+                    {
+                        request.Headers.Add(HttpHeaders.IsRetry, "1");
                     }
 
                     response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -108,7 +114,7 @@ namespace GitHub.Services.Common
                     }
 
                     // Verify the response is successful or the status code is one that may be retried. 
-                    if (response.IsSuccessStatusCode)
+                    if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.SwitchingProtocols)
                     {
                         break;
                     }

@@ -35,9 +35,6 @@ namespace GitHub.Runner.Worker
         public bool HasActionManifestMismatch { get; set; }
         public bool HasDeprecatedSetOutput { get; set; }
         public bool HasDeprecatedSaveState { get; set; }
-        public HashSet<string> DeprecatedNode20Actions { get; set; }
-        public HashSet<string> UpgradedToNode24Actions { get; set; }
-        public HashSet<string> Arm32Node20Actions { get; set; }
         public IList<String> ActionsDependencies { get; set; }
 
         // Job-scoped aggregate of artifact subjects declared via $GITHUB_ARTIFACTS.
