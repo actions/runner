@@ -242,6 +242,7 @@ namespace Sdk.WebApi.WebApi
             {
                 VssHttpEventSource.Log.HttpRequestStart(traceActivity, message);
                 message.Trace();
+                message.Options.Set(new HttpRequestOptionsKey<HttpCompletionOption>(VssHttpRequestSettings.HttpCompletionOptionPropertyName), completionOption);
                 HttpResponseMessage response = await Client.SendAsync(message, completionOption, cancellationToken)
                     .ConfigureAwait(false);
 
