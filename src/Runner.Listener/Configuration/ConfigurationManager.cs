@@ -821,7 +821,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                 }
                 var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
+                Trace.Info($"Retrying in {backOff.TotalSeconds} seconds");
                 await Task.Delay(backOff);
             }
             return null;
@@ -889,7 +889,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                 }
                 var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
-                Trace.Info($"Retrying in {backOff.Seconds} seconds");
+                Trace.Info($"Retrying in {backOff.TotalSeconds} seconds");
                 await Task.Delay(backOff);
             }
             return null;
