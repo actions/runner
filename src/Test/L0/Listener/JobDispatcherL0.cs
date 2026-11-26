@@ -765,7 +765,60 @@ namespace GitHub.Runner.Common.Tests.Listener
             return serviceEndpoint;
         }
 
-        private static AgentJobRequestMessage GetAgentJobRequestMessage()
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async Task ReportsRunServiceCancellationBeforeWorkerStart()
+        {
+            using var hc = new TestHostContext(this);
+            hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
+            hc.SetSingleton<IRunServer>(_runServer.Object);
+            hc.SetSingleton<IJobNotification>(Mock.Of<IJobNotification>());
+            hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
+            _configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings { PoolId = 1 });
+
+            var message = GetAgentJobRequestMessage(JobRequestMessageTypes.RunnerJobRequest);
+            message.BillingOwnerId = "billingOwnerId";
+            var endpoint = GetServiceEndpoint();
+            endpoint.Name = "SystemVssConnection";
+            endpoint.Url = new Uri("https://example.invalid");
+            // Synthetic JWT for the listener's orchestration-ID extraction. No network calls.
+            endpoint.Authorization.Parameters["AccessToken"] =
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJydW5uZXItdGVzdCJ9.c2ln";
+            message.Resources.Endpoints.Add(endpoint);
+
+            using var testTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var reportStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var reportAccepted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _runServer.Setup(x => x.RenewJobAsync(message.Plan.PlanId, message.JobId, It.IsAny<CancellationToken>()))
+                .Returns(async (Guid _, Guid _, CancellationToken token) =>
+                {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                    return new RenewJobResponse();
+                });
+            _runServer.Setup(x => x.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Canceled,
+                null, null, null, null, null, message.BillingOwnerId, null, It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    reportStarted.TrySetResult(true);
+                    return reportAccepted.Task;
+                });
+            var dispatcher = new JobDispatcher();
+            dispatcher.Initialize(hc);
+            dispatcher.Run(message, runOnce: true);
+            Assert.True(dispatcher.Cancel(new JobCancelMessage(message.JobId, TimeSpan.FromSeconds(60))));
+            await reportStarted.Task.WaitAsync(testTimeout.Token);
+            Assert.False(dispatcher.RunOnceJobCompleted.Task.IsCompleted);
+            reportAccepted.SetResult(true);
+            Assert.Equal(TaskResult.Canceled, await dispatcher.RunOnceJobCompleted.Task.WaitAsync(testTimeout.Token));
+            _processChannel.Verify(x => x.StartServer(It.IsAny<StartProcessDelegate>()), Times.Never);
+            _runServer.Verify(x => x.CompleteJobAsync(message.Plan.PlanId, message.JobId, TaskResult.Canceled,
+                null, null, null, null, null, message.BillingOwnerId, null,
+                It.Is<CancellationToken>(token => token.CanBeCanceled)), Times.Once);
+        }
+
+        private static AgentJobRequestMessage GetAgentJobRequestMessage(
+            string messageType = JobRequestMessageTypes.PipelineAgentJobRequest)
         {
             var message = new AgentJobRequestMessage(
                 new TaskOrchestrationPlanReference()
@@ -814,7 +867,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 null,
                 new List<TemplateToken>(),
                 new ActionsEnvironmentReference("env"),
-                null
+                null,
+                messageType
             );
             return message;
         }

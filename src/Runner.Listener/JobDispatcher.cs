@@ -413,8 +413,21 @@ namespace GitHub.Runner.Listener
                         // renew job request should never blows up.
                         await renewJobRequest;
 
-                        // complete job request with result Cancelled
-                        await CompleteJobRequestAsync(_poolId, message, systemConnection, lockToken, TaskResult.Canceled);
+                        // No worker exists to publish the Run Service result in this branch.
+                        if (_isRunServiceJob && !HostContext.RunnerShutdownToken.IsCancellationRequested)
+                        {
+                            var runServer = await GetRunServerAsync(systemConnection);
+                            using var reportTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                            await runServer.CompleteJobAsync(message.Plan.PlanId, message.JobId,
+                                TaskResult.Canceled, outputs: null, stepResults: null, jobAnnotations: null,
+                                environmentUrl: null, telemetry: null, billingOwnerId: message.BillingOwnerId,
+                                infrastructureFailureCategory: null, reportTimeout.Token);
+                            Trace.Info("Run Service accepted cancellation before worker start.");
+                        }
+                        else
+                        {
+                            await CompleteJobRequestAsync(_poolId, message, systemConnection, lockToken, TaskResult.Canceled);
+                        }
                         return TaskResult.Canceled;
                     }
 
