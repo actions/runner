@@ -803,17 +803,29 @@ namespace GitHub.Runner.Worker
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
+        private static string TruncateIssueMessage(string message, int maxLength)
+        {
+            if (message.Length <= maxLength)
+            {
+                return message;
+            }
+
+            // Avoid cutting a UTF-16 surrogate pair in half.
+            if (char.IsHighSurrogate(message[maxLength - 1]))
+            {
+                maxLength--;
+            }
+
+            return message[..maxLength];
+        }
+
         // This is not thread safe, the caller need to take lock before calling issue()
         public void AddIssue(Issue issue, ExecutionContextLogOptions logOptions)
         {
             ArgUtil.NotNull(issue, nameof(issue));
             ArgUtil.NotNull(logOptions, nameof(logOptions));
 
-            issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
-            if (issue.Message.Length > _maxIssueMessageLength)
-            {
-                issue.Message = issue.Message[.._maxIssueMessageLength];
-            }
+            issue.Message = TruncateIssueMessage(HostContext.SecretMasker.MaskSecrets(issue.Message), _maxIssueMessageLength);
 
             // Tracking the line number (logFileLineNumber) and step number (stepNumber) for each issue that gets created
             // Actions UI from the run summary page use both values to easily link to an exact locations in logs where annotations originate from
@@ -1287,17 +1299,7 @@ namespace GitHub.Runner.Worker
                             if ((issue.Type == IssueType.Error || issue.Type == IssueType.Warning) &&
                                 !string.IsNullOrEmpty(issue.Message))
                             {
-                                string issueTelemetry;
-                                if (issue.Message.Length > _maxIssueMessageLengthInTelemetry)
-                                {
-                                    issueTelemetry = $"{issue.Message[.._maxIssueMessageLengthInTelemetry]}";
-                                }
-                                else
-                                {
-                                    issueTelemetry = issue.Message;
-                                }
-
-                                StepTelemetry.ErrorMessages.Add(issueTelemetry);
+                                StepTelemetry.ErrorMessages.Add(TruncateIssueMessage(issue.Message, _maxIssueMessageLengthInTelemetry));
 
                                 // Only send over the first 3 issues to avoid sending too much data.
                                 if (StepTelemetry.ErrorMessages.Count >= _maxIssueCountInTelemetry)
