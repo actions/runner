@@ -338,7 +338,9 @@ namespace GitHub.Runner.Worker.Handlers
                         jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
                         {
                             // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Canceled;
+                            ExecutionContext.Root.Result = HostContext.RunnerShutdownToken.IsCancellationRequested
+                                                           ? TaskResult.Failed
+                                                           : TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                             step.ExecutionContext.SetGitHubContext("action_status", (ExecutionContext.Root.Result?.ToActionResult() ?? ActionResult.Cancelled).ToString().ToLowerInvariant());
 
@@ -375,10 +377,13 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                     else
                     {
-                        if (ExecutionContext.Root.Result != TaskResult.Canceled)
+                        var jobResult = HostContext.RunnerShutdownToken.IsCancellationRequested
+                                        ? TaskResult.Failed
+                                        : TaskResult.Canceled;
+                        if (ExecutionContext.Root.Result != jobResult)
                         {
                             // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Canceled;
+                            ExecutionContext.Root.Result = jobResult;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                         }
                     }
