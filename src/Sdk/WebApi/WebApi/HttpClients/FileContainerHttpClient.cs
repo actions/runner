@@ -290,7 +290,7 @@ namespace GitHub.Services.FileContainer.Client
 
                     FileUploadTrace(itemPath, $"Attempt '{attempt}' for uploading chunk '{currentChunk}' of file '{itemPath}'.");
 
-                    // inorder for the upload to be retryable, we need the content to be re-readable
+                    // in order for the upload to be retryable, we need the content to be re-readable
                     // to ensure this we copy the chunk into a byte array and send that
                     // chunk size ensures we can convert the length to an int
                     int bytesToCopy = (int)currentStream.Length;
@@ -303,8 +303,8 @@ namespace GitHub.Services.FileContainer.Client
                     HttpContent byteArrayContent = new ByteArrayContent(dataToSend, 0, bytesToCopy);
                     byteArrayContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
                     byteArrayContent.Headers.ContentLength = currentStream.Length;
-                    byteArrayContent.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(currentStream.StartingPostionOnOuterStream,
-                                                                                                             currentStream.EndingPostionOnOuterStream,
+                    byteArrayContent.Headers.ContentRange = new System.Net.Http.Headers.ContentRangeHeaderValue(currentStream.StartingPositionOnOuterStream,
+                                                                                                             currentStream.EndingPositionOnOuterStream,
                                                                                                              streamParser.Length);
                     FileUploadTrace(itemPath, $"Generate new HttpRequest for uploading file '{itemPath}', chunk '{currentChunk}' of '{totalChunks}'.");
 
