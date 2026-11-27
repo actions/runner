@@ -97,6 +97,16 @@ namespace GitHub.Runner.Common
                 {
                     return await func();
                 }
+                // The caller cancelled this request. BrokerMessageListener cancels its own long
+                // poll on every Busy -> Idle transition and handles the cancellation itself, so
+                // rethrow instead of logging a failed request: the backoff below awaits this same
+                // cancelled token, meaning it is announced but never actually served. Guarded on
+                // IsCancellationRequested because HttpClient reports a request *timeout* as
+                // TaskCanceledException with the caller's token uncancelled, and that must retry.
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 // TODO: Add handling of non-retriable exceptions: https://github.com/github/actions-broker/issues/122
                 catch (Exception ex) when (attempt < maxAttempts && (shouldRetry == null || shouldRetry(ex)))
                 {
