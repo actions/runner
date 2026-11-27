@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
@@ -741,6 +743,120 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(ActionRunStage.Post, (post1 as IActionRunner).Stage);
 
                 Assert.Equal("always()", (post1 as IActionRunner).Condition);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RegisterPostJobStep_ConcurrentBackgroundSteps_RegistersEveryPostStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobContext = InitializeJobContext(hc);
+                var backgroundSteps = CreateBackgroundSteps(hc, jobContext);
+                var embeddedSteps = backgroundSteps.Select(step => step.CreateEmbeddedChild(step.ContextName, "nested", Guid.NewGuid(), ActionRunStage.Main)).ToList();
+                var postRunners = backgroundSteps.Select((_, i) => CreatePostRunner(hc, $"post_{i}")).ToList();
+                var embeddedPostRunners = backgroundSteps.Select((_, i) => CreatePostRunner(hc, $"embedded_post_{i}")).ToList();
+                foreach (var _ in postRunners)
+                {
+                    hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+                }
+
+                RunConcurrently(ConcurrentStepCount, i =>
+                {
+                    backgroundSteps[i].RegisterPostJobStep(postRunners[i]);
+                    embeddedSteps[i].RegisterPostJobStep(embeddedPostRunners[i]);
+                });
+
+                Assert.Equal(
+                    postRunners.Select(runner => runner.Action.Id).OrderBy(id => id),
+                    jobContext.PostJobSteps.Select(step => ((IActionRunner)step).Action.Id).OrderBy(id => id));
+                Assert.Equal(
+                    embeddedPostRunners.Select(runner => runner.Action.Id).OrderBy(id => id),
+                    jobContext.EmbeddedStepsWithPostRegistered.Keys.OrderBy(id => id));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SaveStateFileCommand_ConcurrentBackgroundSteps_KeepsEveryEmbeddedState()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobContext = InitializeJobContext(hc);
+                var embeddedSteps = CreateBackgroundSteps(hc, jobContext)
+                    .Select(step => step.CreateEmbeddedChild(step.ContextName, "nested", Guid.NewGuid(), ActionRunStage.Main))
+                    .ToList();
+                var stateDirectory = Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), nameof(SaveStateFileCommand_ConcurrentBackgroundSteps_KeepsEveryEmbeddedState));
+                Directory.CreateDirectory(stateDirectory);
+                var stateFiles = embeddedSteps.Select((_, i) =>
+                {
+                    var stateFile = Path.Combine(stateDirectory, $"save_state_{i}");
+                    File.WriteAllText(stateFile, $"NESTED_STATE=value_{i}");
+                    return stateFile;
+                }).ToList();
+                var saveStateFileCommand = new SaveStateFileCommand();
+                saveStateFileCommand.Initialize(hc);
+
+                RunConcurrently(ConcurrentStepCount, i => saveStateFileCommand.ProcessCommand(embeddedSteps[i], stateFiles[i], null));
+
+                Assert.Equal(ConcurrentStepCount, jobContext.EmbeddedIntraActionState.Count);
+                for (var i = 0; i < ConcurrentStepCount; i++)
+                {
+                    Assert.True(jobContext.EmbeddedIntraActionState.TryGetValue(embeddedSteps[i].EmbeddedId, out var state));
+                    Assert.Equal($"value_{i}", state["NESTED_STATE"]);
+                }
+            }
+        }
+
+        private const int ConcurrentStepCount = 256;
+
+        private static Runner.Worker.ExecutionContext InitializeJobContext(TestHostContext hc)
+        {
+            var jobRequest = new Pipelines.AgentJobRequestMessage(new TaskOrchestrationPlanReference(), new TimelineReference(), Guid.NewGuid(), "job", "job", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null, null);
+            jobRequest.ContextData["github"] = new DictionaryContextData();
+            hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+
+            var jobContext = new Runner.Worker.ExecutionContext();
+            jobContext.Initialize(hc);
+            jobContext.InitializeJob(jobRequest, CancellationToken.None);
+            return jobContext;
+        }
+
+        private static List<IExecutionContext> CreateBackgroundSteps(TestHostContext hc, IExecutionContext jobContext)
+        {
+            return Enumerable.Range(0, ConcurrentStepCount).Select(i =>
+            {
+                hc.EnqueueInstance(new Mock<IPagingLogger>().Object);
+                return jobContext.CreateChild(Guid.NewGuid(), $"background_{i}", $"background_{i}", null, $"background_{i}", ActionRunStage.Main, isBackground: true);
+            }).ToList();
+        }
+
+        private static IActionRunner CreatePostRunner(TestHostContext hc, string name)
+        {
+            var postRunner = new ActionRunner();
+            postRunner.Initialize(hc);
+            postRunner.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = name, DisplayName = name, Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+            postRunner.Stage = ActionRunStage.Post;
+            postRunner.Condition = "always()";
+            postRunner.DisplayName = name;
+            return postRunner;
+        }
+
+        private static void RunConcurrently(int count, Action<int> action)
+        {
+            using (var barrier = new Barrier(count))
+            {
+                var tasks = Enumerable.Range(0, count)
+                    .Select(i => Task.Factory.StartNew(() =>
+                    {
+                        barrier.SignalAndWait();
+                        action(i);
+                    }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default))
+                    .ToArray();
+                Task.WaitAll(tasks);
             }
         }
 

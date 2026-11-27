@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -39,10 +40,10 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(ActionManager))]
     public interface IActionManager : IRunnerService
     {
-        Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
-        Dictionary<Guid, List<Pipelines.ActionStep>> CachedEmbeddedPreSteps { get; }
-        Dictionary<Guid, List<Guid>> CachedEmbeddedStepIds { get; }
-        Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedEmbeddedPostSteps { get; }
+        ConcurrentDictionary<Guid, ContainerInfo> CachedActionContainers { get; }
+        ConcurrentDictionary<Guid, List<Pipelines.ActionStep>> CachedEmbeddedPreSteps { get; }
+        ConcurrentDictionary<Guid, List<Guid>> CachedEmbeddedStepIds { get; }
+        ConcurrentDictionary<Guid, Stack<Pipelines.ActionStep>> CachedEmbeddedPostSteps { get; }
         Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps, Guid rootStepId = default(Guid));
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
@@ -54,17 +55,18 @@ namespace GitHub.Runner.Worker
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
 
-        private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new();
-        public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
+        // Background steps prepare and load composite actions concurrently, so these caches must be thread-safe
+        private readonly ConcurrentDictionary<Guid, ContainerInfo> _cachedActionContainers = new();
+        public ConcurrentDictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
 
-        private readonly Dictionary<Guid, List<Pipelines.ActionStep>> _cachedEmbeddedPreSteps = new();
-        public Dictionary<Guid, List<Pipelines.ActionStep>> CachedEmbeddedPreSteps => _cachedEmbeddedPreSteps;
+        private readonly ConcurrentDictionary<Guid, List<Pipelines.ActionStep>> _cachedEmbeddedPreSteps = new();
+        public ConcurrentDictionary<Guid, List<Pipelines.ActionStep>> CachedEmbeddedPreSteps => _cachedEmbeddedPreSteps;
 
-        private readonly Dictionary<Guid, List<Guid>> _cachedEmbeddedStepIds = new();
-        public Dictionary<Guid, List<Guid>> CachedEmbeddedStepIds => _cachedEmbeddedStepIds;
+        private readonly ConcurrentDictionary<Guid, List<Guid>> _cachedEmbeddedStepIds = new();
+        public ConcurrentDictionary<Guid, List<Guid>> CachedEmbeddedStepIds => _cachedEmbeddedStepIds;
 
-        private readonly Dictionary<Guid, Stack<Pipelines.ActionStep>> _cachedEmbeddedPostSteps = new();
-        public Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedEmbeddedPostSteps => _cachedEmbeddedPostSteps;
+        private readonly ConcurrentDictionary<Guid, Stack<Pipelines.ActionStep>> _cachedEmbeddedPostSteps = new();
+        public ConcurrentDictionary<Guid, Stack<Pipelines.ActionStep>> CachedEmbeddedPostSteps => _cachedEmbeddedPostSteps;
 
         public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps, Guid rootStepId = default(Guid))
         {
