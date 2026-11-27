@@ -25,7 +25,7 @@ namespace GitHub.Runner.Listener
     {
         bool Busy { get; }
         TaskCompletionSource<TaskResult> RunOnceJobCompleted { get; }
-        void Run(Pipelines.AgentJobRequestMessage message, bool runOnce = false);
+        void Run(Pipelines.AgentJobRequestMessage message, bool runOnce = false, string runnerRequestId = null);
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
         Task ShutdownAsync();
@@ -86,7 +86,7 @@ namespace GitHub.Runner.Listener
 
         public bool Busy { get; private set; }
 
-        public void Run(Pipelines.AgentJobRequestMessage jobRequestMessage, bool runOnce = false)
+        public void Run(Pipelines.AgentJobRequestMessage jobRequestMessage, bool runOnce = false, string runnerRequestId = null)
         {
             Trace.Info($"Job request {jobRequestMessage.RequestId} for plan {jobRequestMessage.Plan.PlanId} job {jobRequestMessage.JobId} received.");
 
@@ -122,7 +122,7 @@ namespace GitHub.Runner.Listener
                 }
             }
 
-            WorkerDispatcher newDispatch = new(jobRequestMessage.JobId, jobRequestMessage.RequestId);
+            WorkerDispatcher newDispatch = new(jobRequestMessage.JobId, jobRequestMessage.RequestId, Guid.TryParse(runnerRequestId, out var parsedRunnerRequestId) ? parsedRunnerRequestId : null);
             if (runOnce)
             {
                 Trace.Info("Start dispatcher for one time used runner.");
@@ -141,10 +141,14 @@ namespace GitHub.Runner.Listener
         {
             Trace.Info($"Job cancellation request {jobCancelMessage.JobId} received, cancellation timeout {jobCancelMessage.Timeout.TotalMinutes} minutes.");
 
-            WorkerDispatcher workerDispatcher;
-            if (!_jobInfos.TryGetValue(jobCancelMessage.JobId, out workerDispatcher))
+            if (!_jobInfos.TryGetValue(jobCancelMessage.JobId, out WorkerDispatcher workerDispatcher))
             {
-                Trace.Verbose($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancllation request.");
+                workerDispatcher = _jobInfos.Values.FirstOrDefault(x => x.RunnerRequestId == jobCancelMessage.JobId);
+            }
+
+            if (workerDispatcher == null)
+            {
+                Trace.Info($"Job request {jobCancelMessage.JobId} is not a current running job, ignore cancellation request.");
                 return false;
             }
             else
@@ -1253,15 +1257,17 @@ namespace GitHub.Runner.Listener
         {
             public long RequestId { get; }
             public Guid JobId { get; }
+            public Guid? RunnerRequestId { get; }
             public Task WorkerDispatch { get; set; }
             public CancellationTokenSource WorkerCancellationTokenSource { get; private set; }
             public CancellationTokenSource WorkerCancelTimeoutKillTokenSource { get; private set; }
             private readonly object _lock = new();
 
-            public WorkerDispatcher(Guid jobId, long requestId)
+            public WorkerDispatcher(Guid jobId, long requestId, Guid? runnerRequestId = null)
             {
                 JobId = jobId;
                 RequestId = requestId;
+                RunnerRequestId = runnerRequestId;
                 WorkerCancelTimeoutKillTokenSource = new CancellationTokenSource();
                 WorkerCancellationTokenSource = new CancellationTokenSource();
             }
